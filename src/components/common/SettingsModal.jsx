@@ -29,6 +29,7 @@ import {
   saveSupabaseConfig,
   isSupabaseConfigured,
 } from '../../services/supabaseClient';
+import { getTodayDateStr } from '../../logic/dateUtils';
 
 export function SettingsModal({
   isOpen,
@@ -38,7 +39,9 @@ export function SettingsModal({
   queue = [],
   attendanceLogs = [],
   computedDays = [],
-  todayDateStr = '2026-09-21',
+  todayDateStr = getTodayDateStr(),
+  adminUserIds = ['m1'],
+  onToggleAdminRole,
   onAddMember,
   onEditMember,
   onToggleMemberStatus,
@@ -430,6 +433,8 @@ CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer
               queue={queue}
               attendanceLogs={attendanceLogs}
               isAdmin={isAdmin}
+              adminUserIds={adminUserIds}
+              onToggleAdminRole={onToggleAdminRole}
               onAddMember={onAddMember}
               onEditMember={onEditMember}
               onToggleMemberStatus={onToggleMemberStatus}

@@ -21,6 +21,7 @@ import {
   ExternalLink,
   ShieldCheck,
 } from 'lucide-react';
+import { getTodayDateStr } from '../logic/dateUtils';
 
 export function HistoryScreen({
   attendanceLogs = [],
@@ -30,6 +31,7 @@ export function HistoryScreen({
   selectedDateStr,
   onSelectDate,
   onTabChange,
+  todayDateStr = getTodayDateStr(),
 }) {
   // Default to 'logs' (Timeline Logs) as requested
   const [activeSubTab, setActiveSubTab] = useState('logs'); // 'logs' | 'report'
@@ -106,7 +108,7 @@ export function HistoryScreen({
             verified: true,
             markedBy: l.markedBy,
           }));
-        } else if (day.date <= '2026-09-21') {
+        } else if (day.date <= todayDateStr) {
           // Fall back to computed slots for past/today
           const lunchSlots = (compDay.slots || []).filter(s => s.meal === 'lunch');
           lunchWashers = lunchSlots
@@ -136,7 +138,7 @@ export function HistoryScreen({
             verified: true,
             markedBy: l.markedBy,
           }));
-        } else if (day.date <= '2026-09-21') {
+        } else if (day.date <= todayDateStr) {
           const dinnerSlot = (compDay.slots || []).find(s => s.meal === 'dinner');
           if (dinnerSlot && dinnerSlot.assignedMemberId && dinnerSlot.assignedMemberName !== '-') {
             dinnerWashers = [{

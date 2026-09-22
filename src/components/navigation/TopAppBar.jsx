@@ -4,22 +4,26 @@ import { Modal } from '../common/Modal';
 
 export function TopAppBar({
   title = 'Vessel Washing',
-  currentDateStr = 'Monday, 21 September 2026',
+  currentDateStr = '',
   currentUserId = 'm1',
   onSelectUser,
   allMembers = [],
+  adminUserIds = ['m1'],
   onSettingsClick,
   isLiveConnected = false,
 }) {
   const [istTime, setIstTime] = useState('');
   const [userModalOpen, setUserModalOpen] = useState(false);
 
+  const isPrimaryAdmin = (m) => m?.id === 'm1' || (m?.name && m.name.toLowerCase().includes('kavipriyan'));
+  const isMemberAdmin = (m) => isPrimaryAdmin(m) || (adminUserIds && adminUserIds.includes(m?.id));
+
   const activeMember = allMembers.find(m => m.id === currentUserId) || {
     id: 'm1',
     name: 'Kavipriyan',
     code: 'M1',
   };
-  const isAdmin = currentUserId === 'm1';
+  const isAdmin = isMemberAdmin(activeMember);
 
   useEffect(() => {
     const updateTime = () => {
@@ -122,10 +126,10 @@ export function TopAppBar({
           <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 space-y-1">
             <div className="flex items-center gap-1.5 text-xs font-bold text-violet-900">
               <ShieldCheck className="w-4 h-4 text-violet-600" />
-              <span>Administrator: Kavipriyan (Member 1)</span>
+              <span>Administrative Access</span>
             </div>
             <p className="text-[11px] text-violet-700">
-              Only Kavipriyan has edit and administrative permissions (adding/editing members, modifying system settings). Other profiles are restricted to standard member actions.
+              <strong>Kavipriyan</strong> (Primary Admin) and designated administrators have full edit access (modifying meal availability, attendance, and member settings). Other profiles operate in view-only mode.
             </p>
           </div>
 
@@ -136,7 +140,8 @@ export function TopAppBar({
             <div className="space-y-1 max-h-60 overflow-y-auto">
               {allMembers.map(m => {
                 const isSelected = m.id === currentUserId;
-                const isThisAdmin = m.id === 'm1';
+                const isPrimary = isPrimaryAdmin(m);
+                const isThisAdmin = isMemberAdmin(m);
 
                 return (
                   <button
@@ -155,27 +160,35 @@ export function TopAppBar({
                     <div className="flex items-center gap-2.5">
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                          isThisAdmin
+                          isPrimary || isThisAdmin
                             ? 'bg-violet-600 text-white shadow-xs'
                             : 'bg-neutral-surfaceSecondary text-neutral-textSecondary'
                         }`}
                       >
-                        {isThisAdmin ? '👑' : m.code}
+                        {isPrimary || isThisAdmin ? '👑' : m.code}
                       </div>
                       <div className="text-left">
                         <span className="font-bold block">{m.name}</span>
                         <span className="text-[10px] text-neutral-textTertiary block">
-                          {isThisAdmin ? 'Admin (Member 1) · Full Edit Access' : 'Standard Member · Restricted Access'}
+                          {isPrimary
+                            ? 'Primary Admin · Full Edit Access'
+                            : isThisAdmin
+                            ? 'Admin · Full Edit Access'
+                            : 'Standard Member · View Only'}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {isThisAdmin && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-violet-100 text-violet-800 border border-violet-200">
+                      {isPrimary ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 border border-violet-200">
+                          Primary Admin
+                        </span>
+                      ) : isThisAdmin ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 border border-violet-200">
                           Admin
                         </span>
-                      )}
+                      ) : null}
                       {isSelected && <Check className="w-4 h-4 text-primary" strokeWidth={2.5} />}
                     </div>
                   </button>

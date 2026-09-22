@@ -68,6 +68,7 @@ export const supabaseService = {
         daysConfig: settingsMap.get('days_config') || null,
         initialQueue: settingsMap.get('initial_queue') || null,
         rosterRules: settingsMap.get('roster_rules') || null,
+        adminUserIds: settingsMap.get('admin_user_ids') || null,
         attendanceHistory: dbAttendance || [],
         washerActivity: dbWasherActivity || [],
       };
@@ -118,10 +119,10 @@ export const supabaseService = {
   },
 
   /**
-   * Store application rules, timetable matrix, and initial queue into application_settings as JSON.
+   * Store application rules, timetable matrix, initial queue, and admin user IDs into application_settings as JSON.
    * Conforms strictly to schema: setting_key, setting_value.
    */
-  async saveApplicationRules({ daysConfig, initialQueue, rosterRules }) {
+  async saveApplicationRules({ daysConfig, initialQueue, rosterRules, adminUserIds }) {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
@@ -129,6 +130,7 @@ export const supabaseService = {
         { setting_key: 'days_config', setting_value: daysConfig },
         { setting_key: 'initial_queue', setting_value: initialQueue },
         { setting_key: 'roster_rules', setting_value: rosterRules || {} },
+        { setting_key: 'admin_user_ids', setting_value: adminUserIds },
       ];
 
       for (const item of settingsItems) {
@@ -163,6 +165,42 @@ export const supabaseService = {
       return true;
     } catch (err) {
       console.error('Failed to save application rules to Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Save designated admin user IDs to Supabase application_settings.
+   */
+  async saveAdminUserIds(adminUserIds) {
+    if (!isSupabaseConfigured || !supabase || !adminUserIds) return false;
+    try {
+      const { data: existing } = await supabase
+        .from('application_settings')
+        .select('id')
+        .eq('setting_key', 'admin_user_ids')
+        .maybeSingle();
+
+      if (existing && existing.id) {
+        await supabase
+          .from('application_settings')
+          .update({
+            setting_value: adminUserIds,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+      } else {
+        await supabase.from('application_settings').insert([
+          {
+            setting_key: 'admin_user_ids',
+            setting_value: adminUserIds,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+      }
+      return true;
+    } catch (err) {
+      console.warn('Failed to save admin_user_ids to Supabase:', err);
       return false;
     }
   },

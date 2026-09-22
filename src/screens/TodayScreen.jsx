@@ -6,12 +6,15 @@ import {
   UtensilsCrossed,
   AlertCircle,
   Users,
+  Lock,
 } from 'lucide-react';
 import { assignSlot, assignLunchPair } from '../logic/rotationEngine';
+import { DateSelectorBar } from '../components/common/DateSelectorBar';
+import { getTodayDateStr } from '../logic/dateUtils';
 
 export function TodayScreen({
-  currentDateStr = '2026-09-21',
-  selectedDateStr = '2026-09-21',
+  currentDateStr = getTodayDateStr(),
+  selectedDateStr = getTodayDateStr(),
   onSelectDate,
   availableDays = [],
   todayConfig,
@@ -20,6 +23,7 @@ export function TodayScreen({
   allMembers = [],
   queue = [],
   attendanceLogs = [],
+  isAdmin = false,
   onMarkAttendance,
   onUpdateEaters,
   onToggleMealProvided,
@@ -188,204 +192,248 @@ export function TodayScreen({
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
 
   return (
-    <div className="w-full max-w-full pb-28 px-4 pt-3 space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-5 md:gap-4 lg:gap-6">
-      {/* ========================================================================= */}
-      {/* CARD 1: MEAL & WASHER ROSTER SETTINGS                                     */}
-      {/* Responsive layout: Tablet 50% (col-span-1), Desktop 60% (col-span-3)     */}
-      {/* ========================================================================= */}
-      <div className="md:col-span-1 lg:col-span-3 rounded-[24px] bg-white border border-neutral-border/80 shadow-xs p-4 sm:p-5 space-y-4 flex flex-col justify-between">
-        <div className="space-y-4">
-          {/* Card Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-neutral-border/50">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#A28EF9]/20 text-[#2C1885] flex items-center justify-center flex-shrink-0">
-                <UtensilsCrossed className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-[#1E1E1E] leading-tight">
-                  Meal &amp; Attendance Settings
-                </h2>
-                <span className="text-[11px] text-neutral-textTertiary font-medium block">
-                  Configure meal availability, requirement &amp; attending members
-                </span>
-              </div>
-            </div>
+    <div className="w-full max-w-full pb-28 px-4 pt-3 space-y-4">
+      {/* Date Navigation & Test Selector */}
+      <DateSelectorBar
+        selectedDateStr={selectedDateStr}
+        onSelectDate={onSelectDate}
+        todayDateStr={currentDateStr}
+        availableDays={availableDays}
+      />
+
+      {/* Non-Admin View-Only Banner */}
+      {!isAdmin && (
+        <div className="p-3 rounded-[20px] bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs">
+            <Lock className="w-4 h-4 text-amber-700 flex-shrink-0" />
+            <span className="font-medium text-[11px] leading-tight">
+              <strong>View-Only Mode:</strong> Logged in as standard member. Meal settings and attendance edits are restricted to <strong>Kavipriyan (Admin)</strong> and designated admins.
+            </span>
           </div>
+        </div>
+      )}
 
-          {/* 1. Meal Toggle: Segmented control [ Lunch | Dinner ] */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-[#1E1E1E] uppercase tracking-wider block">
-              Select Meal
-            </label>
-            <div className="flex p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60">
-              <button
-                type="button"
-                onClick={() => handleSelectMeal('lunch')}
-                className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-full transition-all select-none active-scale ${
-                  selectedMeal === 'lunch'
-                    ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-xs'
-                    : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
-                }`}
-              >
-                <Sun className={`w-3.5 h-3.5 flex-shrink-0 ${selectedMeal === 'lunch' ? 'text-[#1E1E1E]' : 'text-neutral-textTertiary'}`} />
-                <span className="truncate">Lunch</span>
-                {todayConfig?.lunchProvided && (
-                  <span className="w-2 h-2 rounded-full bg-[#A4F5A6] inline-block flex-shrink-0 border border-white" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectMeal('dinner')}
-                className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-full transition-all select-none active-scale ${
-                  selectedMeal === 'dinner'
-                    ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-xs'
-                    : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
-                }`}
-              >
-                <Moon className={`w-3.5 h-3.5 flex-shrink-0 ${selectedMeal === 'dinner' ? 'text-[#1E1E1E]' : 'text-neutral-textTertiary'}`} />
-                <span className="truncate">Dinner</span>
-                {todayConfig?.dinnerProvided && (
-                  <span className="w-2 h-2 rounded-full bg-[#A4F5A6] inline-block flex-shrink-0 border border-white" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Meal Status Indicator & Availability Toggle (Never says 'Pause Cycle') */}
-          <div className="p-3 rounded-[20px] bg-[#ECEEF0]/60 border border-neutral-border/80 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isMealProvided ? 'bg-[#A4F5A6]' : 'bg-[#FFD89D]'}`} />
-                <span className="text-xs font-bold text-[#1E1E1E] truncate">
-                  {selectedMeal === 'lunch' ? 'Lunch Status' : 'Dinner Status'}
-                </span>
-                <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full flex-shrink-0 ${
-                  isMealProvided
-                    ? 'bg-[#A4F5A6]/40 text-[#0E5214] border border-[#A4F5A6]'
-                    : 'bg-[#FFD89D]/40 text-[#733F00] border border-[#FFD89D]'
-                }`}>
-                  {isMealProvided ? 'Available' : 'Not Available'}
-                </span>
-              </div>
-              <span className="text-[11px] text-neutral-textSecondary block truncate mt-0.5">
-                {isMealProvided
-                  ? 'Available — Washing active'
-                  : 'Not Available — Duty inactive'}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onToggleMealProvided(selectedMeal, !isMealProvided)}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-full transition-all active-scale whitespace-nowrap shadow-2xs flex-shrink-0 ${
-                isMealProvided
-                  ? 'bg-white text-[#1E1E1E] border border-neutral-border/80 hover:bg-neutral-100'
-                  : 'bg-[#A4F5A6] text-[#1E1E1E] border border-[#8CEE8F] hover:bg-[#91F293]'
-              }`}
-            >
-              {isMealProvided ? 'Set Not Available' : 'Mark Available ✓'}
-            </button>
-          </div>
-
-          {/* 3. Simplified Washer Requirement: [ Single ] | [ Multiple ] */}
-          {selectedMeal === 'lunch' && isMealProvided && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-[#1E1E1E] uppercase tracking-wider block">
-                  Washer Requirement
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onToggleLunchWashers && onToggleLunchWashers(1)}
-                  className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
-                    washersCount === 1
-                      ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
-                      : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
-                  }`}
-                >
-                  <span>Single</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onToggleLunchWashers && onToggleLunchWashers(2)}
-                  className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
-                    washersCount === 2
-                      ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
-                      : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
-                  }`}
-                >
-                  <span>Multiple</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 4. Attendance Tracker ("Who Ate Today?") */}
-          {isMealProvided && (
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#1E1E1E] flex items-center gap-1.5">
-                  <span>Who ate today?</span>
-                  <span className="text-[11px] font-medium text-neutral-textTertiary">
-                    ({currentEaters.length} attending)
+      {/* Responsive Cards Layout */}
+      <div className="w-full max-w-full space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-5 md:gap-4 lg:gap-6">
+        {/* ========================================================================= */}
+        {/* CARD 1: MEAL & WASHER ROSTER SETTINGS                                     */}
+        {/* Responsive layout: Tablet 50% (col-span-1), Desktop 60% (col-span-3)     */}
+        {/* ========================================================================= */}
+        <div className="md:col-span-1 lg:col-span-3 rounded-[24px] bg-white border border-neutral-border/80 shadow-xs p-4 sm:p-5 space-y-4 flex flex-col justify-between">
+          <div className="space-y-4">
+            {/* Card Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-border/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#A28EF9]/20 text-[#2C1885] flex items-center justify-center flex-shrink-0">
+                  <UtensilsCrossed className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-[#1E1E1E] leading-tight">
+                    Meal &amp; Attendance Settings
+                  </h2>
+                  <span className="text-[11px] text-neutral-textTertiary font-medium block">
+                    Configure meal availability, requirement &amp; attending members
                   </span>
-                </span>
+                </div>
+              </div>
+            </div>
 
-                <div className="flex items-center gap-2">
+            {/* 1. Meal Toggle: Segmented control [ Lunch | Dinner ] */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[#1E1E1E] uppercase tracking-wider block">
+                Select Meal
+              </label>
+              <div className="flex p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60">
+                <button
+                  type="button"
+                  onClick={() => handleSelectMeal('lunch')}
+                  className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-full transition-all select-none active-scale ${
+                    selectedMeal === 'lunch'
+                      ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-xs'
+                      : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
+                  }`}
+                >
+                  <Sun className={`w-3.5 h-3.5 flex-shrink-0 ${selectedMeal === 'lunch' ? 'text-[#1E1E1E]' : 'text-neutral-textTertiary'}`} />
+                  <span className="truncate">Lunch</span>
+                  {todayConfig?.lunchProvided && (
+                    <span className="w-2 h-2 rounded-full bg-[#A4F5A6] inline-block flex-shrink-0 border border-white" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectMeal('dinner')}
+                  className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-full transition-all select-none active-scale ${
+                    selectedMeal === 'dinner'
+                      ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-xs'
+                      : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
+                  }`}
+                >
+                  <Moon className={`w-3.5 h-3.5 flex-shrink-0 ${selectedMeal === 'dinner' ? 'text-[#1E1E1E]' : 'text-neutral-textTertiary'}`} />
+                  <span className="truncate">Dinner</span>
+                  {todayConfig?.dinnerProvided && (
+                    <span className="w-2 h-2 rounded-full bg-[#A4F5A6] inline-block flex-shrink-0 border border-white" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Meal Status Indicator & Availability Toggle (Never says 'Pause Cycle') */}
+            <div className="p-3 rounded-[20px] bg-[#ECEEF0]/60 border border-neutral-border/80 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isMealProvided ? 'bg-[#A4F5A6]' : 'bg-[#FFD89D]'}`} />
+                  <span className="text-xs font-bold text-[#1E1E1E] truncate">
+                    {selectedMeal === 'lunch' ? 'Lunch Status' : 'Dinner Status'}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full flex-shrink-0 ${
+                    isMealProvided
+                      ? 'bg-[#A4F5A6]/40 text-[#0E5214] border border-[#A4F5A6]'
+                      : 'bg-[#FFD89D]/40 text-[#733F00] border border-[#FFD89D]'
+                  }`}>
+                    {isMealProvided ? 'Available' : 'Not Available'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-neutral-textSecondary block truncate mt-0.5">
+                  {isMealProvided
+                    ? 'Available — Washing active'
+                    : 'Not Available — Duty inactive'}
+                </span>
+              </div>
+
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleMealProvided(selectedMeal, !isMealProvided)}
+                  className={`px-3.5 py-1.5 text-xs font-bold rounded-full transition-all active-scale whitespace-nowrap shadow-2xs flex-shrink-0 ${
+                    isMealProvided
+                      ? 'bg-white text-[#1E1E1E] border border-neutral-border/80 hover:bg-neutral-100'
+                      : 'bg-[#A4F5A6] text-[#1E1E1E] border border-[#8CEE8F] hover:bg-[#91F293]'
+                  }`}
+                >
+                  {isMealProvided ? 'Set Not Available' : 'Mark Available ✓'}
+                </button>
+              ) : (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ECEEF0] text-neutral-textTertiary text-xs font-semibold border border-neutral-border cursor-not-allowed flex-shrink-0"
+                  title="Only Admin can modify meal availability"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{isMealProvided ? 'Active' : 'Inactive'}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Simplified Washer Requirement: [ Single ] | [ Multiple ] */}
+            {selectedMeal === 'lunch' && isMealProvided && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-[#1E1E1E] uppercase tracking-wider block">
+                    Washer Requirement
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={handleSelectAllEaters}
-                    className="text-[11px] font-bold text-[#7D64F6] hover:underline"
+                    disabled={!isAdmin}
+                    onClick={() => isAdmin && onToggleLunchWashers && onToggleLunchWashers(1)}
+                    className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
+                      washersCount === 1
+                        ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
+                        : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
+                    } ${!isAdmin ? 'cursor-not-allowed opacity-75' : ''}`}
+                    title={!isAdmin ? 'Admin only' : ''}
                   >
-                    [Select All]
+                    <span>Single</span>
                   </button>
-                  <span className="text-neutral-border">&middot;</span>
+
                   <button
                     type="button"
-                    onClick={handleClearAllEaters}
-                    className="text-[11px] font-semibold text-neutral-textTertiary hover:text-[#1E1E1E]"
+                    disabled={!isAdmin}
+                    onClick={() => isAdmin && onToggleLunchWashers && onToggleLunchWashers(2)}
+                    className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
+                      washersCount === 2
+                        ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
+                        : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
+                    } ${!isAdmin ? 'cursor-not-allowed opacity-75' : ''}`}
+                    title={!isAdmin ? 'Admin only' : ''}
                   >
-                    [Clear]
+                    <span>Multiple</span>
                   </button>
                 </div>
               </div>
+            )}
 
-              {/* Responsive auto-wrapping flex chips with consistent 8px gap */}
-              <div className="flex flex-wrap gap-2 items-center pt-0.5">
-                {activeMembers.map((member) => {
-                  const ate = currentEaterSet.has(member.id);
-                  return (
-                    <button
-                      key={member.id}
-                      type="button"
-                      onClick={(e) => handleToggleEater(member.id, e)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-200 active-scale select-none border ${
-                        ate
-                          ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-2xs font-bold'
-                          : 'bg-white text-[#5A606A] border-[#D0D5DD] hover:bg-[#F2F4F7] hover:border-[#98A2B3]'
-                      }`}
-                    >
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                          ate ? 'bg-white/60 text-[#1E1E1E]' : 'bg-[#F2F4F7] text-[#344054]'
-                        }`}
+            {/* 4. Attendance Tracker ("Who Ate Today?") */}
+            {isMealProvided && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#1E1E1E] flex items-center gap-1.5">
+                    <span>Who ate today?</span>
+                    <span className="text-[11px] font-medium text-neutral-textTertiary">
+                      ({currentEaters.length} attending)
+                    </span>
+                  </span>
+
+                  {isAdmin ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllEaters}
+                        className="text-[11px] font-bold text-[#7D64F6] hover:underline"
                       >
-                        {member.code}
-                      </span>
-                      <span>{member.name}</span>
-                      {ate && <Check className="w-3.5 h-3.5 text-[#1E1E1E]" strokeWidth={2.5} />}
-                    </button>
-                  );
-                })}
+                        [Select All]
+                      </button>
+                      <span className="text-neutral-border">&middot;</span>
+                      <button
+                        type="button"
+                        onClick={handleClearAllEaters}
+                        className="text-[11px] font-semibold text-neutral-textTertiary hover:text-[#1E1E1E]"
+                      >
+                        [Clear]
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-neutral-textTertiary flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> View Only
+                    </span>
+                  )}
+                </div>
+
+                {/* Responsive auto-wrapping flex chips with consistent 8px gap */}
+                <div className="flex flex-wrap gap-2 items-center pt-0.5">
+                  {activeMembers.map((member) => {
+                    const ate = currentEaterSet.has(member.id);
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        disabled={!isAdmin}
+                        onClick={(e) => isAdmin && handleToggleEater(member.id, e)}
+                        title={!isAdmin ? 'Only Admin can update attendance' : ''}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-200 active-scale select-none border ${
+                          ate
+                            ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-2xs font-bold'
+                            : 'bg-white text-[#5A606A] border-[#D0D5DD] hover:bg-[#F2F4F7] hover:border-[#98A2B3]'
+                        } ${!isAdmin ? 'cursor-default opacity-85' : ''}`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                            ate ? 'bg-white/60 text-[#1E1E1E]' : 'bg-[#F2F4F7] text-[#344054]'
+                          }`}
+                        >
+                          {member.code}
+                        </span>
+                        <span>{member.name}</span>
+                        {ate && <Check className="w-3.5 h-3.5 text-[#1E1E1E]" strokeWidth={2.5} />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* CARD 2: WASHER DISPLAY CARDS (Automated Read-Only Queue Rotation Display)   */}
@@ -531,5 +579,6 @@ export function TodayScreen({
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

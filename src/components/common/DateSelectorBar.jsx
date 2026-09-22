@@ -1,14 +1,15 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Calendar, RotateCcw, Sparkles } from 'lucide-react';
+import { formatDayMonth, formatShortDate, getTodayDateStr } from '../../logic/dateUtils';
 
 /**
  * Sleek horizontal Date Selector Bar for Testing & Day-by-Day tracking.
  * Allows jumping between past, today, and future dates with 1-tap controls.
  */
 export function DateSelectorBar({
-  selectedDateStr = '2026-09-21',
+  selectedDateStr = getTodayDateStr(),
   onSelectDate,
-  todayDateStr = '2026-09-21',
+  todayDateStr = getTodayDateStr(),
   availableDays = [],
 }) {
   const currentIndex = availableDays.findIndex(d => d.date === selectedDateStr);
@@ -31,13 +32,15 @@ export function DateSelectorBar({
   const isFuture = selectedDateStr > todayDateStr;
 
   // Window of 7 days around selected date for the pill strip
-  const safeIndex = currentIndex >= 0 ? currentIndex : 20;
-  const startIdx = Math.max(0, Math.min(safeIndex - 3, availableDays.length - 7));
+  const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+  const startIdx = Math.max(0, Math.min(safeIndex - 3, Math.max(0, availableDays.length - 7)));
   const visibleDays = availableDays.slice(startIdx, startIdx + 7);
 
   const currentDayObj = availableDays[currentIndex] || {};
   const dayOfWeek = currentDayObj.dayOfWeek || '';
-  const dayNumber = currentDayObj.dayNumber || selectedDateStr.split('-')[2];
+
+  const minDate = availableDays[0]?.date || '2026-09-01';
+  const maxDate = availableDays[availableDays.length - 1]?.date || '2026-12-31';
 
   return (
     <div className="bg-white rounded-2xl border border-neutral-border p-3 shadow-xs space-y-2.5">
@@ -58,7 +61,7 @@ export function DateSelectorBar({
         <div className="flex flex-col items-center justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-neutral-textPrimary tracking-tight">
-              {dayNumber ? `${dayNumber} Sep 2026` : selectedDateStr}
+              {formatShortDate(selectedDateStr)}
             </span>
             {dayOfWeek && (
               <span className="text-[11px] text-neutral-textSecondary font-medium">
@@ -109,8 +112,8 @@ export function DateSelectorBar({
           <input
             id="test-date-picker"
             type="date"
-            min="2026-09-01"
-            max="2026-09-30"
+            min={minDate}
+            max={maxDate}
             value={selectedDateStr}
             onChange={(e) => e.target.value && onSelectDate && onSelectDate(e.target.value)}
             className="text-[11px] font-semibold text-neutral-textPrimary bg-transparent outline-none cursor-pointer"
@@ -123,10 +126,10 @@ export function DateSelectorBar({
             type="button"
             onClick={() => onSelectDate && onSelectDate(todayDateStr)}
             className="flex items-center gap-1 text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg bg-primary-50 hover:bg-primary-100 border border-primary-200 active-scale transition-all"
-            title="Return to today (21 Sep)"
+            title={`Return to today (${formatDayMonth(todayDateStr)})`}
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Today (21 Sep)</span>
+            <span>Today ({formatDayMonth(todayDateStr)})</span>
           </button>
         )}
       </div>

@@ -14,6 +14,11 @@ import {
   assignSlot,
   assignLunchPair,
 } from './logic/rotationEngine';
+import {
+  getTodayDateStr,
+  formatHeaderDate,
+  ensureDaysCoverDate,
+} from './logic/dateUtils';
 import { notificationService } from './services/notificationService';
 import { supabaseService } from './services/supabaseService';
 import { isSupabaseConfigured } from './services/supabaseClient';
@@ -22,7 +27,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('today'); // 'today' | 'activity' | 'history'
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Active User Profile for Role-Based Access Control (Admin: Kavipriyan 'm1')
+  // Dynamic Live Today date (resolves to user's real current date, e.g. 2026-09-23)
+  const actualTodayDateStr = useMemo(() => getTodayDateStr(), []);
+
+  // Dynamic Selected Date (defaults to live today)
+  const [selectedDateStr, setSelectedDateStr] = useState(actualTodayDateStr);
+
+  // Active User Profile for Role-Based Access Control (Admin: Kavipriyan 'm1' / designated admins)
   const [currentUserId, setCurrentUserId] = useState(() => {
     try {
       return localStorage.getItem('vw_active_user_id') || 'm1';
@@ -33,19 +44,16 @@ export default function App() {
 
   // Application Persistent State
   const [members, setMembers] = useState(() => storage.getMembers());
-  const [daysConfig, setDaysConfig] = useState(() => storage.getDaysConfig());
+  const [daysConfig, setDaysConfig] = useState(() => {
+    const initialDays = storage.getDaysConfig();
+    return ensureDaysCoverDate(initialDays, actualTodayDateStr);
+  });
   const [attendanceLogs, setAttendanceLogs] = useState(() => storage.getAttendanceLogs());
   const [initialQueue, setInitialQueue] = useState(() => storage.getInitialQueue());
   const [activityLogs, setActivityLogs] = useState(() => storage.getActivityLogs());
+  const [adminUserIds, setAdminUserIds] = useState(() => storage.getAdminUserIds());
 
-  // Fixed Anchor Today date (21 Sep 2026)
-  const actualTodayDateStr = '2026-09-21';
-
-  // Dynamic Selected Date (anchored to today 21-Sep-2026)
-  const [selectedDateStr, setSelectedDateStr] = useState('2026-09-21');
-
-  // Admin access control: Kavipriyan (m1) is the sole administrator
-  const isAdmin = currentUserId === 'm1';
+  // Current logged in member
   const currentMember = useMemo(() => {
     return members.find(m => m.id === currentUserId) || {
       id: 'm1',
@@ -53,6 +61,14 @@ export default function App() {
       code: 'M1',
     };
   }, [members, currentUserId]);
+
+  // Primary Admin: Kavipriyan is permanent administrator
+  const isPrimaryAdmin =
+    currentUserId === 'm1' ||
+    (currentMember?.name && currentMember.name.trim().toLowerCase().includes('kavipriyan'));
+
+  // Admin access control: Kavipriyan + designated co-admins
+  const isAdmin = isPrimaryAdmin || (adminUserIds && adminUserIds.includes(currentUserId));
 
   // Synchronize with storage
   useEffect(() => {
@@ -116,6 +132,10 @@ export default function App() {
           if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
             setInitialQueue(remote.initialQueue);
           }
+          if (remote.adminUserIds && Array.isArray(remote.adminUserIds)) {
+            setAdminUserIds(remote.adminUserIds);
+            storage.saveAdminUserIds(remote.adminUserIds);
+          }
 
           // Auto-seed if database is empty on first connection
           if (!remote.members || remote.members.length === 0) {
@@ -124,6 +144,7 @@ export default function App() {
             await supabaseService.saveApplicationRules({
               daysConfig: storage.getDaysConfig(),
               initialQueue: storage.getInitialQueue(),
+              adminUserIds: ['m1'],
               rosterRules: { initialSeed: true },
             });
             const refreshed = await supabaseService.fetchInitialData();
@@ -206,6 +227,9 @@ export default function App() {
           setDaysConfig(val);
         } else if (key === 'initial_queue' && Array.isArray(val)) {
           setInitialQueue(val);
+        } else if (key === 'admin_user_ids' && Array.isArray(val)) {
+          setAdminUserIds(val);
+          storage.saveAdminUserIds(val);
         }
       }
     });
@@ -224,7 +248,7 @@ export default function App() {
       actorId: currentMember.id,
       actorName: currentMember.name,
       actorCode: currentMember.code,
-      isAdmin: currentMember.id === 'm1',
+      isAdmin,
       actionType,
       category,
       title,
@@ -232,6 +256,43 @@ export default function App() {
       targetDate,
     };
     setActivityLogs(prev => [newLog, ...prev]);
+  };
+
+  // Date selection handler ensuring target day is covered in configuration
+  const handleSelectDate = (dateStr) => {
+    setDaysConfig(prev => ensureDaysCoverDate(prev, dateStr));
+    setSelectedDateStr(dateStr);
+  };
+
+  // Admin delegation handler (allows designated admins, protects Kavipriyan)
+  const handleToggleAdminRole = async (targetMemberId) => {
+    if (!isAdmin) return;
+    const target = members.find(m => m.id === targetMemberId);
+    if (!target) return;
+
+    // Kavipriyan is permanent Primary Administrator
+    if (target.id === 'm1' || target.name.trim().toLowerCase().includes('kavipriyan')) {
+      alert('Kavipriyan is the Primary Administrator and cannot be demoted.');
+      return;
+    }
+
+    const isCurrentlyAdmin = adminUserIds.includes(targetMemberId);
+    const updatedAdminIds = isCurrentlyAdmin
+      ? adminUserIds.filter(id => id !== targetMemberId)
+      : [...adminUserIds, targetMemberId];
+
+    setAdminUserIds(updatedAdminIds);
+    storage.saveAdminUserIds(updatedAdminIds);
+
+    await supabaseService.saveAdminUserIds(updatedAdminIds);
+
+    logUserActivity(
+      'ADMIN_ROLE_CHANGE',
+      'admin',
+      isCurrentlyAdmin ? `Revoked Admin Role from ${target.name}` : `Granted Admin Role to ${target.name}`,
+      `${currentMember.name} ${isCurrentlyAdmin ? 'removed admin privileges from' : 'delegated admin privileges to'} ${target.name}.`,
+      selectedDateStr
+    );
   };
 
   // Compute rotation simulation across all days in the month
@@ -309,6 +370,7 @@ export default function App() {
       await supabaseService.saveApplicationRules({
         daysConfig: activeDays,
         initialQueue,
+        adminUserIds,
       });
     } catch (err) {
       console.warn('Failed to sync attendance/washer to Supabase:', err);
@@ -568,6 +630,7 @@ export default function App() {
     await supabaseService.saveApplicationRules({
       daysConfig: parsedData.daysConfig || daysConfig,
       initialQueue: initialQueue,
+      adminUserIds,
       rosterRules: {
         sheetName: parsedData.sheetName,
         totalRows: parsedData.totalRows,
@@ -588,12 +651,14 @@ export default function App() {
     if (!isAdmin) return;
     storage.resetToDefault();
     setMembers(INITIAL_MEMBERS);
-    const initialDays = storage.getDaysConfig();
+    const initialDays = ensureDaysCoverDate(storage.getDaysConfig(), actualTodayDateStr);
     const initialQ = INITIAL_MEMBERS.map(m => m.id);
+    const defaultAdmins = ['m1'];
     setDaysConfig(initialDays);
     setAttendanceLogs(storage.getAttendanceLogs());
     setInitialQueue(initialQ);
     setActivityLogs(storage.getActivityLogs());
+    setAdminUserIds(defaultAdmins);
     setSelectedDateStr(actualTodayDateStr);
 
     // Sync reset seed data to Supabase
@@ -601,6 +666,7 @@ export default function App() {
     await supabaseService.saveApplicationRules({
       daysConfig: initialDays,
       initialQueue: initialQ,
+      adminUserIds: defaultAdmins,
       rosterRules: { resetToDefault: true },
     });
   };
@@ -614,10 +680,11 @@ export default function App() {
         {/* Top App Bar */}
         <TopAppBar
           title="Vessel Washing"
-          currentDateStr="Monday, 21 September 2026"
+          currentDateStr={formatHeaderDate(actualTodayDateStr)}
           currentUserId={currentUserId}
           onSelectUser={setCurrentUserId}
           allMembers={members}
+          adminUserIds={adminUserIds}
           onSettingsClick={() => setSettingsOpen(true)}
           isLiveConnected={isSupabaseConfigured}
         />
@@ -628,7 +695,7 @@ export default function App() {
             <TodayScreen
               currentDateStr={actualTodayDateStr}
               selectedDateStr={selectedDateStr}
-              onSelectDate={setSelectedDateStr}
+              onSelectDate={handleSelectDate}
               availableDays={daysConfig}
               todayConfig={currentDayConfig}
               computedToday={computedCurrentDay}
@@ -636,6 +703,7 @@ export default function App() {
               allMembers={members}
               queue={currentDayQueue}
               attendanceLogs={attendanceLogs}
+              isAdmin={isAdmin}
               onMarkAttendance={handleMarkAttendance}
               onUpdateEaters={handleUpdateEaters}
               onToggleMealProvided={handleToggleMealProvided}
@@ -660,8 +728,9 @@ export default function App() {
               daysConfig={daysConfig}
               computedDays={computedDays}
               selectedDateStr={selectedDateStr}
-              onSelectDate={setSelectedDateStr}
+              onSelectDate={handleSelectDate}
               onTabChange={setActiveTab}
+              todayDateStr={actualTodayDateStr}
             />
           )}
         </main>
@@ -682,7 +751,9 @@ export default function App() {
           queue={currentDayQueue}
           attendanceLogs={attendanceLogs}
           computedDays={computedDays}
-          todayDateStr={selectedDateStr}
+          todayDateStr={actualTodayDateStr}
+          adminUserIds={adminUserIds}
+          onToggleAdminRole={handleToggleAdminRole}
           onAddMember={handleAddMember}
           onEditMember={handleEditMember}
           onToggleMemberStatus={handleToggleMemberStatus}

@@ -14,6 +14,8 @@ import {
   Users,
   Lock,
   ShieldCheck,
+  ShieldAlert,
+  Crown,
 } from 'lucide-react';
 
 export function MembersScreen({
@@ -21,6 +23,8 @@ export function MembersScreen({
   queue = [],
   attendanceLogs = [],
   isAdmin = false,
+  adminUserIds = ['m1'],
+  onToggleAdminRole,
   onAddMember,
   onEditMember,
   onToggleMemberStatus,
@@ -28,6 +32,11 @@ export function MembersScreen({
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModal, setEditModal] = useState({ isOpen: false, member: null });
   const [deactivateModal, setDeactivateModal] = useState({ isOpen: false, member: null });
+  const [adminModal, setAdminModal] = useState({ isOpen: false, member: null, action: 'grant' });
+
+  // Helpers to identify primary admin and delegated admins
+  const isKavipriyan = (m) => m.id === 'm1' || (m.name && m.name.trim().toLowerCase().includes('kavipriyan'));
+  const isMemberAdmin = (m) => isKavipriyan(m) || (adminUserIds && adminUserIds.includes(m.id));
 
   // Form states
   const [newName, setNewName] = useState('');
@@ -155,7 +164,7 @@ export function MembersScreen({
           <div className="flex items-center gap-2 min-w-0">
             <Lock className="w-4 h-4 text-amber-700 flex-shrink-0" />
             <span className="text-[11px] font-medium leading-tight">
-              <strong>Admin Access Only:</strong> Member editing and additions are restricted to <strong>Kavipriyan (Admin)</strong>.
+              <strong>Admin Access Only:</strong> Member editing, additions, and admin delegation are restricted to <strong>Kavipriyan (Admin)</strong> and designated Admins.
             </span>
           </div>
         </div>
@@ -165,7 +174,8 @@ export function MembersScreen({
       <div className="space-y-2.5">
         {members.map((member) => {
           const isActive = member.status === 'active';
-          const isMemberAdmin = member.id === 'm1';
+          const isPrimary = isKavipriyan(member);
+          const isThisAdmin = isMemberAdmin(member);
           const queuePos = queue.indexOf(member.id);
           const stats = getMemberWashStats(member.id);
 
@@ -179,23 +189,31 @@ export function MembersScreen({
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
-                      isMemberAdmin
+                      isPrimary || isThisAdmin
                         ? 'bg-[#A28EF9] text-[#1E1E1E] ring-2 ring-[#A28EF9]/40'
                         : isActive
                         ? 'bg-[#A4F5A6]/35 text-[#1E1E1E] border border-[#A4F5A6]/40'
                         : 'bg-[#ECEEF0] text-neutral-textTertiary border border-neutral-border'
                     }`}
                   >
-                    {isMemberAdmin ? '👑' : member.code}
+                    {isPrimary || isThisAdmin ? '👑' : member.code}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-sm font-bold text-neutral-textPrimary">
                         {member.name}
                       </h4>
-                      {isMemberAdmin && (
+                      {isPrimary ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/25 text-[#2C1885] border border-[#A28EF9]/50 inline-flex items-center gap-0.5">
+                          👑 Primary Admin
+                        </span>
+                      ) : isThisAdmin ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/40 inline-flex items-center gap-0.5">
-                          Admin
+                          👑 Admin
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200 inline-flex items-center gap-0.5">
+                          Member
                         </span>
                       )}
                       <Badge variant={isActive ? 'completed' : 'inactive'} size="sm" showIcon={false}>
@@ -224,6 +242,35 @@ export function MembersScreen({
                 {/* Member action buttons: enabled only for Admin */}
                 {isAdmin ? (
                   <div className="flex items-center gap-1">
+                    {/* Admin Delegation Button (Only on non-primary members) */}
+                    {isPrimary ? (
+                      <span
+                        className="p-2 text-neutral-textTertiary cursor-not-allowed opacity-50"
+                        title="Primary Admin (cannot be demoted)"
+                      >
+                        <Crown className="w-4 h-4 text-[#7D64F6]" />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAdminModal({
+                            isOpen: true,
+                            member,
+                            action: isThisAdmin ? 'revoke' : 'grant',
+                          })
+                        }
+                        className={`p-2 rounded-full transition-colors ${
+                          isThisAdmin
+                            ? 'text-[#7D64F6] hover:bg-[#A28EF9]/20 hover:text-[#2C1885]'
+                            : 'text-neutral-textTertiary hover:text-[#7D64F6] hover:bg-neutral-100'
+                        }`}
+                        title={isThisAdmin ? 'Revoke Admin access' : 'Make this member an Admin'}
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(member)}
@@ -365,6 +412,62 @@ export function MembersScreen({
             ) : (
               <p className="text-neutral-textSecondary">
                 Reactivating this member will return them to the active rotation queue according to standard rules.
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ADMIN ROLE CONFIRMATION MODAL */}
+      <Modal
+        isOpen={adminModal.isOpen}
+        onClose={() => setAdminModal({ isOpen: false, member: null, action: 'grant' })}
+        title={
+          adminModal.action === 'grant'
+            ? 'Designate as Administrator?'
+            : 'Revoke Administrator Role?'
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setAdminModal({ isOpen: false, member: null, action: 'grant' })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={adminModal.action === 'grant' ? 'primary' : 'destructive'}
+              size="sm"
+              onClick={() => {
+                if (adminModal.member && onToggleAdminRole) {
+                  onToggleAdminRole(adminModal.member.id);
+                }
+                setAdminModal({ isOpen: false, member: null, action: 'grant' });
+              }}
+            >
+              {adminModal.action === 'grant' ? 'Confirm Make Admin' : 'Revoke Admin Role'}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border">
+          {adminModal.action === 'grant' ? (
+            <ShieldCheck className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" />
+          )}
+          <div className="text-xs">
+            <p className="font-semibold text-neutral-textPrimary text-sm mb-0.5">
+              {adminModal.member?.name} ({adminModal.member?.code})
+            </p>
+            {adminModal.action === 'grant' ? (
+              <p className="text-neutral-textSecondary">
+                This member will be given administrator permissions. They will be able to edit meal settings, mark attendance, add/rename members, and manage rosters.
+              </p>
+            ) : (
+              <p className="text-neutral-textSecondary">
+                This member will return to standard view-only permissions and will no longer be able to make administrative edits.
               </p>
             )}
           </div>

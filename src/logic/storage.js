@@ -267,9 +267,22 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'vw_app_attendance_logs_v4',
   INITIAL_QUEUE: 'vw_app_initial_queue_v4',
   ACTIVITY_LOGS: 'vw_app_activity_logs_v4',
+  ADMIN_IDS: 'vw_app_admin_ids_v1',
 };
 
 export const storage = {
+  getAdminUserIds() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.ADMIN_IDS);
+      return data ? JSON.parse(data) : ['m1'];
+    } catch (e) {
+      return ['m1'];
+    }
+  },
+  saveAdminUserIds(adminIds) {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_IDS, JSON.stringify(adminIds));
+  },
+
   getMembers() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.MEMBERS);
