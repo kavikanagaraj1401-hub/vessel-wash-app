@@ -198,7 +198,7 @@ export function TodayScreen({
           <div className="flex items-center gap-2 text-xs">
             <UtensilsCrossed className="w-4 h-4 text-sky-700 flex-shrink-0" />
             <span className="font-medium text-[11px] leading-tight">
-              <strong>Member Access:</strong> You can mark meal attendance below. Meal status and washer requirements are managed by Admin.
+              <strong>Member Access:</strong> You can mark meal availability, washer requirements, and attendance below. Advanced settings (Excel roster &amp; members) are managed by Admin.
             </span>
           </div>
         </div>
@@ -269,30 +269,29 @@ export function TodayScreen({
               </div>
             </div>
 
-            {/* 2. Meal Status Indicator & Availability Toggle (Never says 'Pause Cycle') */}
-            <div className="p-3 rounded-[20px] bg-[#ECEEF0]/60 border border-neutral-border/80 flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isMealProvided ? 'bg-[#A4F5A6]' : 'bg-[#FFD89D]'}`} />
-                  <span className="text-xs font-bold text-[#1E1E1E] truncate">
-                    {selectedMeal === 'lunch' ? 'Lunch Status' : 'Dinner Status'}
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full flex-shrink-0 ${
-                    isMealProvided
-                      ? 'bg-[#A4F5A6]/40 text-[#0E5214] border border-[#A4F5A6]'
-                      : 'bg-[#FFD89D]/40 text-[#733F00] border border-[#FFD89D]'
-                  }`}>
-                    {isMealProvided ? 'Available' : 'Not Available'}
+              {/* 2. Meal Status Indicator & Availability Toggle */}
+              <div className="p-3 rounded-[20px] bg-[#ECEEF0]/60 border border-neutral-border/80 flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isMealProvided ? 'bg-[#A4F5A6]' : 'bg-[#FFD89D]'}`} />
+                    <span className="text-xs font-bold text-[#1E1E1E] truncate">
+                      {selectedMeal === 'lunch' ? 'Lunch Status' : 'Dinner Status'}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full flex-shrink-0 ${
+                      isMealProvided
+                        ? 'bg-[#A4F5A6]/40 text-[#0E5214] border border-[#A4F5A6]'
+                        : 'bg-[#FFD89D]/40 text-[#733F00] border border-[#FFD89D]'
+                    }`}>
+                      {isMealProvided ? 'Available' : 'Not Available'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-neutral-textSecondary block truncate mt-0.5">
+                    {isMealProvided
+                      ? 'Available — Washing active'
+                      : 'Not Available — Duty inactive'}
                   </span>
                 </div>
-                <span className="text-[11px] text-neutral-textSecondary block truncate mt-0.5">
-                  {isMealProvided
-                    ? 'Available — Washing active'
-                    : 'Not Available — Duty inactive'}
-                </span>
-              </div>
 
-              {isAdmin ? (
                 <button
                   type="button"
                   onClick={() => onToggleMealProvided(selectedMeal, !isMealProvided)}
@@ -301,59 +300,47 @@ export function TodayScreen({
                       ? 'bg-white text-[#1E1E1E] border border-neutral-border/80 hover:bg-neutral-100'
                       : 'bg-[#A4F5A6] text-[#1E1E1E] border border-[#8CEE8F] hover:bg-[#91F293]'
                   }`}
+                  title={isMealProvided ? 'Click to mark meal as not available' : 'Click to mark meal as available'}
                 >
                   {isMealProvided ? 'Set Not Available' : 'Mark Available ✓'}
                 </button>
-              ) : (
-                <div
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ECEEF0] text-neutral-textTertiary text-xs font-semibold border border-neutral-border cursor-not-allowed flex-shrink-0"
-                  title="Only Admin can modify meal availability"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>{isMealProvided ? 'Active' : 'Inactive'}</span>
+              </div>
+
+              {/* 3. Simplified Washer Requirement: [ Single ] | [ Multiple ] */}
+              {selectedMeal === 'lunch' && isMealProvided && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-[#1E1E1E] uppercase tracking-wider block">
+                      Washer Requirement
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onToggleLunchWashers && onToggleLunchWashers(1)}
+                      className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
+                        washersCount === 1
+                          ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
+                          : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
+                      }`}
+                    >
+                      <span>Single</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onToggleLunchWashers && onToggleLunchWashers(2)}
+                      className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
+                        washersCount === 2
+                          ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
+                          : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
+                      }`}
+                    >
+                      <span>Multiple</span>
+                    </button>
+                  </div>
                 </div>
               )}
-            </div>
-
-            {/* 3. Simplified Washer Requirement: [ Single ] | [ Multiple ] */}
-            {selectedMeal === 'lunch' && isMealProvided && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-[#1E1E1E] uppercase tracking-wider block">
-                    Washer Requirement
-                  </label>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={!isAdmin}
-                    onClick={() => isAdmin && onToggleLunchWashers && onToggleLunchWashers(1)}
-                    className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
-                      washersCount === 1
-                        ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
-                        : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
-                    } ${!isAdmin ? 'cursor-not-allowed opacity-75' : ''}`}
-                    title={!isAdmin ? 'Admin only' : ''}
-                  >
-                    <span>Single</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!isAdmin}
-                    onClick={() => isAdmin && onToggleLunchWashers && onToggleLunchWashers(2)}
-                    className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none ${
-                      washersCount === 2
-                        ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-xs'
-                        : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD] hover:bg-neutral-200'
-                    } ${!isAdmin ? 'cursor-not-allowed opacity-75' : ''}`}
-                    title={!isAdmin ? 'Admin only' : ''}
-                  >
-                    <span>Multiple</span>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* 4. Attendance Tracker ("Who Ate Today?") */}
             {isMealProvided && (

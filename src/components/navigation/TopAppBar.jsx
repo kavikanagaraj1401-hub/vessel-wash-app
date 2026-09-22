@@ -154,7 +154,7 @@ export function TopAppBar({
                 <span className="text-[10px] text-neutral-textSecondary block truncate">
                   {isAdmin
                     ? 'Full edit access: meals, attendance, Excel, members'
-                    : 'Attendance entry only: mark who ate today'}
+                    : 'Meal status & attendance entry enabled'}
                 </span>
               </div>
             </div>
