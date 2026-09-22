@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Fustat', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #F7F8FA;
+    color: #1E1E1E;
+  }
+  
+  /* Mobile container viewport handling with subtle pastel aura */
+  #root {
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    background: linear-gradient(135deg, #EBF9EE 0%, #F5F3FF 50%, #FFF8EE 100%);
+  }
+}
+
+@layer utilities {
+  /* Safe area padding for mobile notches and home indicators */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  /* Hide scrollbar for queue ribbon */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Active tap feedback */
+  .active-scale {
+    transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .active-scale:active {
+    transform: scale(0.96);
+  }
+}

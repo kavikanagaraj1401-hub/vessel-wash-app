@@ -1,0 +1,15 @@
+{
+  "appId": "com.dailyvessel.attendance",
+  "appName": "Vessel Washing",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "release-key.keystore",
+      "keystoreAlias": "vesselwashing",
+      "releaseType": "APK"
+    }
+  }
+}
