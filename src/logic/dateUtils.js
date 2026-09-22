@@ -111,3 +111,49 @@ export function ensureDaysCoverDate(existingDays = [], targetDateStr) {
   updated.sort((a, b) => a.date.localeCompare(b.date));
   return updated;
 }
+
+/**
+ * Ensures daysConfig covers from September 2026 continuously across the rest of the year
+ * and into future years (e.g. 2027, 2028).
+ * @param {Array<any>} existingDays
+ * @param {string} targetDateStr
+ * @returns {Array<any>}
+ */
+export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
+  const targetYear = targetDateStr ? parseInt(targetDateStr.split('-')[0], 10) : new Date().getFullYear();
+  const endYear = Math.max(targetYear + 1, 2027);
+
+  const existingDates = new Set((existingDays || []).map(d => d.date));
+  const updated = Array.isArray(existingDays) ? [...existingDays] : [];
+
+  for (let year = 2026; year <= endYear; year++) {
+    const startM = year === 2026 ? 9 : 1;
+    for (let month = startM; month <= 12; month++) {
+      const daysInMonth = new Date(year, month, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const mStr = String(month).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        const dateKey = `${year}-${mStr}-${dStr}`;
+
+        if (!existingDates.has(dateKey)) {
+          const dateObj = new Date(year, month - 1, day);
+          updated.push({
+            date: dateKey,
+            dayNumber: day,
+            dayOfWeek: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
+            lunchProvided: false,
+            lunchWashers: 1,
+            dinnerProvided: false,
+            lunchEaters: [],
+            dinnerEaters: [],
+          });
+          existingDates.add(dateKey);
+        }
+      }
+    }
+  }
+
+  updated.sort((a, b) => a.date.localeCompare(b.date));
+  return updated;
+}
+

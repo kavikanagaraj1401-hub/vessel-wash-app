@@ -9,7 +9,6 @@ import {
   Lock,
 } from 'lucide-react';
 import { assignSlot, assignLunchPair } from '../logic/rotationEngine';
-import { DateSelectorBar } from '../components/common/DateSelectorBar';
 import { getTodayDateStr } from '../logic/dateUtils';
 
 export function TodayScreen({
@@ -193,21 +192,13 @@ export function TodayScreen({
 
   return (
     <div className="w-full max-w-full pb-28 px-4 pt-3 space-y-4">
-      {/* Date Navigation & Test Selector */}
-      <DateSelectorBar
-        selectedDateStr={selectedDateStr}
-        onSelectDate={onSelectDate}
-        todayDateStr={currentDateStr}
-        availableDays={availableDays}
-      />
-
-      {/* Non-Admin View-Only Banner */}
+      {/* Member Info Banner if not Admin */}
       {!isAdmin && (
-        <div className="p-3 rounded-[20px] bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
+        <div className="p-3 rounded-[20px] bg-sky-50 border border-sky-200 text-sky-900 flex items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center gap-2 text-xs">
-            <Lock className="w-4 h-4 text-amber-700 flex-shrink-0" />
+            <UtensilsCrossed className="w-4 h-4 text-sky-700 flex-shrink-0" />
             <span className="font-medium text-[11px] leading-tight">
-              <strong>View-Only Mode:</strong> Logged in as standard member. Meal settings and attendance edits are restricted to <strong>Kavipriyan (Admin)</strong> and designated admins.
+              <strong>Member Access:</strong> You can mark meal attendance below. Meal status and washer requirements are managed by Admin.
             </span>
           </div>
         </div>
@@ -375,29 +366,23 @@ export function TodayScreen({
                     </span>
                   </span>
 
-                  {isAdmin ? (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSelectAllEaters}
-                        className="text-[11px] font-bold text-[#7D64F6] hover:underline"
-                      >
-                        [Select All]
-                      </button>
-                      <span className="text-neutral-border">&middot;</span>
-                      <button
-                        type="button"
-                        onClick={handleClearAllEaters}
-                        className="text-[11px] font-semibold text-neutral-textTertiary hover:text-[#1E1E1E]"
-                      >
-                        [Clear]
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-neutral-textTertiary flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> View Only
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllEaters}
+                      className="text-[11px] font-bold text-[#7D64F6] hover:underline"
+                    >
+                      [Select All]
+                    </button>
+                    <span className="text-neutral-border">&middot;</span>
+                    <button
+                      type="button"
+                      onClick={handleClearAllEaters}
+                      className="text-[11px] font-semibold text-neutral-textTertiary hover:text-[#1E1E1E]"
+                    >
+                      [Clear]
+                    </button>
+                  </div>
                 </div>
 
                 {/* Responsive auto-wrapping flex chips with consistent 8px gap */}
@@ -408,14 +393,12 @@ export function TodayScreen({
                       <button
                         key={member.id}
                         type="button"
-                        disabled={!isAdmin}
-                        onClick={(e) => isAdmin && handleToggleEater(member.id, e)}
-                        title={!isAdmin ? 'Only Admin can update attendance' : ''}
+                        onClick={(e) => handleToggleEater(member.id, e)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-200 active-scale select-none border ${
                           ate
                             ? 'bg-[#A28EF9] text-[#1E1E1E] border-[#7D64F6]/40 shadow-2xs font-bold'
                             : 'bg-white text-[#5A606A] border-[#D0D5DD] hover:bg-[#F2F4F7] hover:border-[#98A2B3]'
-                        } ${!isAdmin ? 'cursor-default opacity-85' : ''}`}
+                        }`}
                       >
                         <span
                           className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${

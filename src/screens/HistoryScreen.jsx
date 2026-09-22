@@ -207,7 +207,7 @@ export function HistoryScreen({
 
   // Copy formatted text report for WhatsApp / Slack
   const handleCopyReport = () => {
-    let reportText = `*Vessel Washing Attendance Timeline — September 2026*\n`;
+    let reportText = `*Vessel Washing Attendance Timeline — Continuous Rotation*\n`;
     reportText += `Total Washes: ${totalWashes} (Lunch: ${totalLunchWashes}, Dinner: ${totalDinnerWashes})\n\n`;
 
     timelineDates.forEach(d => {

@@ -30,10 +30,10 @@ export function RotationScreen({
           Rotation Schedule
         </span>
         <h2 className="text-xl font-bold tracking-tight text-neutral-textPrimary">
-          September 2026
+          Continuous Schedule
         </h2>
         <p className="text-xs text-neutral-textSecondary mt-0.5">
-          Derived rotation sequence based on single shared FIFO queue
+          Derived rotation sequence based on single shared FIFO queue across all dates
         </p>
       </div>
 

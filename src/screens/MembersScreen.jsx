@@ -132,8 +132,12 @@ export function MembersScreen({
           <h2 className="text-xl font-bold tracking-tight text-neutral-textPrimary">
             Members ({members.length})
           </h2>
-          <p className="text-xs text-neutral-textSecondary mt-0.5">
-            {activeCount} active in current rotation queue
+          <p className="text-xs text-neutral-textSecondary mt-0.5 flex items-center gap-2 flex-wrap">
+            <span>{activeCount} active in queue</span>
+            <span>&middot;</span>
+            <span className={adminUserIds.length >= 2 ? 'text-violet-700 font-bold' : 'text-neutral-600 font-medium'}>
+              Admins: {adminUserIds.length}/2 ({adminUserIds.length >= 2 ? 'Max 2 reached' : '1 slot available'})
+            </span>
           </p>
         </div>
         {isAdmin ? (
@@ -245,27 +249,51 @@ export function MembersScreen({
                     {/* Admin Delegation Button (Only on non-primary members) */}
                     {isPrimary ? (
                       <span
-                        className="p-2 text-neutral-textTertiary cursor-not-allowed opacity-50"
-                        title="Primary Admin (cannot be demoted)"
+                        className="p-1.5 text-neutral-textTertiary cursor-not-allowed opacity-50 flex items-center"
+                        title="Primary Admin (Permanent)"
                       >
                         <Crown className="w-4 h-4 text-[#7D64F6]" />
                       </span>
-                    ) : (
+                    ) : isThisAdmin ? (
+                      /* Co-Admin row: Explicit 'Remove from Admin' option */
                       <button
                         type="button"
                         onClick={() =>
                           setAdminModal({
                             isOpen: true,
                             member,
-                            action: isThisAdmin ? 'revoke' : 'grant',
+                            action: 'revoke',
                           })
                         }
-                        className={`p-2 rounded-full transition-colors ${
-                          isThisAdmin
-                            ? 'text-[#7D64F6] hover:bg-[#A28EF9]/20 hover:text-[#2C1885]'
-                            : 'text-neutral-textTertiary hover:text-[#7D64F6] hover:bg-neutral-100'
-                        }`}
-                        title={isThisAdmin ? 'Revoke Admin access' : 'Make this member an Admin'}
+                        className="px-2.5 py-1 rounded-full text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center gap-1 active-scale shadow-2xs"
+                        title="Remove from Admin"
+                      >
+                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                        <span>Remove from Admin</span>
+                      </button>
+                    ) : adminUserIds.length >= 2 ? (
+                      /* Max 2 Admins reached -> disabled */
+                      <button
+                        type="button"
+                        disabled
+                        className="p-2 rounded-full text-neutral-300 cursor-not-allowed opacity-50"
+                        title="Maximum 2 Admins reached. Remove Co-Admin to designate another member."
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      /* 1 slot available -> Make Admin */
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAdminModal({
+                            isOpen: true,
+                            member,
+                            action: 'grant',
+                          })
+                        }
+                        className="p-2 rounded-full text-neutral-textTertiary hover:text-[#7D64F6] hover:bg-neutral-100 transition-colors active-scale"
+                        title="Make this member an Admin (1 slot available)"
                       >
                         <ShieldCheck className="w-4 h-4" />
                       </button>
@@ -424,8 +452,8 @@ export function MembersScreen({
         onClose={() => setAdminModal({ isOpen: false, member: null, action: 'grant' })}
         title={
           adminModal.action === 'grant'
-            ? 'Designate as Administrator?'
-            : 'Revoke Administrator Role?'
+            ? 'Designate as Co-Administrator?'
+            : 'Remove from Admin Role?'
         }
         footer={
           <>
@@ -446,7 +474,7 @@ export function MembersScreen({
                 setAdminModal({ isOpen: false, member: null, action: 'grant' });
               }}
             >
-              {adminModal.action === 'grant' ? 'Confirm Make Admin' : 'Revoke Admin Role'}
+              {adminModal.action === 'grant' ? 'Confirm Make Admin' : 'Remove from Admin'}
             </Button>
           </>
         }
@@ -463,11 +491,11 @@ export function MembersScreen({
             </p>
             {adminModal.action === 'grant' ? (
               <p className="text-neutral-textSecondary">
-                This member will be given administrator permissions. They will be able to edit meal settings, mark attendance, add/rename members, and manage rosters.
+                This member will be given administrator permissions as Co-Admin (maximum 2 admins limit). They will be able to edit meal settings, attendance, members, and Excel rosters.
               </p>
             ) : (
               <p className="text-neutral-textSecondary">
-                This member will return to standard view-only permissions and will no longer be able to make administrative edits.
+                Remove administrator permissions from {adminModal.member?.name}? They will return to standard member access (attendance entry only).
               </p>
             )}
           </div>

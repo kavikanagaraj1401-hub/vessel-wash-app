@@ -18,6 +18,7 @@ import {
   getTodayDateStr,
   formatHeaderDate,
   ensureDaysCoverDate,
+  ensureMultiYearCoverage,
 } from './logic/dateUtils';
 import { notificationService } from './services/notificationService';
 import { supabaseService } from './services/supabaseService';
@@ -33,51 +34,60 @@ export default function App() {
   // Dynamic Selected Date (defaults to live today)
   const [selectedDateStr, setSelectedDateStr] = useState(actualTodayDateStr);
 
-  // Active User Profile for Role-Based Access Control (Admin: Kavipriyan 'm1' / designated admins)
-  const [currentUserId, setCurrentUserId] = useState(() => {
+  // Admin Mode state (Default: true for Admin Kavipriyan)
+  const [isAdminMode, setIsAdminMode] = useState(() => {
     try {
-      return localStorage.getItem('vw_active_user_id') || 'm1';
+      const saved = localStorage.getItem('vw_admin_mode');
+      return saved !== null ? saved === 'true' : true;
     } catch {
-      return 'm1';
+      return true;
     }
   });
+
+  const handleToggleAdminMode = (enabled) => {
+    setIsAdminMode(enabled);
+    try {
+      localStorage.setItem('vw_admin_mode', String(enabled));
+    } catch {
+      // ignore
+    }
+  };
+
+  // Active User Profile for Role-Based Access Control
+  const currentUserId = isAdminMode ? 'm1' : 'member';
 
   // Application Persistent State
   const [members, setMembers] = useState(() => storage.getMembers());
   const [daysConfig, setDaysConfig] = useState(() => {
     const initialDays = storage.getDaysConfig();
-    return ensureDaysCoverDate(initialDays, actualTodayDateStr);
+    return ensureMultiYearCoverage(initialDays, actualTodayDateStr);
   });
   const [attendanceLogs, setAttendanceLogs] = useState(() => storage.getAttendanceLogs());
   const [initialQueue, setInitialQueue] = useState(() => storage.getInitialQueue());
   const [activityLogs, setActivityLogs] = useState(() => storage.getActivityLogs());
   const [adminUserIds, setAdminUserIds] = useState(() => storage.getAdminUserIds());
 
-  // Current logged in member
+  // Current logged in member representation
   const currentMember = useMemo(() => {
-    return members.find(m => m.id === currentUserId) || {
-      id: 'm1',
-      name: 'Kavipriyan',
-      code: 'M1',
+    if (isAdminMode) {
+      return members.find(m => m.id === 'm1') || {
+        id: 'm1',
+        name: 'Kavipriyan',
+        code: 'M1',
+      };
+    }
+    return {
+      id: 'guest',
+      name: 'Standard Member',
+      code: 'MB',
     };
-  }, [members, currentUserId]);
+  }, [members, isAdminMode]);
 
   // Primary Admin: Kavipriyan is permanent administrator
-  const isPrimaryAdmin =
-    currentUserId === 'm1' ||
-    (currentMember?.name && currentMember.name.trim().toLowerCase().includes('kavipriyan'));
+  const isPrimaryAdmin = isAdminMode;
 
   // Admin access control: Kavipriyan + designated co-admins
-  const isAdmin = isPrimaryAdmin || (adminUserIds && adminUserIds.includes(currentUserId));
-
-  // Synchronize with storage
-  useEffect(() => {
-    try {
-      localStorage.setItem('vw_active_user_id', currentUserId);
-    } catch {
-      // ignore
-    }
-  }, [currentUserId]);
+  const isAdmin = isAdminMode;
 
   // Request notification permissions silently on app initialization
   useEffect(() => {
@@ -277,6 +287,13 @@ export default function App() {
     }
 
     const isCurrentlyAdmin = adminUserIds.includes(targetMemberId);
+
+    // Enforce Maximum 2 Admins constraint (Kavipriyan + 1 Co-Admin)
+    if (!isCurrentlyAdmin && adminUserIds.length >= 2) {
+      alert('Only two members can have an admin role. Please remove the existing Co-Admin before designating a new one.');
+      return;
+    }
+
     const updatedAdminIds = isCurrentlyAdmin
       ? adminUserIds.filter(id => id !== targetMemberId)
       : [...adminUserIds, targetMemberId];
@@ -289,8 +306,8 @@ export default function App() {
     logUserActivity(
       'ADMIN_ROLE_CHANGE',
       'admin',
-      isCurrentlyAdmin ? `Revoked Admin Role from ${target.name}` : `Granted Admin Role to ${target.name}`,
-      `${currentMember.name} ${isCurrentlyAdmin ? 'removed admin privileges from' : 'delegated admin privileges to'} ${target.name}.`,
+      isCurrentlyAdmin ? `Removed ${target.name} from Admin` : `Designated ${target.name} as Co-Admin`,
+      `${currentMember.name} ${isCurrentlyAdmin ? 'removed admin privileges from' : 'delegated Co-Admin privileges to'} ${target.name}. (Total Admins: ${updatedAdminIds.length}/2)`,
       selectedDateStr
     );
   };
@@ -674,23 +691,23 @@ export default function App() {
   const activeMembers = members.filter(m => m.status === 'active');
 
   return (
-    <div className="w-full min-h-screen bg-[#ECEEF0] flex justify-center selection:bg-primary-100 selection:text-primary">
+    <div className="w-full h-screen h-[100dvh] bg-[#ECEEF0] flex justify-center selection:bg-primary-100 selection:text-primary overflow-hidden">
       {/* Responsive Container (Mobile: 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
-      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl min-h-screen bg-[#ECEEF0] flex flex-col shadow-2xl relative border-x border-neutral-border/60 overflow-x-hidden transition-all duration-300">
-        {/* Top App Bar */}
+      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full flex flex-col bg-[#ECEEF0] shadow-2xl relative border-x border-neutral-border/60 overflow-hidden transition-all duration-300">
+        {/* Static Top App Bar & Date Bar */}
         <TopAppBar
           title="Vessel Washing"
           currentDateStr={formatHeaderDate(actualTodayDateStr)}
-          currentUserId={currentUserId}
-          onSelectUser={setCurrentUserId}
+          isAdmin={isAdmin}
+          onToggleAdminMode={handleToggleAdminMode}
           allMembers={members}
           adminUserIds={adminUserIds}
           onSettingsClick={() => setSettingsOpen(true)}
           isLiveConnected={isSupabaseConfigured}
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+        {/* Main Content Area (Scrolls independently below static header) */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full pb-28">
           {activeTab === 'today' && (
             <TodayScreen
               currentDateStr={actualTodayDateStr}

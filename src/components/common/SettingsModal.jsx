@@ -550,16 +550,16 @@ CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer
             <div className="p-3 rounded-xl bg-white border border-neutral-border space-y-2 text-xs">
               <h4 className="font-semibold text-neutral-textPrimary">Configuration</h4>
               <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
-                <span>Month:</span>
-                <span className="font-semibold text-neutral-textPrimary">September 2026</span>
+                <span>Timeline:</span>
+                <span className="font-semibold text-neutral-textPrimary">Continuous Multi-Year</span>
               </div>
               <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
-                <span>Today:</span>
-                <span className="font-semibold text-neutral-textPrimary">21 Sep 2026</span>
+                <span>Current Date:</span>
+                <span className="font-semibold text-neutral-textPrimary">{todayDateStr}</span>
               </div>
               <div className="flex justify-between py-1 text-[11px]">
                 <span>Admin:</span>
-                <span className="font-semibold text-violet-700">👑 Kavipriyan (Member 1)</span>
+                <span className="font-semibold text-violet-700">👑 Kavipriyan (Primary Admin)</span>
               </div>
             </div>
 
@@ -582,7 +582,7 @@ CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer
               ) : (
                 <div className="p-3 rounded-lg bg-status-errorBg border border-status-errorBorder space-y-2">
                   <p className="text-xs text-status-error font-medium">
-                    Reset all attendance records and restore the initial 5 members and September rotation?
+                    Reset all attendance records and restore initial members and continuous rotation?
                   </p>
                   <div className="flex gap-2">
                     <Button size="sm" variant="destructive" onClick={handleReset}>
