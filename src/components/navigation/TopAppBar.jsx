@@ -104,6 +104,20 @@ export function TopAppBar({
               </span>
             </button>
 
+            {/* Direct Log Out Button in Navigation Header */}
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                aria-label="Log Out"
+                title={`Log Out (${userName})`}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold active-scale transition-all cursor-pointer shadow-2xs"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                <span className="hidden sm:inline">Log Out</span>
+              </button>
+            )}
+
             {/* Application Members Button (Shows directory without switching) */}
             <button
               type="button"

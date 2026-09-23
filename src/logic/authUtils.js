@@ -3,6 +3,19 @@
  */
 
 /**
+ * Extracts the exact username portion before '@' (e.g. "kavipriyan" from "kavipriyan@gmail.com").
+ * 
+ * @param {string} email
+ * @returns {string}
+ */
+export function extractUsername(email = '') {
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return 'member';
+  }
+  return email.split('@')[0].trim();
+}
+
+/**
  * Extracts a clean, human-readable name from an email address (everything before '@').
  * e.g.:
  *  'kavipriyan@gmail.com' -> 'Kavipriyan'

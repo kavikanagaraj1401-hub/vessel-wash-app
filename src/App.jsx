@@ -7,7 +7,7 @@ import { TodayScreen } from './screens/TodayScreen';
 import { ActivityScreen } from './screens/ActivityScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { AuthScreen } from './components/auth/AuthScreen';
-import { extractNameFromEmail, isKavipriyanEmail } from './logic/authUtils';
+import { extractNameFromEmail, extractUsername, isKavipriyanEmail } from './logic/authUtils';
 
 import { storage, INITIAL_MEMBERS } from './logic/storage';
 import {
@@ -109,9 +109,31 @@ export default function App() {
 
   // Resolve logged-in user profile, email & role
   const userEmail = session?.user?.email || '';
+  // Extract display name from portion before '@' (e.g. "kavipriyan" from "kavipriyan@gmail.com")
   const extractedUserName = useMemo(() => {
-    if (userEmail) return extractNameFromEmail(userEmail);
+    if (userEmail) return extractUsername(userEmail);
     return 'Kavipriyan';
+  }, [userEmail]);
+
+  // Direct role state fetched from Supabase members database table
+  const [dbUserRole, setDbUserRole] = useState(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+    async function loadRoleFromDatabase() {
+      if (userEmail) {
+        const role = await supabaseService.fetchMemberRole(userEmail);
+        if (isCurrent && role) {
+          setDbUserRole(role);
+        }
+      } else {
+        setDbUserRole(null);
+      }
+    }
+    loadRoleFromDatabase();
+    return () => {
+      isCurrent = false;
+    };
   }, [userEmail]);
 
   const isUserKavipriyan = isKavipriyanEmail(userEmail);
@@ -127,16 +149,19 @@ export default function App() {
     return null;
   }, [members, userEmail, extractedUserName]);
 
-  const userName = loggedInMember?.name || extractedUserName;
+  // Display name in header profile badge is extracted name from email
+  const userName = extractedUserName || loggedInMember?.name || 'Kavipriyan';
 
-  // Role Access Control: Kavipriyan is Primary Admin; Co-Admins check role / adminUserIds
+  // Role Access Control: Fetch role from members table. If role === 'admin', unlock admin settings.
+  // If role === 'member', show only daily roster and attendance tools.
   const isAdmin = useMemo(() => {
     if (!session && guestBypass) return isAdminMode;
     if (isUserKavipriyan) return true;
+    if (dbUserRole === 'admin') return true;
     if (loggedInMember?.role === 'admin') return true;
     if (loggedInMember?.id && adminUserIds.includes(loggedInMember.id)) return true;
     return false;
-  }, [session, guestBypass, isAdminMode, isUserKavipriyan, loggedInMember, adminUserIds]);
+  }, [session, guestBypass, isAdminMode, isUserKavipriyan, dbUserRole, loggedInMember, adminUserIds]);
 
   const isPrimaryAdmin = isUserKavipriyan || (!session && guestBypass && isAdminMode);
 
@@ -205,6 +230,8 @@ export default function App() {
                 id: m.id,
                 name: m.name,
                 code: m.code,
+                email: m.email || null,
+                role: m.role || 'member',
                 status: m.status || 'active',
                 createdAt: m.created_at || new Date().toISOString(),
                 updatedAt: m.updated_at || new Date().toISOString(),
@@ -275,6 +302,8 @@ export default function App() {
                 id: m.id,
                 name: m.full_name || m.name,
                 code: `M${m.rotation_order || prev.length + 1}`,
+                email: m.email || null,
+                role: m.role || 'member',
                 status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
                 createdAt: m.created_at,
                 updatedAt: m.updated_at,
@@ -289,6 +318,8 @@ export default function App() {
                 ? {
                     ...existing,
                     name: m.full_name || m.name || existing.name,
+                    email: m.email !== undefined ? m.email : existing.email,
+                    role: m.role || existing.role || 'member',
                     status:
                       m.is_active !== undefined
                         ? m.is_active
@@ -349,8 +380,9 @@ export default function App() {
     setSelectedDateStr(dateStr);
   };
 
-  // Admin delegation handler (allows designated admins, protects Kavipriyan)
-  const handleToggleAdminRole = async (targetMemberId) => {
+  // Admin role toggle handler: allows Admins to change any member's role to 'admin' or 'member'
+  // Saves these changes directly to the `role` column in the Supabase `members` table
+  const handleToggleAdminRole = async (targetMemberId, explicitRole = null) => {
     if (!isAdmin) return;
     const target = members.find(m => m.id === targetMemberId);
     if (!target) return;
@@ -361,28 +393,38 @@ export default function App() {
       return;
     }
 
-    const isCurrentlyAdmin = adminUserIds.includes(targetMemberId);
+    const isCurrentlyAdmin = target.role === 'admin' || adminUserIds.includes(targetMemberId);
+    const newRole = explicitRole ? explicitRole : (isCurrentlyAdmin ? 'member' : 'admin');
 
-    // Enforce Maximum 2 Admins constraint (Kavipriyan + 1 Co-Admin)
-    if (!isCurrentlyAdmin && adminUserIds.length >= 2) {
+    // Enforce Maximum 2 Admins constraint (Kavipriyan + 1 Co-Admin) when promoting to admin
+    if (newRole === 'admin' && !isCurrentlyAdmin && adminUserIds.length >= 2) {
       alert('Only two members can have an admin role. Please remove the existing Co-Admin before designating a new one.');
       return;
     }
 
-    const updatedAdminIds = isCurrentlyAdmin
-      ? adminUserIds.filter(id => id !== targetMemberId)
-      : [...adminUserIds, targetMemberId];
+    const updatedAdminIds = newRole === 'admin'
+      ? (adminUserIds.includes(targetMemberId) ? adminUserIds : [...adminUserIds, targetMemberId])
+      : adminUserIds.filter(id => id !== targetMemberId);
 
     setAdminUserIds(updatedAdminIds);
     storage.saveAdminUserIds(updatedAdminIds);
 
+    // 1. Update local members state with new role
+    setMembers(prev =>
+      prev.map(m => (m.id === targetMemberId ? { ...m, role: newRole } : m))
+    );
+
+    // 2. Save directly to the role column in the Supabase members table
+    await supabaseService.updateMemberRole(targetMemberId, newRole);
+
+    // 3. Save adminUserIds into application_settings
     await supabaseService.saveAdminUserIds(updatedAdminIds);
 
     logUserActivity(
       'ADMIN_ROLE_CHANGE',
       'admin',
-      isCurrentlyAdmin ? `Removed ${target.name} from Admin` : `Designated ${target.name} as Co-Admin`,
-      `${currentMember.name} ${isCurrentlyAdmin ? 'removed admin privileges from' : 'delegated Co-Admin privileges to'} ${target.name}. (Total Admins: ${updatedAdminIds.length}/2)`,
+      newRole === 'admin' ? `Designated ${target.name} as Co-Admin` : `Changed ${target.name} role to Member`,
+      `${currentMember.name} changed role of ${target.name} to ${newRole}. (Total Admins: ${updatedAdminIds.length}/2)`,
       selectedDateStr
     );
   };

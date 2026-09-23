@@ -31,6 +31,8 @@ export const supabaseService = {
       const normalizedMembers = (dbMembers || []).map((m, idx) => ({
         id: m.id,
         name: m.full_name || m.name,
+        email: m.email || null,
+        role: m.role || 'member',
         code: `M${m.rotation_order || idx + 1}`,
         status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
         rotation_order: m.rotation_order || idx + 1,
@@ -262,6 +264,61 @@ export const supabaseService = {
     } catch (err) {
       console.error('Failed to update member in Supabase:', err);
       return false;
+    }
+  },
+
+  /**
+   * Update a member's role ('admin' or 'member') directly in the Supabase members table.
+   * Conforms strictly to schema: role, updated_at.
+   */
+  async updateMemberRole(memberId, newRole) {
+    if (!isSupabaseConfigured || !supabase || !memberId) return false;
+    try {
+      const isUuid =
+        typeof memberId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId);
+
+      let query = supabase
+        .from('members')
+        .update({
+          role: newRole,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (isUuid) {
+        query = query.eq('id', memberId);
+      } else {
+        query = query.eq('full_name', memberId);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+      console.info(`✓ Successfully updated member ${memberId} role to "${newRole}" in Supabase.`);
+      return true;
+    } catch (err) {
+      console.error('Failed to update member role in Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Fetch a member's role directly from the members table by email.
+   */
+  async fetchMemberRole(email) {
+    if (!isSupabaseConfigured || !supabase || !email) return null;
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, full_name, email, role')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.role || null;
+    } catch (err) {
+      console.warn('Could not fetch member role:', err);
+      return null;
     }
   },
 

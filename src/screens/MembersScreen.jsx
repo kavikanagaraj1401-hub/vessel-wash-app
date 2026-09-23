@@ -35,8 +35,8 @@ export function MembersScreen({
   const [adminModal, setAdminModal] = useState({ isOpen: false, member: null, action: 'grant' });
 
   // Helpers to identify primary admin and delegated admins
-  const isKavipriyan = (m) => m.id === 'm1' || (m.name && m.name.trim().toLowerCase().includes('kavipriyan'));
-  const isMemberAdmin = (m) => isKavipriyan(m) || (adminUserIds && adminUserIds.includes(m.id));
+  const isKavipriyan = (m) => m?.id === 'm1' || (m?.name && m.name.trim().toLowerCase().includes('kavipriyan'));
+  const isMemberAdmin = (m) => isKavipriyan(m) || m?.role === 'admin' || (adminUserIds && adminUserIds.includes(m?.id));
 
   // Form states
   const [newName, setNewName] = useState('');
@@ -45,6 +45,7 @@ export function MembersScreen({
 
   // Edit form state
   const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState('member');
   const [editError, setEditError] = useState('');
 
   // Calculate wash counts for each member
@@ -91,6 +92,7 @@ export function MembersScreen({
   const handleOpenEdit = (member) => {
     setEditModal({ isOpen: true, member });
     setEditName(member.name);
+    setEditRole(isMemberAdmin(member) ? 'admin' : 'member');
     setEditError('');
   };
 
@@ -110,6 +112,17 @@ export function MembersScreen({
     }
 
     onEditMember(editModal.member.id, trimmed);
+
+    // If role changed in edit modal, trigger role update
+    if (!isKavipriyan(editModal.member) && onToggleAdminRole) {
+      const currentlyAdmin = isMemberAdmin(editModal.member);
+      if (editRole === 'admin' && !currentlyAdmin) {
+        onToggleAdminRole(editModal.member.id, 'admin');
+      } else if (editRole === 'member' && currentlyAdmin) {
+        onToggleAdminRole(editModal.member.id, 'member');
+      }
+    }
+
     setEditModal({ isOpen: false, member: null });
   };
 
@@ -400,6 +413,46 @@ export function MembersScreen({
             required
             autoFocus
           />
+
+          {/* Role Selection for Non-Primary Members */}
+          {editModal.member && !isKavipriyan(editModal.member) ? (
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-bold text-[#1E1E1E] block">
+                Account Role
+              </label>
+              <div className="flex p-1 bg-[#ECEEF0] rounded-xl border border-neutral-border/60">
+                <button
+                  type="button"
+                  onClick={() => setEditRole('member')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editRole === 'member'
+                      ? 'bg-white text-[#1E1E1E] shadow-2xs'
+                      : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
+                  }`}
+                >
+                  <span>Member</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditRole('admin')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editRole === 'admin'
+                      ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-2xs'
+                      : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
+                  }`}
+                >
+                  <span>👑 Admin</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-textTertiary">
+                Admins have full access to manage members and timetable rules. Members have daily attendance tools.
+              </p>
+            </div>
+          ) : (
+            <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200 text-[11px] text-violet-800 font-semibold flex items-center gap-1.5">
+              <span>👑 Primary Administrator (Permanent)</span>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -469,12 +522,15 @@ export function MembersScreen({
               size="sm"
               onClick={() => {
                 if (adminModal.member && onToggleAdminRole) {
-                  onToggleAdminRole(adminModal.member.id);
+                  onToggleAdminRole(
+                    adminModal.member.id,
+                    adminModal.action === 'grant' ? 'admin' : 'member'
+                  );
                 }
                 setAdminModal({ isOpen: false, member: null, action: 'grant' });
               }}
             >
-              {adminModal.action === 'grant' ? 'Confirm Make Admin' : 'Remove from Admin'}
+              {adminModal.action === 'grant' ? 'Confirm Make Admin' : 'Change to Member'}
             </Button>
           </>
         }

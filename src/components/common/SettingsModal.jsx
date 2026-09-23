@@ -52,8 +52,15 @@ export function SettingsModal({
   onImportExcel,
   onResetData,
 }) {
-  const [activeTab, setActiveTab] = useState('excel'); // 'excel' | 'members' | 'rotation' | 'rules'
+  const [activeTab, setActiveTab] = useState(() => (isAdmin ? 'excel' : 'rotation')); // 'excel' | 'members' | 'rotation' | 'rules'
   const [resetConfirm, setResetConfirm] = useState(false);
+
+  // If user is not admin, ensure they cannot stay on admin-only tabs
+  useEffect(() => {
+    if (!isAdmin && (activeTab === 'excel' || activeTab === 'members')) {
+      setActiveTab('rotation');
+    }
+  }, [isAdmin, activeTab]);
 
   // Excel Upload states
   const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle' | 'parsing' | 'preview' | 'success' | 'error'
@@ -306,60 +313,90 @@ CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer
               )}
             </div>
 
-            {/* Navigation Tabs in Settings */}
-            <div className="grid grid-cols-4 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
-          <button
-            type="button"
-            onClick={() => setActiveTab('excel')}
-            className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate ${
-              activeTab === 'excel'
-                ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-            }`}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">Excel Sync</span>
-          </button>
+            {/* Navigation Tabs in Settings: Admins see all 4 tabs; Members see only Rotation & Rules */}
+            {isAdmin ? (
+              <div className="grid grid-cols-4 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('excel')}
+                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
+                    activeTab === 'excel'
+                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">Excel Sync</span>
+                </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('members')}
-            className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate ${
-              activeTab === 'members'
-                ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">Members</span>
-          </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('members')}
+                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
+                    activeTab === 'members'
+                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">Members</span>
+                </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('rotation')}
-            className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate ${
-              activeTab === 'rotation'
-                ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-            }`}
-          >
-            <Repeat className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">Rotation</span>
-          </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('rotation')}
+                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
+                    activeTab === 'rotation'
+                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                  }`}
+                >
+                  <Repeat className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">Rotation</span>
+                </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('rules')}
-            className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate ${
-              activeTab === 'rules'
-                ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-            }`}
-          >
-            <Info className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">Rules</span>
-          </button>
-        </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('rules')}
+                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
+                    activeTab === 'rules'
+                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                  }`}
+                >
+                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">Rules</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('rotation')}
+                  className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
+                    activeTab === 'rotation'
+                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                  }`}
+                >
+                  <Repeat className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">Rotation Schedule</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('rules')}
+                  className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
+                    activeTab === 'rules'
+                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                  }`}
+                >
+                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">System Rules</span>
+                </button>
+              </div>
+            )}
 
         {/* TAB 1: EXCEL SYNC & UPLOAD */}
         {activeTab === 'excel' && (
