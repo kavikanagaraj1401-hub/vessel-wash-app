@@ -66,3 +66,33 @@ export function isKavipriyanEmail(email = '') {
     lower.startsWith('kavi')
   );
 }
+
+/**
+ * Generates a clean default username from a member's name.
+ * e.g., 'Arun Kumar' -> 'arun.kumar', 'Kavipriyan' -> 'kavipriyan'
+ * 
+ * @param {string} name
+ * @returns {string}
+ */
+export function generateDefaultUsername(name = '') {
+  if (!name || typeof name !== 'string') return 'member';
+  const clean = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s._-]/g, '')
+    .replace(/\s+/g, '.');
+  return clean || 'member';
+}
+
+/**
+ * Generates a secure, human-friendly temporary password.
+ * Format: Pass#<4 random digits> or Word#Year
+ * 
+ * @returns {string}
+ */
+export function generateTemporaryPassword() {
+  const words = ['Vessel', 'Wash', 'Clean', 'Plate', 'Duty', 'Roster'];
+  const word = words[Math.floor(Math.random() * words.length)];
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `${word}#${num}`;
+}

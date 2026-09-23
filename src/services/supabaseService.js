@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured, getIsolatedAuthClient } from './supabaseClient';
 import { extractNameFromEmail, isKavipriyanEmail } from '../logic/authUtils';
 
 /**
@@ -437,6 +437,200 @@ export const supabaseService = {
     } catch (err) {
       console.warn('Could not establish Supabase Realtime subscription:', err);
       return () => {};
+    }
+  },
+
+  /**
+   * Resolves a Username or Email to an actual registered email.
+   * If identifier already has '@', returns it directly.
+   * Otherwise looks up in local members cache and Supabase members database table.
+   */
+  async resolveMemberEmailFromIdentifier(identifier = '', membersList = []) {
+    if (!identifier || typeof identifier !== 'string') return null;
+    const clean = identifier.trim().toLowerCase();
+    if (clean.includes('@')) {
+      return clean;
+    }
+
+    // 1. Check local members list first
+    if (Array.isArray(membersList) && membersList.length > 0) {
+      const match = membersList.find(m => {
+        const nameMatch = m.name && m.name.trim().toLowerCase() === clean;
+        const codeMatch = m.code && m.code.trim().toLowerCase() === clean;
+        const emailPrefixMatch = m.email && m.email.split('@')[0].trim().toLowerCase() === clean;
+        const partialNameMatch = m.name && m.name.toLowerCase().includes(clean);
+        return (nameMatch || codeMatch || emailPrefixMatch || partialNameMatch) && m.email;
+      });
+      if (match && match.email) {
+        return match.email.toLowerCase().trim();
+      }
+    }
+
+    // 2. Query Supabase database members table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data } = await supabase
+          .from('members')
+          .select('email, full_name')
+          .or(`full_name.ilike.%${clean}%,email.ilike.${clean}@%`)
+          .not('email', 'is', null)
+          .limit(1);
+
+        if (data && data[0]?.email) {
+          return data[0].email.toLowerCase().trim();
+        }
+      } catch (err) {
+        console.warn('Error resolving username in Supabase:', err);
+      }
+    }
+
+    return null;
+  },
+
+  /**
+   * Supabase Auth: Log in with Username or Email along with password.
+   */
+  async signInWithUsernameOrEmail(identifier, password, membersList = []) {
+    if (!identifier || !password) {
+      return { success: false, error: new Error('Username/Email and Password are required.') };
+    }
+
+    const resolvedEmail = await this.resolveMemberEmailFromIdentifier(identifier, membersList);
+    if (!resolvedEmail) {
+      if (!identifier.includes('@')) {
+        return {
+          success: false,
+          error: new Error(
+            `No account credentials found for "${identifier}". Please ask your Administrator to create credentials for you.`
+          ),
+        };
+      }
+      return this.signInWithEmail(identifier.trim().toLowerCase(), password);
+    }
+
+    return this.signInWithEmail(resolvedEmail, password);
+  },
+
+  /**
+   * Admin-Only: Create or register credentials for a member in Supabase Auth and link to members table.
+   * Uses RPC call create_member_credential if available, or isolated client auth.signUp fallback.
+   */
+  async createMemberCredentials({ memberId, name, email, password, role = 'member' }) {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: new Error('Supabase is not configured.') };
+    }
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: new Error('A valid email address is required.') };
+    }
+    if (!password || password.length < 6) {
+      return { success: false, error: new Error('Password must be at least 6 characters.') };
+    }
+
+    try {
+      // 1. Try RPC call first
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('create_member_credential', {
+          member_id: String(memberId || ''),
+          member_email: cleanEmail,
+          member_password: password,
+          member_role: role || 'member',
+        });
+
+        if (!rpcErr && (rpcRes?.success || rpcRes === true)) {
+          console.info(`✓ Successfully created credentials for ${name} via RPC create_member_credential`);
+          return { success: true, email: cleanEmail, method: 'rpc' };
+        }
+      } catch (rpcEx) {
+        // RPC not defined, fall back to isolated client
+      }
+
+      // 2. Fallback: Use isolated Supabase Auth client without touching Admin session
+      const isolatedClient = getIsolatedAuthClient();
+      if (isolatedClient) {
+        const { data: signUpData, error: signUpErr } = await isolatedClient.auth.signUp({
+          email: cleanEmail,
+          password: password,
+          options: {
+            data: {
+              full_name: name,
+              role: role,
+            },
+          },
+        });
+
+        if (signUpErr && !signUpErr.message?.toLowerCase().includes('already registered')) {
+          throw signUpErr;
+        }
+      }
+
+      // 3. Update members table with email & role
+      const isUuid =
+        typeof memberId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId);
+
+      let query = supabase.from('members').update({
+        email: cleanEmail,
+        role: role,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (isUuid) {
+        query = query.eq('id', memberId);
+      } else {
+        query = query.eq('full_name', name);
+      }
+
+      const { error: updateErr } = await query;
+      if (updateErr) throw updateErr;
+
+      console.info(`✓ Successfully created and linked credentials for ${name} (${cleanEmail})`);
+      return { success: true, email: cleanEmail, method: 'isolated_auth' };
+    } catch (err) {
+      console.error('Failed to create member credentials:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  /**
+   * Admin-Only: Trigger a password reset or change a member's password directly from the Admin Panel.
+   * Tries RPC admin_reset_member_password or sends password reset email.
+   */
+  async adminResetMemberPassword({ memberId, email, newPassword }) {
+    if (!isSupabaseConfigured || !supabase || !email) {
+      return { success: false, error: new Error('Supabase is not configured or email is missing.') };
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      // 1. If new password provided, try direct RPC override
+      if (newPassword && newPassword.length >= 6) {
+        try {
+          const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_reset_member_password', {
+            target_email: cleanEmail,
+            new_password: newPassword,
+          });
+
+          if (!rpcErr && (rpcRes?.success || rpcRes === true)) {
+            console.info(`✓ Successfully reset password for ${cleanEmail} via RPC`);
+            return { success: true, method: 'direct_rpc' };
+          }
+        } catch (rpcEx) {
+          // RPC not defined, fall back to email reset
+        }
+      }
+
+      // 2. Fallback: Trigger standard password reset email for the member
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail);
+      if (resetErr) throw resetErr;
+
+      console.info(`✓ Sent password reset email to ${cleanEmail}`);
+      return { success: true, method: 'email_link' };
+    } catch (err) {
+      console.error('Failed to reset member password:', err);
+      return { success: false, error: err };
     }
   },
 

@@ -16,7 +16,18 @@ import {
   ShieldCheck,
   ShieldAlert,
   Crown,
+  KeyRound,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Sparkles,
 } from 'lucide-react';
+import {
+  generateTemporaryPassword,
+  generateDefaultUsername,
+} from '../logic/authUtils';
+import { supabaseService } from '../services/supabaseService';
 
 export function MembersScreen({
   members = [],
@@ -33,6 +44,32 @@ export function MembersScreen({
   const [editModal, setEditModal] = useState({ isOpen: false, member: null });
   const [deactivateModal, setDeactivateModal] = useState({ isOpen: false, member: null });
   const [adminModal, setAdminModal] = useState({ isOpen: false, member: null, action: 'grant' });
+
+  // Credential Creation Modal state
+  const [credentialModal, setCredentialModal] = useState({
+    isOpen: false,
+    member: null,
+    step: 'form', // 'form' | 'success'
+  });
+  const [credEmail, setCredEmail] = useState('');
+  const [credUsername, setCredUsername] = useState('');
+  const [credPassword, setCredPassword] = useState('');
+  const [showCredPassword, setShowCredPassword] = useState(false);
+  const [credLoading, setCredLoading] = useState(false);
+  const [credError, setCredError] = useState('');
+  const [copiedCreds, setCopiedCreds] = useState(false);
+
+  // Admin Password Reset Modal state
+  const [resetModal, setResetModal] = useState({
+    isOpen: false,
+    member: null,
+    step: 'form', // 'form' | 'success'
+  });
+  const [resetPasswordVal, setResetPasswordVal] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [copiedReset, setCopiedReset] = useState(false);
 
   // Helpers to identify primary admin and delegated admins
   const isKavipriyan = (m) => m?.id === 'm1' || (m?.name && m.name.trim().toLowerCase().includes('kavipriyan'));
@@ -130,6 +167,113 @@ export function MembersScreen({
     if (!deactivateModal.member) return;
     onToggleMemberStatus(deactivateModal.member.id);
     setDeactivateModal({ isOpen: false, member: null });
+  };
+
+  const handleOpenCreateCredentials = (member) => {
+    const suggestedUsername = generateDefaultUsername(member.name);
+    const suggestedEmail = member.email || `${suggestedUsername}@vesselwash.app`;
+    const generatedPass = generateTemporaryPassword();
+
+    setCredentialModal({
+      isOpen: true,
+      member,
+      step: 'form',
+    });
+    setCredEmail(suggestedEmail);
+    setCredUsername(suggestedUsername);
+    setCredPassword(generatedPass);
+    setShowCredPassword(false);
+    setCredError('');
+    setCopiedCreds(false);
+  };
+
+  const handleSaveCredentials = async () => {
+    const cleanEmail = credEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setCredError('Please enter a valid email address.');
+      return;
+    }
+    if (!credPassword || credPassword.length < 6) {
+      setCredError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setCredLoading(true);
+    setCredError('');
+
+    try {
+      const role = isMemberAdmin(credentialModal.member) ? 'admin' : 'member';
+      const res = await supabaseService.createMemberCredentials({
+        memberId: credentialModal.member.id,
+        name: credentialModal.member.name,
+        email: cleanEmail,
+        password: credPassword,
+        role,
+      });
+
+      if (!res.success) {
+        setCredError(res.error?.message || 'Failed to create member credentials.');
+      } else {
+        // Link email locally
+        credentialModal.member.email = cleanEmail;
+        setCredentialModal(prev => ({ ...prev, step: 'success' }));
+      }
+    } catch (err) {
+      setCredError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setCredLoading(false);
+    }
+  };
+
+  const handleOpenResetPassword = (member) => {
+    const generatedPass = generateTemporaryPassword();
+    setResetModal({
+      isOpen: true,
+      member,
+      step: 'form',
+    });
+    setResetPasswordVal(generatedPass);
+    setShowResetPassword(false);
+    setResetError('');
+    setCopiedReset(false);
+  };
+
+  const handleSaveResetPassword = async () => {
+    if (!resetPasswordVal || resetPasswordVal.length < 6) {
+      setResetError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setResetLoading(true);
+    setResetError('');
+
+    try {
+      const res = await supabaseService.adminResetMemberPassword({
+        memberId: resetModal.member.id,
+        email: resetModal.member.email,
+        newPassword: resetPasswordVal,
+      });
+
+      if (!res.success) {
+        setResetError(res.error?.message || 'Failed to reset password.');
+      } else {
+        setResetModal(prev => ({ ...prev, step: 'success' }));
+      }
+    } catch (err) {
+      setResetError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleCopyCredentials = (username, email, password, setCopiedFn) => {
+    const text = `Vessel Wash Login Credentials:\nUsername: ${username}\nEmail: ${email}\nPassword: ${password}\nLogin at: ${window.location.origin}`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedFn(true);
+        setTimeout(() => setCopiedFn(false), 3000);
+      });
+    }
   };
 
   const activeCount = members.filter(m => m.status === 'active').length;
@@ -253,12 +397,52 @@ export function MembersScreen({
                         {stats.total} washes ({stats.lunch}L / {stats.dinner}D)
                       </span>
                     </div>
+
+                    {/* Member Credentials Status */}
+                    {member.email ? (
+                      <div className="flex items-center gap-1.5 text-[11px] text-neutral-textSecondary mt-1">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md font-semibold text-[10px] border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Credentials Active
+                        </span>
+                        <span className="truncate max-w-[130px] sm:max-w-[200px] text-neutral-500 font-mono text-[10px]">
+                          {member.email}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded-md font-semibold mt-1 border border-amber-200 w-fit">
+                        <span>⚠️ No Credentials Created</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Member action buttons: enabled only for Admin */}
                 {isAdmin ? (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap justify-end">
+                    {/* Create Credentials / Reset Password Button */}
+                    {!member.email ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCreateCredentials(member)}
+                        className="px-2.5 py-1 rounded-full text-[10px] font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors flex items-center gap-1 active-scale shadow-2xs cursor-pointer"
+                        title="Create Login Credentials for this member"
+                      >
+                        <KeyRound className="w-3 h-3 text-violet-600" />
+                        <span>Create Credentials</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenResetPassword(member)}
+                        className="px-2 py-1 rounded-full text-[10px] font-bold text-neutral-700 bg-[#ECEEF0] hover:bg-neutral-200 border border-neutral-border transition-colors flex items-center gap-1 active-scale cursor-pointer"
+                        title="Reset Password for this member (Admin)"
+                      >
+                        <KeyRound className="w-3 h-3 text-neutral-600" />
+                        <span>Reset Pass</span>
+                      </button>
+                    )}
+
                     {/* Admin Delegation Button (Only on non-primary members) */}
                     {isPrimary ? (
                       <span
@@ -556,6 +740,305 @@ export function MembersScreen({
             )}
           </div>
         </div>
+      </Modal>
+
+      {/* 1. ADMIN CREATE CREDENTIALS MODAL */}
+      <Modal
+        isOpen={credentialModal.isOpen}
+        onClose={() => setCredentialModal({ isOpen: false, member: null, step: 'form' })}
+        title={credentialModal.step === 'form' ? 'Create Member Credentials' : 'Credentials Created Successfully!'}
+        subtitle={
+          credentialModal.step === 'form'
+            ? `Register Supabase Auth login credentials for ${credentialModal.member?.name}.`
+            : `Provide these login credentials to ${credentialModal.member?.name}.`
+        }
+        footer={
+          credentialModal.step === 'form' ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCredentialModal({ isOpen: false, member: null, step: 'form' })}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={credLoading}
+                onClick={handleSaveCredentials}
+              >
+                Register Credentials
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setCredentialModal({ isOpen: false, member: null, step: 'form' })}
+            >
+              Done
+            </Button>
+          )
+        }
+      >
+        {credentialModal.step === 'form' ? (
+          <div className="space-y-3.5 p-0.5">
+            {credError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{credError}</span>
+              </div>
+            )}
+
+            <div className="p-3 rounded-xl bg-[#ECEEF0]/60 border border-neutral-border text-xs flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#A28EF9] text-[#1E1E1E] font-extrabold flex items-center justify-center text-xs shrink-0">
+                {credentialModal.member?.code || 'M'}
+              </div>
+              <div>
+                <strong className="text-neutral-textPrimary text-xs block">{credentialModal.member?.name}</strong>
+                <span className="text-[11px] text-neutral-textTertiary">
+                  Role: {isMemberAdmin(credentialModal.member) ? '👑 Admin' : 'Standard Member'}
+                </span>
+              </div>
+            </div>
+
+            <TextInput
+              label="Member Email Address"
+              value={credEmail}
+              onChange={(e) => setCredEmail(e.target.value)}
+              placeholder="name@example.com"
+              required
+              helperText="The email address used to authenticate and link with Supabase Auth"
+            />
+
+            <TextInput
+              label="Default Username"
+              value={credUsername}
+              onChange={(e) => setCredUsername(e.target.value)}
+              placeholder="e.g. arun"
+              required
+              helperText="Members can log in using either this username or their email"
+            />
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#1E1E1E] block">
+                  Temporary Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCredPassword(generateTemporaryPassword())}
+                  className="text-[11px] font-bold text-[#7D64F6] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Generate Random</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showCredPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={credPassword}
+                  onChange={(e) => setCredPassword(e.target.value)}
+                  placeholder="Enter or generate temporary password"
+                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCredPassword(!showCredPassword)}
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-[#1E1E1E] cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-textTertiary">
+                Temporary password for first login (min 6 characters).
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* Success View with 1-click Copy Credentials */
+          <div className="space-y-4 p-0.5 animate-fadeIn">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1 text-xs">
+              <span className="font-bold flex items-center gap-1.5 text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Account Created in Supabase Auth
+              </span>
+              <p className="text-[11px] text-emerald-700 leading-snug">
+                Credentials have been registered. The member can now log in using either their username or email.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#ECEEF0]/80 border border-neutral-border space-y-2.5 text-xs font-mono">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+                <span className="text-neutral-500 font-sans text-[11px]">Member:</span>
+                <strong className="text-neutral-800 font-sans">{credentialModal.member?.name}</strong>
+              </div>
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+                <span className="text-neutral-500 font-sans text-[11px]">Username:</span>
+                <span className="font-bold text-violet-700">{credUsername}</span>
+              </div>
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+                <span className="text-neutral-500 font-sans text-[11px]">Email:</span>
+                <span className="text-neutral-700">{credEmail}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500 font-sans text-[11px]">Temporary Password:</span>
+                <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-border">
+                  {credPassword}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleCopyCredentials(credUsername, credEmail, credPassword, setCopiedCreds)}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#1E1E1E] hover:bg-black text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+            >
+              {copiedCreds ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedCreds ? 'Credentials Copied to Clipboard!' : 'Copy Credentials'}</span>
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* 2. ADMIN RESET PASSWORD MODAL */}
+      <Modal
+        isOpen={resetModal.isOpen}
+        onClose={() => setResetModal({ isOpen: false, member: null, step: 'form' })}
+        title={resetModal.step === 'form' ? 'Admin Password Reset' : 'Password Reset Successfully!'}
+        subtitle={
+          resetModal.step === 'form'
+            ? `Set or generate a new temporary password for ${resetModal.member?.name}.`
+            : `Provide the new password to ${resetModal.member?.name}.`
+        }
+        footer={
+          resetModal.step === 'form' ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setResetModal({ isOpen: false, member: null, step: 'form' })}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                loading={resetLoading}
+                onClick={handleSaveResetPassword}
+              >
+                Update Password
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setResetModal({ isOpen: false, member: null, step: 'form' })}
+            >
+              Done
+            </Button>
+          )
+        }
+      >
+        {resetModal.step === 'form' ? (
+          <div className="space-y-3.5 p-0.5">
+            {resetError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{resetError}</span>
+              </div>
+            )}
+
+            <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 text-xs space-y-1">
+              <span className="font-bold text-violet-900 block">{resetModal.member?.name}</span>
+              <span className="text-[11px] text-violet-700 font-mono block">{resetModal.member?.email}</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#1E1E1E] block">
+                  New Temporary Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setResetPasswordVal(generateTemporaryPassword())}
+                  className="text-[11px] font-bold text-[#7D64F6] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Generate Random</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showResetPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={resetPasswordVal}
+                  onChange={(e) => setResetPasswordVal(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-[#1E1E1E] cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-textTertiary">
+                Admin-controlled override: Changes password directly or dispatches reset token.
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* Reset Success View */
+          <div className="space-y-4 p-0.5 animate-fadeIn">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1 text-xs">
+              <span className="font-bold flex items-center gap-1.5 text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Password Reset Successfully
+              </span>
+              <p className="text-[11px] text-emerald-700 leading-snug">
+                The password for {resetModal.member?.name} has been updated. Provide the new password below so they can log in.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#ECEEF0]/80 border border-neutral-border space-y-2 text-xs font-mono">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+                <span className="text-neutral-500 font-sans text-[11px]">Member:</span>
+                <strong className="text-neutral-800 font-sans">{resetModal.member?.name}</strong>
+              </div>
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+                <span className="text-neutral-500 font-sans text-[11px]">Email:</span>
+                <span className="text-neutral-700">{resetModal.member?.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500 font-sans text-[11px]">New Password:</span>
+                <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-border">
+                  {resetPasswordVal}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleCopyCredentials(resetModal.member?.name, resetModal.member?.email, resetPasswordVal, setCopiedReset)}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#1E1E1E] hover:bg-black text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+            >
+              {copiedReset ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedReset ? 'New Password Copied!' : 'Copy New Password'}</span>
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );

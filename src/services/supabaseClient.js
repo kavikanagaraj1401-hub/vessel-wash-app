@@ -72,6 +72,21 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+/**
+ * Creates an isolated Supabase client without session persistence,
+ * allowing Admin to register new member accounts without interrupting the current Admin session.
+ */
+export const getIsolatedAuthClient = () => {
+  if (!isSupabaseConfigured) return null;
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+};
+
 if (!isSupabaseConfigured) {
   console.info(
     'ℹ️ Supabase credentials not set or using placeholders. App running in robust local storage mode.'

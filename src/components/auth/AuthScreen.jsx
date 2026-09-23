@@ -1,42 +1,33 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
-  Mail,
+  User,
   Lock,
   Eye,
   EyeOff,
   LogIn,
-  UserPlus,
   AlertCircle,
-  CheckCircle2,
-  ShieldCheck,
-  User,
+  ShieldAlert,
   ArrowRight,
-  Sparkles,
+  HelpCircle,
+  X,
 } from 'lucide-react';
 import { supabaseService } from '../../services/supabaseService';
-import { extractNameFromEmail, isKavipriyanEmail } from '../../logic/authUtils';
 
-export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
-  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup'
-  const [email, setEmail] = useState('');
+export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [infoMsg, setInfoMsg] = useState('');
-
-  // Live extracted name and role preview for Sign Up
-  const extractedName = useMemo(() => extractNameFromEmail(email), [email]);
-  const isAdminCandidate = useMemo(() => isKavipriyanEmail(email), [email]);
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-    setInfoMsg('');
 
-    const cleanEmail = email.trim();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMsg('Please enter a valid email address.');
+    const cleanIdentifier = identifier.trim();
+    if (!cleanIdentifier) {
+      setErrorMsg('Please enter your username or email address.');
       return;
     }
 
@@ -48,46 +39,14 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
     setLoading(true);
 
     try {
-      if (activeTab === 'login') {
-        const res = await supabaseService.signInWithEmail(cleanEmail, password);
-        if (!res.success) {
-          const err = res.error?.message || 'Login failed. Please check your email and password.';
-          setErrorMsg(err);
-        } else {
-          // Sync member record to ensure email & role are linked
-          const memberName = extractNameFromEmail(cleanEmail);
-          const role = isKavipriyanEmail(cleanEmail) ? 'admin' : 'member';
-          await supabaseService.syncAuthMember({
-            email: cleanEmail,
-            fullName: memberName,
-            role,
-          });
-
-          if (onAuthSuccess) {
-            onAuthSuccess(res.session);
-          }
-        }
+      const res = await supabaseService.signInWithUsernameOrEmail(cleanIdentifier, password, members);
+      if (!res.success) {
+        const err = res.error?.message || 'Login failed. Please verify your credentials.';
+        setErrorMsg(err);
       } else {
-        // Sign Up
-        const res = await supabaseService.signUpWithEmail(cleanEmail, password);
-        if (!res.success) {
-          const err = res.error?.message || 'Sign up failed. Please try again with another email.';
-          setErrorMsg(err);
-        } else {
-          if (res.requiresEmailConfirmation) {
-            setInfoMsg(
-              'Account created! A confirmation email has been sent. Please verify your email before logging in.'
-            );
-          } else {
-            setInfoMsg('Account created successfully!');
-            if (res.session && onAuthSuccess) {
-              onAuthSuccess(res.session);
-            } else {
-              // Switch to login tab
-              setActiveTab('login');
-              setInfoMsg('Account created! You can now log in with your credentials.');
-            }
-          }
+        // Successful login
+        if (onAuthSuccess) {
+          onAuthSuccess(res.session);
         }
       }
     } catch (err) {
@@ -116,41 +75,12 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
           </div>
         </div>
 
-        {/* Segmented Tabs: Log In vs Sign Up */}
-        <div className="flex p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('login');
-              setErrorMsg('');
-              setInfoMsg('');
-            }}
-            className={`flex-1 py-2 text-xs font-bold rounded-full transition-all select-none active-scale flex items-center justify-center gap-1.5 ${
-              activeTab === 'login'
-                ? 'bg-[#1E1E1E] text-white shadow-xs'
-                : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
-            }`}
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Log In</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('signup');
-              setErrorMsg('');
-              setInfoMsg('');
-            }}
-            className={`flex-1 py-2 text-xs font-bold rounded-full transition-all select-none active-scale flex items-center justify-center gap-1.5 ${
-              activeTab === 'signup'
-                ? 'bg-[#1E1E1E] text-white shadow-xs'
-                : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Sign Up</span>
-          </button>
+        {/* Informative Admin-Managed Notice Banner */}
+        <div className="p-3 rounded-2xl bg-[#ECEEF0]/70 border border-neutral-border/70 text-xs text-neutral-textSecondary flex items-start gap-2.5">
+          <HelpCircle className="w-4 h-4 text-[#7D64F6] flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] leading-snug">
+            <strong>Admin-Managed Access:</strong> Member accounts are created by your Administrator. Log in using your assigned username or email.
+          </p>
         </div>
 
         {/* Error Alert */}
@@ -161,40 +91,45 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
           </div>
         )}
 
-        {/* Success / Info Alert */}
-        {infoMsg && (
-          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5 animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <span className="leading-snug">{infoMsg}</span>
-          </div>
-        )}
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email Field */}
+          {/* Username or Email Field */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1E1E1E] block">
-              Email Address
+              Username or Email
             </label>
             <div className="relative">
               <input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="e.g. arun or member@example.com"
                 className="w-full h-11 pl-10 pr-4 text-xs font-semibold bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] placeholder:text-neutral-textTertiary focus:outline-none focus:bg-white focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20 transition-all"
-                autoComplete="email"
+                autoComplete="username"
+                autoCapitalize="none"
               />
-              <Mail className="w-4 h-4 text-neutral-textTertiary absolute left-3.5 top-3.5 pointer-events-none" />
+              <User className="w-4 h-4 text-neutral-textTertiary absolute left-3.5 top-3.5 pointer-events-none" />
             </div>
+            <span className="text-[10px] text-neutral-textTertiary block">
+              Enter either your member username or registered email.
+            </span>
           </div>
 
           {/* Password Field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#1E1E1E] block">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#1E1E1E] block">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={() => setForgotModalOpen(true)}
+                className="text-[11px] font-bold text-[#7D64F6] hover:underline cursor-pointer"
+              >
+                Forgot Password?
+              </button>
+            </div>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -202,9 +137,9 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password (min 6 chars)"
+                placeholder="Enter password"
                 className="w-full h-11 pl-10 pr-10 text-xs font-semibold bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] placeholder:text-neutral-textTertiary focus:outline-none focus:bg-white focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20 transition-all"
-                autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'}
+                autoComplete="current-password"
               />
               <Lock className="w-4 h-4 text-neutral-textTertiary absolute left-3.5 top-3.5 pointer-events-none" />
               <button
@@ -218,31 +153,6 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
             </div>
           </div>
 
-          {/* Sign Up Name Preview Badge */}
-          {activeTab === 'signup' && email.includes('@') && (
-            <div className="p-3 rounded-2xl bg-violet-50/80 border border-violet-200/80 space-y-1.5 text-xs animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-violet-900 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-violet-700" />
-                  Detected Profile:
-                </span>
-                <span
-                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                    isAdminCandidate
-                      ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
-                      : 'bg-white text-neutral-textSecondary border-neutral-border'
-                  }`}
-                >
-                  {isAdminCandidate ? '👑 Admin' : 'Member'}
-                </span>
-              </div>
-              <p className="text-[11px] text-violet-700">
-                You will be registered in the roster as <strong>{extractedName}</strong>.
-                {isAdminCandidate && ' Admin privileges will be assigned automatically.'}
-              </p>
-            </div>
-          )}
-
           {/* Submit Button */}
           <button
             type="submit"
@@ -252,11 +162,12 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
             {loading ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>{activeTab === 'login' ? 'Authenticating...' : 'Creating Account...'}</span>
+                <span>Signing In...</span>
               </>
             ) : (
               <>
-                <span>{activeTab === 'login' ? 'Log In' : 'Create Account'}</span>
+                <LogIn className="w-4 h-4" />
+                <span>Log In</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -281,6 +192,51 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline }) {
       <div className="text-center mt-4 text-[11px] text-neutral-textTertiary">
         Secured with Supabase Authentication &amp; PostgreSQL RLS
       </div>
+
+      {/* Forgot Password Modal (Admin Controlled) */}
+      {forgotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1E1E1E]/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-5 border border-neutral-border shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-border/60">
+              <div className="flex items-center gap-2 text-[#1E1E1E] font-bold text-sm">
+                <ShieldAlert className="w-4 h-4 text-violet-600" />
+                <span>Password Reset Notice</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForgotModalOpen(false)}
+                className="p-1 rounded-full hover:bg-neutral-100 text-neutral-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs text-neutral-textSecondary leading-relaxed">
+              <p>
+                <strong>Password resets are managed directly by Administrators.</strong>
+              </p>
+              <p>
+                To maintain roster integrity and prevent unauthorized changes, self-service password resets are disabled. Please request a temporary password or reset from:
+              </p>
+              <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 text-violet-900 font-semibold text-xs space-y-1">
+                <div>👑 <strong>Kavipriyan</strong> (Primary Administrator)</div>
+                <div className="text-[11px] font-normal text-violet-700">or any designated Co-Administrator in your group.</div>
+              </div>
+              <p className="text-[11px] text-neutral-textTertiary">
+                Admins can generate a new temporary password for you immediately from the Member Management panel.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setForgotModalOpen(false)}
+              className="w-full py-2 rounded-xl bg-[#1E1E1E] text-white text-xs font-bold hover:bg-black transition-colors"
+            >
+              Understood
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

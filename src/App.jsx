@@ -833,6 +833,7 @@ export default function App() {
       <AuthScreen
         onAuthSuccess={(newSession) => setSession(newSession)}
         onContinueOffline={() => setGuestBypass(true)}
+        members={members}
       />
     );
   }

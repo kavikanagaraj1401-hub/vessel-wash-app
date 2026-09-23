@@ -166,7 +166,94 @@ CREATE POLICY "Allow anonymous write access on attendance_history" ON public.att
 DROP POLICY IF EXISTS "Allow anonymous read access on washer_activity" ON public.washer_activity;
 DROP POLICY IF EXISTS "Allow anonymous write access on washer_activity" ON public.washer_activity;
 CREATE POLICY "Allow anonymous read access on washer_activity" ON public.washer_activity FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer_activity FOR ALL USING (true);`;
+CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer_activity FOR ALL USING (true);
+
+-- 5. RPC FUNCTION: create_member_credential (Admin Member Credential Creation)
+CREATE OR REPLACE FUNCTION public.create_member_credential(
+    member_id TEXT,
+    member_email TEXT,
+    member_password TEXT,
+    member_role TEXT DEFAULT 'member'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    new_user_id UUID;
+BEGIN
+    SELECT id INTO new_user_id FROM auth.users WHERE email = LOWER(TRIM(member_email));
+    
+    IF new_user_id IS NULL THEN
+        INSERT INTO auth.users (
+            instance_id,
+            id,
+            aud,
+            role,
+            email,
+            encrypted_password,
+            email_confirmed_at,
+            raw_app_meta_data,
+            raw_user_meta_data,
+            created_at,
+            updated_at
+        ) VALUES (
+            '00000000-0000-0000-0000-000000000000',
+            gen_random_uuid(),
+            'authenticated',
+            'authenticated',
+            LOWER(TRIM(member_email)),
+            crypt(member_password, gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}'::jsonb,
+            jsonb_build_object('role', member_role),
+            NOW(),
+            NOW()
+        )
+        RETURNING id INTO new_user_id;
+    ELSE
+        UPDATE auth.users
+        SET encrypted_password = crypt(member_password, gen_salt('bf')),
+            updated_at = NOW()
+        WHERE id = new_user_id;
+    END IF;
+
+    UPDATE public.members
+    SET email = LOWER(TRIM(member_email)),
+        role = member_role,
+        updated_at = NOW()
+    WHERE id = member_id OR LOWER(TRIM(email)) = LOWER(TRIM(member_email));
+
+    RETURN jsonb_build_object('success', true, 'user_id', new_user_id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- 6. RPC FUNCTION: admin_reset_member_password (Admin-Only Password Reset)
+CREATE OR REPLACE FUNCTION public.admin_reset_member_password(
+    target_email TEXT,
+    new_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    UPDATE auth.users
+    SET encrypted_password = crypt(new_password, gen_salt('bf')),
+        updated_at = NOW()
+    WHERE LOWER(TRIM(email)) = LOWER(TRIM(target_email));
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'User not found in authentication system');
+    END IF;
+
+    RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;`;
 
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(sql).then(() => {
