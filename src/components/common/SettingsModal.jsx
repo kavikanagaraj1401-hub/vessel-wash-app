@@ -20,6 +20,7 @@ import {
   Menu,
   Database,
   Copy,
+  LogOut,
 } from 'lucide-react';
 import { parseExcelTimetable } from '../../logic/excelImporter';
 import { MembersScreen } from '../../screens/MembersScreen';
@@ -35,6 +36,9 @@ export function SettingsModal({
   isOpen,
   onClose,
   isAdmin = false,
+  userName = 'Kavipriyan',
+  userEmail = '',
+  onSignOut,
   members = [],
   queue = [],
   attendanceLogs = [],
@@ -257,8 +261,53 @@ CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer
 
           {/* Drawer Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-neutral-textSecondary">
-        {/* Navigation Tabs in Settings */}
-        <div className="grid grid-cols-4 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
+            {/* Active User Account Banner in Drawer */}
+            <div className="p-3 rounded-2xl bg-white border border-neutral-border/80 shadow-2xs flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                    isAdmin ? 'bg-[#A28EF9] text-[#1E1E1E]' : 'bg-[#1E1E1E] text-white'
+                  }`}
+                >
+                  {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-[#1E1E1E] truncate">{userName}</span>
+                    {isAdmin ? (
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-violet-100 text-violet-800">
+                        Admin
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-neutral-100 text-neutral-600">
+                        Member
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-neutral-textSecondary block truncate">
+                    {userEmail || 'Active session'}
+                  </span>
+                </div>
+              </div>
+
+              {onSignOut && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    onClose();
+                    await onSignOut();
+                  }}
+                  className="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1 active-scale flex-shrink-0 cursor-pointer"
+                  title="Log Out"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Log Out</span>
+                </button>
+              )}
+            </div>
+
+            {/* Navigation Tabs in Settings */}
+            <div className="grid grid-cols-4 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
           <button
             type="button"
             onClick={() => setActiveTab('excel')}

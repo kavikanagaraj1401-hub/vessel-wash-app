@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Menu, Clock, ShieldCheck, Lock, Users, KeyRound, AlertCircle } from 'lucide-react';
+import { Calendar, Menu, Clock, ShieldCheck, Lock, Users, KeyRound, AlertCircle, LogOut, User } from 'lucide-react';
 import { Modal } from '../common/Modal';
 
 export function TopAppBar({
   title = 'Vessel Washing',
   currentDateStr = '',
   isAdmin = false,
+  userName = 'Kavipriyan',
+  userEmail = '',
+  onSignOut,
   onToggleAdminMode,
   allMembers = [],
   adminUserIds = ['m1'],
@@ -14,6 +17,7 @@ export function TopAppBar({
 }) {
   const [istTime, setIstTime] = useState('');
   const [membersModalOpen, setMembersModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [pinPromptOpen, setPinPromptOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
@@ -78,22 +82,37 @@ export function TopAppBar({
             </div>
           </div>
 
-          {/* Right: Members & Admins Directory Button + Burger Menu */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Right: User Profile Badge, Members Directory Button & Burger Menu */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Logged-in User Profile Badge */}
+            <button
+              type="button"
+              onClick={() => setProfileModalOpen(true)}
+              aria-label="User profile & account"
+              title={`Logged in as ${userName} (${userEmail || 'Active session'})`}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] border border-neutral-border/70 active-scale transition-all"
+            >
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
+                  isAdmin ? 'bg-violet-600 text-white shadow-2xs' : 'bg-[#1E1E1E] text-white'
+                }`}
+              >
+                {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
+              </div>
+              <span className="text-xs font-bold text-[#1E1E1E] max-w-[70px] sm:max-w-[120px] truncate leading-none">
+                {userName}
+              </span>
+            </button>
+
             {/* Application Members Button (Shows directory without switching) */}
             <button
               type="button"
               onClick={() => setMembersModalOpen(true)}
               aria-label="View application members and admins"
-              title={isAdmin ? "Admin: Kavipriyan (Full Access)" : "Members & Admins Directory"}
-              className="w-9 h-9 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all relative"
+              title="Members & Admins Directory"
+              className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all"
             >
-              <Users className="w-4 h-4" strokeWidth={2.2} />
-              {isAdmin && (
-                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-violet-600 rounded-full border-2 border-white flex items-center justify-center text-[7px] text-white font-bold">
-                  👑
-                </span>
-              )}
+              <Users className="w-3.5 h-3.5" strokeWidth={2.2} />
             </button>
 
             {/* Burger Menu Button */}
@@ -103,9 +122,9 @@ export function TopAppBar({
                 onClick={onSettingsClick}
                 aria-label="Open menu and settings"
                 title="Menu & Settings"
-                className="w-9 h-9 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all"
+                className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all"
               >
-                <Menu className="w-4 h-4" strokeWidth={2.2} />
+                <Menu className="w-3.5 h-3.5" strokeWidth={2.2} />
               </button>
             )}
           </div>
@@ -312,6 +331,74 @@ export function TopAppBar({
               className="px-4 py-2 text-xs font-bold rounded-xl bg-[#1E1E1E] text-white hover:bg-black shadow-xs active-scale"
             >
               Unlock Controls
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* User Profile & Log Out Modal */}
+      <Modal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        title="User Account"
+        subtitle="Signed in to Vessel Wash via Supabase Auth."
+      >
+        <div className="space-y-4 p-1">
+          {/* User Info Card */}
+          <div className="p-4 rounded-2xl bg-white border border-neutral-border/80 shadow-xs flex items-center gap-3">
+            <div
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-xs flex-shrink-0 ${
+                isAdmin ? 'bg-[#A28EF9] text-[#1E1E1E]' : 'bg-[#1E1E1E] text-white'
+              }`}
+            >
+              {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-sm font-extrabold text-[#1E1E1E] truncate">
+                  {userName}
+                </h3>
+                {isAdmin ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
+                    👑 Admin
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
+                    Member
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-neutral-textSecondary block truncate mt-0.5">
+                {userEmail || 'Authenticated Session'}
+              </span>
+            </div>
+          </div>
+
+          {/* Role Description Card */}
+          <div className="p-3 rounded-xl bg-[#ECEEF0]/60 border border-neutral-border text-xs space-y-1">
+            <span className="font-bold text-[#1E1E1E] flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-violet-700" />
+              Role &amp; Permissions
+            </span>
+            <p className="text-[11px] text-neutral-textSecondary leading-snug">
+              {isAdmin
+                ? 'You have full administrative privileges: modifying meal availability, washer requirements, Excel sync, and managing roster members.'
+                : 'You have member privileges: marking meal availability and selecting attending eaters in the roster.'}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              onClick={async () => {
+                setProfileModalOpen(false);
+                if (onSignOut) await onSignOut();
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors flex items-center justify-center gap-2 active-scale cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Log Out</span>
             </button>
           </div>
         </div>

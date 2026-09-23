@@ -6,6 +6,8 @@ import { SettingsModal } from './components/common/SettingsModal';
 import { TodayScreen } from './screens/TodayScreen';
 import { ActivityScreen } from './screens/ActivityScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
+import { AuthScreen } from './components/auth/AuthScreen';
+import { extractNameFromEmail, isKavipriyanEmail } from './logic/authUtils';
 
 import { storage, INITIAL_MEMBERS } from './logic/storage';
 import {
@@ -34,7 +36,12 @@ export default function App() {
   // Dynamic Selected Date (defaults to live today)
   const [selectedDateStr, setSelectedDateStr] = useState(actualTodayDateStr);
 
-  // Admin Mode state (Default: true for Admin Kavipriyan)
+  // Supabase Authentication Session State
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [guestBypass, setGuestBypass] = useState(false);
+
+  // Admin Mode override state
   const [isAdminMode, setIsAdminMode] = useState(() => {
     try {
       const saved = localStorage.getItem('vw_admin_mode');
@@ -53,9 +60,6 @@ export default function App() {
     }
   };
 
-  // Active User Profile for Role-Based Access Control
-  const currentUserId = isAdminMode ? 'm1' : 'member';
-
   // Application Persistent State
   const [members, setMembers] = useState(() => storage.getMembers());
   const [daysConfig, setDaysConfig] = useState(() => {
@@ -67,27 +71,98 @@ export default function App() {
   const [activityLogs, setActivityLogs] = useState(() => storage.getActivityLogs());
   const [adminUserIds, setAdminUserIds] = useState(() => storage.getAdminUserIds());
 
-  // Current logged in member representation
+  // Listen to Supabase Auth State changes and retrieve initial active session
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAuthSession() {
+      try {
+        const currentSession = await supabaseService.getSession();
+        if (isMounted) {
+          setSession(currentSession);
+          setAuthLoading(false);
+        }
+      } catch (err) {
+        console.warn('Session check error:', err);
+        if (isMounted) setAuthLoading(false);
+      }
+    }
+
+    checkAuthSession();
+
+    const { data: authSubscription } = supabaseService.onAuthStateChange((event, newSession) => {
+      if (!isMounted) return;
+      setSession(newSession);
+      setAuthLoading(false);
+      if (event === 'SIGNED_OUT') {
+        setGuestBypass(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      if (authSubscription?.subscription?.unsubscribe) {
+        authSubscription.subscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  // Resolve logged-in user profile, email & role
+  const userEmail = session?.user?.email || '';
+  const extractedUserName = useMemo(() => {
+    if (userEmail) return extractNameFromEmail(userEmail);
+    return 'Kavipriyan';
+  }, [userEmail]);
+
+  const isUserKavipriyan = isKavipriyanEmail(userEmail);
+
+  const loggedInMember = useMemo(() => {
+    if (userEmail) {
+      return members.find(
+        m =>
+          (m.email && m.email.toLowerCase() === userEmail.toLowerCase()) ||
+          (m.name && m.name.toLowerCase() === extractedUserName.toLowerCase())
+      );
+    }
+    return null;
+  }, [members, userEmail, extractedUserName]);
+
+  const userName = loggedInMember?.name || extractedUserName;
+
+  // Role Access Control: Kavipriyan is Primary Admin; Co-Admins check role / adminUserIds
+  const isAdmin = useMemo(() => {
+    if (!session && guestBypass) return isAdminMode;
+    if (isUserKavipriyan) return true;
+    if (loggedInMember?.role === 'admin') return true;
+    if (loggedInMember?.id && adminUserIds.includes(loggedInMember.id)) return true;
+    return false;
+  }, [session, guestBypass, isAdminMode, isUserKavipriyan, loggedInMember, adminUserIds]);
+
+  const isPrimaryAdmin = isUserKavipriyan || (!session && guestBypass && isAdminMode);
+
+  // Current logged in member representation for activity attribution
   const currentMember = useMemo(() => {
-    if (isAdminMode) {
-      return members.find(m => m.id === 'm1') || {
+    if (loggedInMember) return loggedInMember;
+    if (isAdmin) {
+      return {
         id: 'm1',
-        name: 'Kavipriyan',
+        name: userName || 'Kavipriyan',
         code: 'M1',
       };
     }
     return {
-      id: 'guest',
-      name: 'Standard Member',
+      id: `usr-${userEmail ? userEmail.split('@')[0] : 'member'}`,
+      name: userName || 'Standard Member',
       code: 'MB',
     };
-  }, [members, isAdminMode]);
+  }, [loggedInMember, isAdmin, userName, userEmail]);
 
-  // Primary Admin: Kavipriyan is permanent administrator
-  const isPrimaryAdmin = isAdminMode;
-
-  // Admin access control: Kavipriyan + designated co-admins
-  const isAdmin = isAdminMode;
+  // Log Out / Sign Out Handler
+  const handleSignOut = async () => {
+    await supabaseService.signOut();
+    setSession(null);
+    setGuestBypass(false);
+  };
 
   // Request notification permissions silently on app initialization
   useEffect(() => {
@@ -690,6 +765,36 @@ export default function App() {
 
   const activeMembers = members.filter(m => m.status === 'active');
 
+  // 1. Initial Session Loading Indicator
+  if (authLoading) {
+    return (
+      <div className="min-h-screen w-full bg-[#ECEEF0] flex flex-col items-center justify-center p-4 selection:bg-[#A28EF9]/30">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#A28EF9] text-[#1E1E1E] flex items-center justify-center font-black text-2xl shadow-xl animate-pulse">
+            VW
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-base font-extrabold text-[#1E1E1E]">Vessel Wash System</h2>
+            <div className="flex items-center justify-center gap-2 text-xs text-neutral-textSecondary font-semibold">
+              <span className="w-3.5 h-3.5 border-2 border-[#1E1E1E] border-t-transparent rounded-full animate-spin" />
+              <span>Verifying authentication session...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated Screen (Supabase Auth Login & Sign Up)
+  if (!session && !guestBypass) {
+    return (
+      <AuthScreen
+        onAuthSuccess={(newSession) => setSession(newSession)}
+        onContinueOffline={() => setGuestBypass(true)}
+      />
+    );
+  }
+
   return (
     <div className="w-full h-screen h-[100dvh] bg-[#ECEEF0] flex justify-center selection:bg-primary-100 selection:text-primary overflow-hidden">
       {/* Responsive Container (Mobile: 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
@@ -699,6 +804,9 @@ export default function App() {
           title="Vessel Washing"
           currentDateStr={formatHeaderDate(actualTodayDateStr)}
           isAdmin={isAdmin}
+          userName={userName}
+          userEmail={userEmail}
+          onSignOut={handleSignOut}
           onToggleAdminMode={handleToggleAdminMode}
           allMembers={members}
           adminUserIds={adminUserIds}
@@ -764,6 +872,9 @@ export default function App() {
           isOpen={settingsOpen}
           onClose={() => setSettingsOpen(false)}
           isAdmin={isAdmin}
+          userName={userName}
+          userEmail={userEmail}
+          onSignOut={handleSignOut}
           members={members}
           queue={currentDayQueue}
           attendanceLogs={attendanceLogs}

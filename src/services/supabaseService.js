@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { extractNameFromEmail, isKavipriyanEmail } from '../logic/authUtils';
 
 /**
  * Supabase Data & Realtime Service for Vessel Wash App
@@ -379,6 +380,199 @@ export const supabaseService = {
     } catch (err) {
       console.warn('Could not establish Supabase Realtime subscription:', err);
       return () => {};
+    }
+  },
+
+  /**
+   * Supabase Auth: Log in with email and password
+   */
+  async signInWithEmail(email, password) {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: new Error('Supabase is not configured.') };
+    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+      return { success: true, session: data.session, user: data.user };
+    } catch (err) {
+      return { success: false, error: err };
+    }
+  },
+
+  /**
+   * Supabase Auth: Sign up with email and password
+   */
+  async signUpWithEmail(email, password) {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: new Error('Supabase is not configured.') };
+    }
+    try {
+      const trimmedEmail = email.trim();
+      const fullName = extractNameFromEmail(trimmedEmail);
+      const role = isKavipriyanEmail(trimmedEmail) ? 'admin' : 'member';
+
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: role,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      // Automatically sync/insert into members database table as required
+      await this.syncAuthMember({
+        email: trimmedEmail,
+        fullName,
+        role,
+      });
+
+      return {
+        success: true,
+        session: data.session,
+        user: data.user,
+        requiresEmailConfirmation: !data.session && !!data.user,
+      };
+    } catch (err) {
+      return { success: false, error: err };
+    }
+  },
+
+  /**
+   * Supabase Auth: Log out / sign out
+   */
+  async signOut() {
+    if (!isSupabaseConfigured || !supabase) return { success: true };
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.warn('Error signing out from Supabase:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  /**
+   * Supabase Auth: Get current active session
+   */
+  async getSession() {
+    if (!isSupabaseConfigured || !supabase) return null;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data?.session || null;
+    } catch (err) {
+      console.warn('Error getting session:', err);
+      return null;
+    }
+  },
+
+  /**
+   * Supabase Auth: Subscribe to auth state changes
+   */
+  onAuthStateChange(callback) {
+    if (!isSupabaseConfigured || !supabase) {
+      return { data: { subscription: { unsubscribe: () => {} } } };
+    }
+    return supabase.auth.onAuthStateChange(callback);
+  },
+
+  /**
+   * Insert or upsert a member record into the `members` database table on user authentication.
+   * - Maps full_name (extracted from email), email, role ('admin' for Kavipriyan, otherwise 'member').
+   */
+  async syncAuthMember({ email, fullName, role = 'member' }) {
+    if (!isSupabaseConfigured || !supabase || !email) return null;
+
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const cleanName = fullName || extractNameFromEmail(trimmedEmail);
+      const assignedRole = role || (isKavipriyanEmail(trimmedEmail) ? 'admin' : 'member');
+
+      // 1. Check if record with matching email already exists
+      const { data: existingByEmail } = await supabase
+        .from('members')
+        .select('*')
+        .eq('email', trimmedEmail)
+        .maybeSingle();
+
+      if (existingByEmail && existingByEmail.id) {
+        const updatePayload = {
+          full_name: cleanName || existingByEmail.full_name,
+          role: assignedRole,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        };
+        const { data: updated } = await supabase
+          .from('members')
+          .update(updatePayload)
+          .eq('id', existingByEmail.id)
+          .select()
+          .single();
+        return updated || existingByEmail;
+      }
+
+      // 2. Check if an existing member with the same name exists (e.g. Kavipriyan created from seed)
+      const { data: existingByName } = await supabase
+        .from('members')
+        .select('*')
+        .ilike('full_name', cleanName)
+        .maybeSingle();
+
+      if (existingByName && existingByName.id) {
+        const updatePayload = {
+          email: trimmedEmail,
+          role: assignedRole,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        };
+        const { data: updated } = await supabase
+          .from('members')
+          .update(updatePayload)
+          .eq('id', existingByName.id)
+          .select()
+          .single();
+        return updated || existingByName;
+      }
+
+      // 3. Otherwise, insert a new record with next rotation_order
+      const { data: allMembers } = await supabase
+        .from('members')
+        .select('rotation_order')
+        .order('rotation_order', { ascending: false })
+        .limit(1);
+
+      const nextOrder = (allMembers?.[0]?.rotation_order || 0) + 1;
+
+      const newMemberPayload = {
+        full_name: cleanName,
+        email: trimmedEmail,
+        role: assignedRole,
+        is_active: true,
+        rotation_order: nextOrder,
+        created_at: new Date().toISOString(),
+      };
+
+      const { data: inserted, error: insertErr } = await supabase
+        .from('members')
+        .insert([newMemberPayload])
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+      console.info(`✓ Successfully registered auth member "${cleanName}" (${assignedRole}) into Supabase`);
+      return inserted;
+    } catch (err) {
+      console.warn('⚠️ Warning: syncAuthMember could not complete:', err.message || err);
+      return null;
     }
   },
 };
