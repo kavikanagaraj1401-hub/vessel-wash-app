@@ -323,7 +323,23 @@ export const supabaseService = {
   },
 
   /**
-   * Save live attendance update and calculated washer activity to Supabase.
+   * Set or update authentication token for active Supabase Realtime WebSocket connection.
+   */
+  setRealtimeAuth(accessToken) {
+    if (!isSupabaseConfigured || !supabase || !supabase.realtime) return;
+    try {
+      if (accessToken) {
+        supabase.realtime.setAuth(accessToken);
+        console.info('🔐 Supabase Realtime auth token attached');
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not set Realtime auth token:', err);
+    }
+  },
+
+  /**
+   * Save live attendance update and calculated washer activity to Supabase using upsert.
+   * Conforms strictly to schema in PostgreSQL: id, date, meal, is_provided, eaters, washers_count, etc.
    */
   async saveAttendanceAndWasherActivity({
     date,
@@ -338,41 +354,47 @@ export const supabaseService = {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
-      // 1. Attendance History (delete previous and record active eaters)
-      await supabase
-        .from('attendance_history')
-        .delete()
-        .eq('date', date)
-        .eq('meal_type', meal);
+      const recordId = `${date}_${meal}`;
 
-      if (isProvided && eaters.length > 0) {
-        const attRows = eaters.map(memId => ({
-          date,
-          meal_type: meal,
-          member_id: memId,
-          ate_meal: true,
-          updated_at: new Date().toISOString(),
-        }));
-        await supabase.from('attendance_history').insert(attRows);
+      // 1. Attendance History: upsert record matching database schema (id, date, meal, is_provided, eaters, washers_count)
+      const attRecord = {
+        id: recordId,
+        date,
+        meal,
+        meal_type: meal, // for backward/schema compatibility
+        is_provided: Boolean(isProvided),
+        eaters: eaters || [],
+        washers_count: washersCount || 1,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: attErr } = await supabase
+        .from('attendance_history')
+        .upsert(attRecord, { onConflict: 'id' });
+
+      if (attErr) {
+        console.warn('⚠️ Supabase attendance_history upsert warning:', attErr.message);
       }
 
-      // 2. Washer Activity (delete previous and record live assignment)
-      await supabase
-        .from('washer_activity')
-        .delete()
-        .eq('date', date)
-        .eq('meal_type', meal);
+      // 2. Washer Activity: upsert record matching schema (id, date, meal, assigned_washer_ids, assigned_washer_names, next_washer_id, next_washer_name)
+      const washRecord = {
+        id: recordId,
+        date,
+        meal,
+        meal_type: meal, // for backward/schema compatibility
+        assigned_washer_ids: (assignedSlots || []).map(s => s.assignedMemberId).filter(Boolean),
+        assigned_washer_names: (assignedSlots || []).map(s => s.assignedMemberName).filter(Boolean),
+        next_washer_id: nextWasherId || null,
+        next_washer_name: nextWasherName || null,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (isProvided && assignedSlots.length > 0) {
-        const washRows = assignedSlots.map((s, idx) => ({
-          date,
-          meal_type: meal,
-          assigned_member_id: s.assignedMemberId,
-          next_member_id: idx === 0 ? nextWasherId : null,
-          status: 'assigned',
-          created_at: new Date().toISOString(),
-        }));
-        await supabase.from('washer_activity').insert(washRows);
+      const { error: washErr } = await supabase
+        .from('washer_activity')
+        .upsert(washRecord, { onConflict: 'id' });
+
+      if (washErr) {
+        console.warn('⚠️ Supabase washer_activity upsert warning:', washErr.message);
       }
 
       return true;
@@ -383,19 +405,37 @@ export const supabaseService = {
   },
 
   /**
-   * Set up Supabase Realtime channel listening to changes on attendance_history, members, and washer_activity.
+   * Set up Supabase Realtime channel explicitly listening to changes on attendance_history, members, washer_activity, and application_settings.
+   * Attaches session access token and handles teardown and automatic reconnection.
    */
-  subscribeToRosterRealtime(onRealtimeChange) {
+  subscribeToRosterRealtime(onRealtimeChange, session = null) {
     if (!isSupabaseConfigured || !supabase) return () => {};
 
     try {
+      // Clean up previous active channel before creating new one
+      if (this._activeChannel) {
+        try {
+          supabase.removeChannel(this._activeChannel);
+        } catch {
+          // ignore
+        }
+        this._activeChannel = null;
+      }
+
+      // Explicitly attach token to Realtime WebSocket if available
+      const token = session?.access_token;
+      if (token) {
+        this.setRealtimeAuth(token);
+      }
+
+      const channelName = `roster-realtime-${Date.now()}`;
       const channel = supabase
-        .channel('public:roster-sync')
+        .channel(channelName)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'attendance_history' },
           payload => {
-            console.info('📡 Realtime attendance update:', payload.eventType);
+            console.info('📡 [Realtime] attendance_history update:', payload.eventType);
             if (onRealtimeChange) onRealtimeChange('attendance_history', payload);
           }
         )
@@ -403,7 +443,7 @@ export const supabaseService = {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'washer_activity' },
           payload => {
-            console.info('📡 Realtime washer activity update:', payload.eventType);
+            console.info('📡 [Realtime] washer_activity update:', payload.eventType);
             if (onRealtimeChange) onRealtimeChange('washer_activity', payload);
           }
         )
@@ -411,7 +451,7 @@ export const supabaseService = {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'members' },
           payload => {
-            console.info('📡 Realtime members update:', payload.eventType);
+            console.info('📡 [Realtime] members update:', payload.eventType);
             if (onRealtimeChange) onRealtimeChange('members', payload);
           }
         )
@@ -419,20 +459,37 @@ export const supabaseService = {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'application_settings' },
           payload => {
-            console.info('📡 Realtime application settings update:', payload.eventType);
+            console.info('📡 [Realtime] application_settings update:', payload.eventType);
             if (onRealtimeChange) onRealtimeChange('application_settings', payload);
           }
         )
         .subscribe((status, err) => {
           if (err) {
-            console.warn('Realtime subscription warning:', err);
+            console.warn('⚠️ Realtime subscription warning/error:', err);
           } else {
             console.info('🔌 Supabase Realtime channel status:', status);
           }
+          if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+            console.info('🔄 Realtime channel dropped. Re-subscribing in 2s...');
+            setTimeout(() => {
+              if (this._activeChannel === channel) {
+                this.subscribeToRosterRealtime(onRealtimeChange, session);
+              }
+            }, 2000);
+          }
         });
 
+      this._activeChannel = channel;
+
       return () => {
-        supabase.removeChannel(channel);
+        try {
+          supabase.removeChannel(channel);
+          if (this._activeChannel === channel) {
+            this._activeChannel = null;
+          }
+        } catch {
+          // ignore
+        }
       };
     } catch (err) {
       console.warn('Could not establish Supabase Realtime subscription:', err);
@@ -466,18 +523,21 @@ export const supabaseService = {
       }
     }
 
-    // 2. Query Supabase database members table
+    // 2. Query Supabase database members table with a 5s safety timeout
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data } = await supabase
+        const queryPromise = supabase
           .from('members')
           .select('email, full_name')
           .or(`full_name.ilike.%${clean}%,email.ilike.${clean}@%`)
           .not('email', 'is', null)
           .limit(1);
 
-        if (data && data[0]?.email) {
-          return data[0].email.toLowerCase().trim();
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: null }), 5000));
+        const res = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (res && res.data && res.data[0]?.email) {
+          return res.data[0].email.toLowerCase().trim();
         }
       } catch (err) {
         console.warn('Error resolving username in Supabase:', err);
@@ -642,10 +702,17 @@ export const supabaseService = {
       return { success: false, error: new Error('Supabase is not configured.') };
     }
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+      const cleanEmail = email.trim().toLowerCase();
+      const signInPromise = supabase.auth.signInWithPassword({
+        email: cleanEmail,
         password,
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Sign-in request timed out after 10 seconds. Please check your network connection.')), 10000)
+      );
+
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
       if (error) throw error;
       return { success: true, session: data.session, user: data.user };
     } catch (err) {

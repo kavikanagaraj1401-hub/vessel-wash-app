@@ -21,8 +21,24 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
 
+  const handleIdentifierChange = (e) => {
+    setIdentifier(e.target.value);
+    if (errorMsg) setErrorMsg('');
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (errorMsg) setErrorMsg('');
+  };
+
+  const handleResetForm = () => {
+    setLoading(false);
+    setErrorMsg('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setErrorMsg('');
 
     const cleanIdentifier = identifier.trim();
@@ -38,20 +54,33 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
 
     setLoading(true);
 
+    // Safety timeout: Ensure inputs are never permanently locked even if network hangs
+    let safetyTimer = setTimeout(() => {
+      setLoading(false);
+      setErrorMsg('Sign-in request timed out. Please verify your connection and try again.');
+    }, 12000);
+
     try {
       const res = await supabaseService.signInWithUsernameOrEmail(cleanIdentifier, password, members);
+      if (safetyTimer) clearTimeout(safetyTimer);
+
       if (!res.success) {
         const err = res.error?.message || 'Login failed. Please verify your credentials.';
         setErrorMsg(err);
+        setLoading(false);
       } else {
         // Successful login
         if (onAuthSuccess) {
           onAuthSuccess(res.session);
         }
+        setLoading(false);
       }
     } catch (err) {
+      if (safetyTimer) clearTimeout(safetyTimer);
       setErrorMsg(err.message || 'An unexpected authentication error occurred.');
+      setLoading(false);
     } finally {
+      if (safetyTimer) clearTimeout(safetyTimer);
       setLoading(false);
     }
   };
@@ -87,7 +116,18 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
         {errorMsg && (
           <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 animate-fadeIn">
             <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-            <span className="leading-snug">{errorMsg}</span>
+            <div className="flex-1 leading-snug">
+              <span>{errorMsg}</span>
+              {loading && (
+                <button
+                  type="button"
+                  onClick={handleResetForm}
+                  className="block mt-1 font-bold underline cursor-pointer"
+                >
+                  Unlock &amp; retry now
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -95,17 +135,19 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username or Email Field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#1E1E1E] block">
+            <label htmlFor="login-identifier" className="text-xs font-bold text-[#1E1E1E] block">
               Username or Email
             </label>
             <div className="relative">
               <input
+                id="login-identifier"
                 type="text"
                 required
+                disabled={loading}
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={handleIdentifierChange}
                 placeholder="e.g. arun or member@example.com"
-                className="w-full h-11 pl-10 pr-4 text-xs font-semibold bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] placeholder:text-neutral-textTertiary focus:outline-none focus:bg-white focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20 transition-all"
+                className="w-full h-11 pl-10 pr-4 text-xs font-semibold bg-white rounded-xl border border-neutral-border text-[#1E1E1E] placeholder:text-neutral-textTertiary focus:outline-none focus:border-[#7D64F6] focus:ring-2 focus:ring-[#7D64F6]/20 transition-all disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
                 autoComplete="username"
                 autoCapitalize="none"
               />
@@ -119,33 +161,37 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
           {/* Password Field */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#1E1E1E] block">
+              <label htmlFor="login-password" className="text-xs font-bold text-[#1E1E1E] block">
                 Password
               </label>
               <button
                 type="button"
+                disabled={loading}
                 onClick={() => setForgotModalOpen(true)}
-                className="text-[11px] font-bold text-[#7D64F6] hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-[#7D64F6] hover:underline cursor-pointer disabled:opacity-50"
               >
                 Forgot Password?
               </button>
             </div>
             <div className="relative">
               <input
+                id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 required
                 minLength={6}
+                disabled={loading}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 placeholder="Enter password"
-                className="w-full h-11 pl-10 pr-10 text-xs font-semibold bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] placeholder:text-neutral-textTertiary focus:outline-none focus:bg-white focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20 transition-all"
+                className="w-full h-11 pl-10 pr-10 text-xs font-semibold bg-white rounded-xl border border-neutral-border text-[#1E1E1E] placeholder:text-neutral-textTertiary focus:outline-none focus:border-[#7D64F6] focus:ring-2 focus:ring-[#7D64F6]/20 transition-all disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
                 autoComplete="current-password"
               />
               <Lock className="w-4 h-4 text-neutral-textTertiary absolute left-3.5 top-3.5 pointer-events-none" />
               <button
                 type="button"
+                disabled={loading}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-neutral-textTertiary hover:text-[#1E1E1E] transition-colors"
+                className="absolute right-3.5 top-3 text-neutral-textTertiary hover:text-[#1E1E1E] transition-colors disabled:opacity-50"
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

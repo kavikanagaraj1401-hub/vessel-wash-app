@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { TopAppBar } from './components/navigation/TopAppBar';
 import { BottomNav } from './components/navigation/BottomNav';
 import { SettingsModal } from './components/common/SettingsModal';
@@ -71,6 +71,229 @@ export default function App() {
   const [activityLogs, setActivityLogs] = useState(() => storage.getActivityLogs());
   const [adminUserIds, setAdminUserIds] = useState(() => storage.getAdminUserIds());
 
+  const unsubscribeRealtimeRef = useRef(null);
+
+  // Centralized Real-time payload handler across all tables (attendance_history, washer_activity, members, application_settings)
+  const handleRealtimePayload = useCallback((table, payload) => {
+    if (table === 'attendance_history') {
+      const rec = payload.new;
+      if (!rec) {
+        if (payload.old && payload.old.date) {
+          const delDate = payload.old.date;
+          const delMeal = payload.old.meal || payload.old.meal_type || 'lunch';
+          setDaysConfig(prev =>
+            prev.map(d => {
+              if (d.date !== delDate) return d;
+              return {
+                ...d,
+                [`${delMeal}Provided`]: false,
+                [`${delMeal}Eaters`]: [],
+              };
+            })
+          );
+        }
+        return;
+      }
+
+      const targetDate = rec.date;
+      const meal = rec.meal || rec.meal_type;
+      if (!targetDate || !meal) return;
+
+      const isProvided = rec.is_provided !== undefined ? Boolean(rec.is_provided) : true;
+      const eaters = Array.isArray(rec.eaters) ? rec.eaters : [];
+      const washersCount = rec.washers_count || 1;
+
+      setDaysConfig(prev =>
+        prev.map(d => {
+          if (d.date !== targetDate) return d;
+          return {
+            ...d,
+            [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: isProvided,
+            [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: eaters,
+            ...(meal === 'lunch' && washersCount ? { lunchWashers: washersCount } : {}),
+          };
+        })
+      );
+    } else if (table === 'washer_activity') {
+      const rec = payload.new;
+      if (!rec || !rec.date) return;
+      const targetDate = rec.date;
+      const meal = rec.meal || rec.meal_type || 'meal';
+      const washerNames = Array.isArray(rec.assigned_washer_names)
+        ? rec.assigned_washer_names.join(', ')
+        : (rec.assigned_washer_names || 'Assigned Member');
+
+      setActivityLogs(prev => {
+        const logId = `rt-wash-${rec.id || (targetDate + '-' + meal)}`;
+        if (prev.some(l => l.id === logId)) return prev;
+        const entry = {
+          id: logId,
+          timestamp: rec.updated_at || new Date().toISOString(),
+          actorName: 'Supabase Realtime',
+          actorCode: 'SYNC',
+          actionType: 'WASHER_ASSIGNED',
+          category: 'wash',
+          title: `${meal.toUpperCase()} Washer Assigned: ${washerNames}`,
+          details: `Live sync for ${targetDate}. Next in line: ${rec.next_washer_name || 'Rotation queue'}.`,
+          targetDate,
+        };
+        return [entry, ...prev.slice(0, 49)];
+      });
+    } else if (table === 'members') {
+      if (payload.eventType === 'INSERT') {
+        const m = payload.new;
+        setMembers(prev => {
+          if (prev.some(existing => existing.id === m.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: m.id,
+              name: m.full_name || m.name,
+              code: m.code || `M${m.rotation_order || prev.length + 1}`,
+              email: m.email || null,
+              role: m.role || 'member',
+              status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : (m.status || 'active'),
+              createdAt: m.created_at || new Date().toISOString(),
+              updatedAt: m.updated_at || new Date().toISOString(),
+            },
+          ];
+        });
+      } else if (payload.eventType === 'UPDATE') {
+        const m = payload.new;
+        setMembers(prev =>
+          prev.map(existing =>
+            existing.id === m.id
+              ? {
+                  ...existing,
+                  name: m.full_name || m.name || existing.name,
+                  email: m.email !== undefined ? m.email : existing.email,
+                  role: m.role || existing.role || 'member',
+                  status:
+                    m.is_active !== undefined
+                      ? (m.is_active ? 'active' : 'inactive')
+                      : (m.status || existing.status),
+                  updatedAt: m.updated_at || new Date().toISOString(),
+                }
+              : existing
+          )
+        );
+      } else if (payload.eventType === 'DELETE') {
+        const m = payload.old;
+        setMembers(prev => prev.filter(existing => existing.id !== m.id));
+      }
+    } else if (table === 'application_settings') {
+      const setting = payload.new;
+      const key = setting?.setting_key || setting?.key;
+      const val = setting?.setting_value || setting?.value;
+      if (key === 'days_config' && Array.isArray(val)) {
+        setDaysConfig(val);
+      } else if (key === 'initial_queue' && Array.isArray(val)) {
+        setInitialQueue(val);
+      } else if (key === 'admin_user_ids' && Array.isArray(val)) {
+        setAdminUserIds(val);
+        storage.saveAdminUserIds(val);
+      }
+    }
+  }, []);
+
+  // Fetch initial remote data and explicitly subscribe to real-time channels
+  const syncRealtimeAndData = useCallback(async (activeSession) => {
+    if (!isSupabaseConfigured) return;
+
+    // Attach auth token if available
+    if (activeSession?.access_token) {
+      supabaseService.setRealtimeAuth(activeSession.access_token);
+    }
+
+    // Clean previous subscription before re-binding
+    if (unsubscribeRealtimeRef.current) {
+      try {
+        unsubscribeRealtimeRef.current();
+      } catch (e) {
+        // ignore
+      }
+      unsubscribeRealtimeRef.current = null;
+    }
+
+    // Fetch latest fresh data
+    try {
+      const remote = await supabaseService.fetchInitialData();
+      if (remote.success) {
+        if (remote.members && remote.members.length > 0) {
+          setMembers(
+            remote.members.map(m => ({
+              id: m.id,
+              name: m.name,
+              code: m.code,
+              email: m.email || null,
+              role: m.role || 'member',
+              status: m.status || 'active',
+              createdAt: m.created_at || new Date().toISOString(),
+              updatedAt: m.updated_at || new Date().toISOString(),
+            }))
+          );
+        }
+        if (remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0) {
+          setDaysConfig(remote.daysConfig);
+        }
+        if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
+          setInitialQueue(remote.initialQueue);
+        }
+        if (remote.adminUserIds && Array.isArray(remote.adminUserIds)) {
+          setAdminUserIds(remote.adminUserIds);
+          storage.saveAdminUserIds(remote.adminUserIds);
+        }
+        if (remote.attendanceHistory && Array.isArray(remote.attendanceHistory) && remote.attendanceHistory.length > 0) {
+          setDaysConfig(prev => {
+            let updated = [...prev];
+            remote.attendanceHistory.forEach(rec => {
+              const targetDate = rec.date;
+              const meal = rec.meal || rec.meal_type;
+              if (!targetDate || !meal) return;
+              updated = updated.map(d => {
+                if (d.date !== targetDate) return d;
+                return {
+                  ...d,
+                  [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: rec.is_provided !== undefined ? Boolean(rec.is_provided) : true,
+                  [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: Array.isArray(rec.eaters) ? rec.eaters : (d[meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters'] || []),
+                  ...(meal === 'lunch' && rec.washers_count ? { lunchWashers: rec.washers_count } : {}),
+                };
+              });
+            });
+            return updated;
+          });
+        }
+
+        // Auto-seed if database is empty on first connection
+        if (!remote.members || remote.members.length === 0) {
+          console.info('🌱 Seeding initial members & roster into Supabase...');
+          await supabaseService.upsertMembersFromRoster(storage.getMembers(), storage.getInitialQueue());
+          await supabaseService.saveApplicationRules({
+            daysConfig: storage.getDaysConfig(),
+            initialQueue: storage.getInitialQueue(),
+            adminUserIds: ['m1'],
+            rosterRules: { initialSeed: true },
+          });
+          const refreshed = await supabaseService.fetchInitialData();
+          if (refreshed.success && refreshed.members) {
+            setMembers(refreshed.members);
+            setInitialQueue(refreshed.members.map(m => m.id));
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Initial remote fetch warning:', err);
+    }
+
+    // Explicitly subscribe to real-time channels: attendance_history, members, washer_activity, and application_settings
+    unsubscribeRealtimeRef.current = supabaseService.subscribeToRosterRealtime(
+      (table, payload) => {
+        handleRealtimePayload(table, payload);
+      },
+      activeSession
+    );
+  }, [handleRealtimePayload]);
+
   // Listen to Supabase Auth State changes and retrieve initial active session
   useEffect(() => {
     let isMounted = true;
@@ -81,10 +304,15 @@ export default function App() {
         if (isMounted) {
           setSession(currentSession);
           setAuthLoading(false);
+          // Subscribe immediately as soon as a valid user session is detected or restored from cache
+          syncRealtimeAndData(currentSession);
         }
       } catch (err) {
         console.warn('Session check error:', err);
-        if (isMounted) setAuthLoading(false);
+        if (isMounted) {
+          setAuthLoading(false);
+          syncRealtimeAndData(null);
+        }
       }
     }
 
@@ -92,10 +320,15 @@ export default function App() {
 
     const { data: authSubscription } = supabaseService.onAuthStateChange((event, newSession) => {
       if (!isMounted) return;
+      console.info('🔑 [Supabase Auth Event]:', event, newSession?.user?.email || 'no session');
       setSession(newSession);
       setAuthLoading(false);
-      if (event === 'SIGNED_OUT') {
+
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        syncRealtimeAndData(newSession);
+      } else if (event === 'SIGNED_OUT') {
         setGuestBypass(false);
+        syncRealtimeAndData(null);
       }
     });
 
@@ -104,8 +337,15 @@ export default function App() {
       if (authSubscription?.subscription?.unsubscribe) {
         authSubscription.subscription.unsubscribe();
       }
+      if (unsubscribeRealtimeRef.current) {
+        try {
+          unsubscribeRealtimeRef.current();
+        } catch (e) {
+          // ignore
+        }
+      }
     };
-  }, []);
+  }, [syncRealtimeAndData]);
 
   // Resolve logged-in user profile, email & role
   const userEmail = session?.user?.email || '';
@@ -216,145 +456,7 @@ export default function App() {
     storage.saveActivityLogs(activityLogs);
   }, [activityLogs]);
 
-  // Supabase Initial Remote Data Sync & Realtime Subscription
-  useEffect(() => {
-    let isMounted = true;
 
-    async function initSupabaseData() {
-      try {
-        const remote = await supabaseService.fetchInitialData();
-        if (remote.success && isMounted) {
-          if (remote.members && remote.members.length > 0) {
-            setMembers(
-              remote.members.map(m => ({
-                id: m.id,
-                name: m.name,
-                code: m.code,
-                email: m.email || null,
-                role: m.role || 'member',
-                status: m.status || 'active',
-                createdAt: m.created_at || new Date().toISOString(),
-                updatedAt: m.updated_at || new Date().toISOString(),
-              }))
-            );
-          }
-          if (remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0) {
-            setDaysConfig(remote.daysConfig);
-          }
-          if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
-            setInitialQueue(remote.initialQueue);
-          }
-          if (remote.adminUserIds && Array.isArray(remote.adminUserIds)) {
-            setAdminUserIds(remote.adminUserIds);
-            storage.saveAdminUserIds(remote.adminUserIds);
-          }
-
-          // Auto-seed if database is empty on first connection
-          if (!remote.members || remote.members.length === 0) {
-            console.info('🌱 Seeding initial members & roster into Supabase...');
-            await supabaseService.upsertMembersFromRoster(storage.getMembers(), storage.getInitialQueue());
-            await supabaseService.saveApplicationRules({
-              daysConfig: storage.getDaysConfig(),
-              initialQueue: storage.getInitialQueue(),
-              adminUserIds: ['m1'],
-              rosterRules: { initialSeed: true },
-            });
-            const refreshed = await supabaseService.fetchInitialData();
-            if (refreshed.success && refreshed.members && isMounted) {
-              setMembers(refreshed.members);
-              setInitialQueue(refreshed.members.map(m => m.id));
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Supabase initial fetch failed, using local cache:', err);
-      }
-    }
-
-    initSupabaseData();
-
-    // Subscribe to Realtime postgres changes across tables
-    const unsubscribe = supabaseService.subscribeToRosterRealtime((table, payload) => {
-      if (!isMounted) return;
-
-      if (table === 'attendance_history') {
-        const rec = payload.new;
-        if (!rec || !rec.date || !rec.meal) return;
-        setDaysConfig(prev =>
-          prev.map(d => {
-            if (d.date !== rec.date) return d;
-            return {
-              ...d,
-              [rec.meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: Boolean(rec.is_provided),
-              [rec.meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: rec.eaters || [],
-              ...(rec.meal === 'lunch' && rec.washers_count ? { lunchWashers: rec.washers_count } : {}),
-            };
-          })
-        );
-      } else if (table === 'members') {
-        if (payload.eventType === 'INSERT') {
-          const m = payload.new;
-          setMembers(prev => {
-            if (prev.some(existing => existing.id === m.id)) return prev;
-            return [
-              ...prev,
-              {
-                id: m.id,
-                name: m.full_name || m.name,
-                code: `M${m.rotation_order || prev.length + 1}`,
-                email: m.email || null,
-                role: m.role || 'member',
-                status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
-                createdAt: m.created_at,
-                updatedAt: m.updated_at,
-              },
-            ];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const m = payload.new;
-          setMembers(prev =>
-            prev.map(existing =>
-              existing.id === m.id
-                ? {
-                    ...existing,
-                    name: m.full_name || m.name || existing.name,
-                    email: m.email !== undefined ? m.email : existing.email,
-                    role: m.role || existing.role || 'member',
-                    status:
-                      m.is_active !== undefined
-                        ? m.is_active
-                          ? 'active'
-                          : 'inactive'
-                        : existing.status,
-                    updatedAt: m.updated_at || new Date().toISOString(),
-                  }
-                : existing
-            )
-          );
-        } else if (payload.eventType === 'DELETE') {
-          const m = payload.old;
-          setMembers(prev => prev.filter(existing => existing.id !== m.id));
-        }
-      } else if (table === 'application_settings') {
-        const setting = payload.new;
-        const key = setting?.setting_key || setting?.key;
-        const val = setting?.setting_value || setting?.value;
-        if (key === 'days_config' && Array.isArray(val)) {
-          setDaysConfig(val);
-        } else if (key === 'initial_queue' && Array.isArray(val)) {
-          setInitialQueue(val);
-        } else if (key === 'admin_user_ids' && Array.isArray(val)) {
-          setAdminUserIds(val);
-          storage.saveAdminUserIds(val);
-        }
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      if (typeof unsubscribe === 'function') unsubscribe();
-    };
-  }, []);
 
   // Activity Audit Logger Helper
   const logUserActivity = (actionType, category, title, details, targetDate = selectedDateStr) => {
