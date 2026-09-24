@@ -84,8 +84,20 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Fetch Members ordered by rotation_order
+      // 1. Fetch Members ordered by rotation_order & member_login_status
       let dbMembers = [];
+      let loginStatusList = [];
+      try {
+        const { data: statusRows, error: statusErr } = await supabase
+          .from('member_login_status')
+          .select('*');
+        if (!statusErr && Array.isArray(statusRows)) {
+          loginStatusList = statusRows;
+        }
+      } catch (stEx) {
+        console.warn('⚠️ Notice querying member_login_status view:', stEx.message || stEx);
+      }
+
       const { data: remoteMembers, error: membersError } = await supabase
         .from('members')
         .select('*')
@@ -107,11 +119,11 @@ export const supabaseService = {
       }
 
       const canonicalSeed = [
-        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'admin', code: 'M1', status: 'active', rotation_order: 1 },
-        { id: 'm2', name: 'Marudhu', email: null, role: 'member', code: 'M2', status: 'active', rotation_order: 2 },
-        { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3 },
-        { id: 'm4', name: 'Ponneelan', email: null, role: 'member', code: 'M4', status: 'active', rotation_order: 4 },
-        { id: 'm5', name: 'Suryakumar', email: null, role: 'member', code: 'M5', status: 'active', rotation_order: 5 },
+        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
+        { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
+        { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
+        { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
+        { id: 'm5', name: 'Suryakumar', email: null, role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: false },
       ];
 
       const rawMembers = dbMembers.length > 0
@@ -128,7 +140,30 @@ export const supabaseService = {
           }))
         : canonicalSeed;
 
-      const deduplicatedMembers = this.deduplicateMembers(rawMembers);
+      // Cross-reference with member_login_status view so UI credential indicators are always accurate
+      const enrichedMembers = rawMembers.map(m => {
+        const cleanName = (m.name || '').toLowerCase().trim();
+        const cleanEmail = (m.email || '').toLowerCase().trim();
+        const match = loginStatusList.find(r => 
+          (r.id && r.id === m.id) ||
+          (cleanEmail && r.email && r.email.toLowerCase().trim() === cleanEmail) ||
+          (cleanName && r.full_name && r.full_name.toLowerCase().trim() === cleanName)
+        );
+
+        const email = m.email || match?.email || null;
+        const hasLogin = match?.has_login_set !== undefined
+          ? Boolean(match.has_login_set)
+          : (m.has_login_set !== undefined ? Boolean(m.has_login_set) : Boolean(email && email.includes('@')));
+
+        return {
+          ...m,
+          email,
+          has_login_set: hasLogin,
+          auth_id: match?.id || m.auth_id || null,
+        };
+      });
+
+      const deduplicatedMembers = this.deduplicateMembers(enrichedMembers);
 
       // 2. Fetch Application Settings (Rules, days config, queue)
       const { data: dbSettings, error: settingsError } = await supabase
@@ -173,7 +208,26 @@ export const supabaseService = {
   },
 
   /**
-   * Fetch a fresh, normalized list of members directly from the Supabase members table.
+   * Fetch live credential tracking data from database member_login_status view or auth mapping
+   */
+  async fetchMemberLoginStatus() {
+    if (!isSupabaseConfigured || !supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('member_login_status')
+        .select('*');
+      if (!error && Array.isArray(data)) {
+        return data;
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not fetch member_login_status view:', err);
+    }
+    return [];
+  },
+
+  /**
+   * Fetch a fresh, normalized list of members directly from the Supabase members table
+   * enriched with member_login_status view.
    * Guarantees deduplication and updates rotation_order.
    */
   async fetchMembers() {
@@ -182,24 +236,70 @@ export const supabaseService = {
       return [];
     }
     try {
-      const { data: dbMembers, error } = await supabase
+      // 1. Fetch live credential mappings from member_login_status view
+      let loginStatusList = [];
+      try {
+        const { data: statusRows, error: statusErr } = await supabase
+          .from('member_login_status')
+          .select('*');
+        if (!statusErr && Array.isArray(statusRows)) {
+          loginStatusList = statusRows;
+        }
+      } catch (stEx) {
+        // ignore
+      }
+
+      let dbMembers = [];
+      const { data, error } = await supabase
         .from('members')
         .select('*')
         .order('rotation_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ Supabase members table query in fetchMembers:', error.message);
+        // Fallback: If members table query encounters an issue (e.g. RLS), use member_login_status view
+        if (loginStatusList.length > 0) {
+          dbMembers = loginStatusList.map((r, idx) => ({
+            id: r.id,
+            full_name: r.full_name,
+            email: r.email,
+            role: r.role || 'member',
+            is_active: r.is_active !== undefined ? r.is_active : true,
+            has_login_set: r.has_login_set,
+            rotation_order: idx + 1,
+          }));
+        }
+      } else if (data && data.length > 0) {
+        dbMembers = data;
+      }
 
-      const mapped = (dbMembers || []).map((m, idx) => ({
-        id: m.id,
-        name: m.full_name || m.name,
-        email: m.email || null,
-        role: m.role || 'member',
-        code: m.code || `M${m.rotation_order || idx + 1}`,
-        status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
-        rotation_order: m.rotation_order || idx + 1,
-        createdAt: m.created_at || new Date().toISOString(),
-        updatedAt: m.updated_at || new Date().toISOString(),
-      }));
+      const mapped = (dbMembers || []).map((m, idx) => {
+        const cleanName = (m.full_name || m.name || '').toLowerCase().trim();
+        const cleanEmail = (m.email || '').toLowerCase().trim();
+        const match = loginStatusList.find(r => 
+          (r.id && r.id === m.id) ||
+          (cleanEmail && r.email && r.email.toLowerCase().trim() === cleanEmail) ||
+          (cleanName && r.full_name && r.full_name.toLowerCase().trim() === cleanName)
+        );
+
+        const email = m.email || match?.email || null;
+        const hasLogin = match?.has_login_set !== undefined 
+          ? Boolean(match.has_login_set) 
+          : Boolean(email && email.includes('@'));
+
+        return {
+          id: m.id,
+          name: m.full_name || m.name,
+          email,
+          has_login_set: hasLogin,
+          role: m.role || 'member',
+          code: m.code || `M${m.rotation_order || idx + 1}`,
+          status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
+          rotation_order: m.rotation_order || idx + 1,
+          createdAt: m.created_at || new Date().toISOString(),
+          updatedAt: m.updated_at || new Date().toISOString(),
+        };
+      });
 
       return this.deduplicateMembers(mapped);
     } catch (err) {

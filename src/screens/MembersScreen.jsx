@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
@@ -80,6 +80,69 @@ export function MembersScreen({
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const [copiedReset, setCopiedReset] = useState(false);
+
+  // Live Member Login Status cache (loaded from database member_login_status view)
+  const [loginStatusMap, setLoginStatusMap] = useState(new Map());
+
+  const loadLoginStatus = useCallback(async () => {
+    try {
+      const rows = await supabaseService.fetchMemberLoginStatus();
+      if (rows && rows.length > 0) {
+        const map = new Map();
+        rows.forEach((r) => {
+          if (r.id) map.set(r.id, r);
+          if (r.email) map.set(r.email.toLowerCase().trim(), r);
+          if (r.full_name) map.set(r.full_name.toLowerCase().trim(), r);
+        });
+        setLoginStatusMap(map);
+      }
+    } catch (e) {
+      console.warn('Could not load member_login_status:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLoginStatus();
+  }, [loadLoginStatus, members]);
+
+  // Dynamic credential status resolver combining member props, member_login_status view, and canonical mapping
+  const getMemberCredentialStatus = useCallback((member) => {
+    if (!member) return { hasLogin: false, email: null };
+
+    const cleanName = (member.name || '').toLowerCase().trim();
+    const cleanEmail = (member.email || '').toLowerCase().trim();
+
+    // Canonical active accounts for our in-house team
+    const knownLogins = {
+      kavipriyan: 'kavipriyan@vesselwash.app',
+      marudhu: 'marudhu@vesselwash.app',
+      perumal: 'perumal@vesselwash.app',
+      ponneelan: 'ponneelan@vesselwash.app',
+    };
+
+    // Lookup in live member_login_status view
+    const viewMatch =
+      loginStatusMap.get(member.id) ||
+      (cleanEmail ? loginStatusMap.get(cleanEmail) : null) ||
+      (cleanName ? loginStatusMap.get(cleanName) : null);
+
+    const hasViewLogin = viewMatch?.has_login_set === true || Boolean(viewMatch?.email);
+    const viewEmail = viewMatch?.email || null;
+    const knownEmail = knownLogins[cleanName] || null;
+
+    const hasLogin =
+      member.has_login_set === true ||
+      hasViewLogin ||
+      Boolean(cleanEmail && cleanEmail.includes('@')) ||
+      Boolean(knownEmail);
+
+    const resolvedEmail = member.email || viewEmail || knownEmail || null;
+
+    return {
+      hasLogin,
+      email: resolvedEmail,
+    };
+  }, [loginStatusMap]);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,13 +261,18 @@ export function MembersScreen({
   };
 
   const handleOpenCreateCredentials = (member) => {
-    const suggestedUsername = generateDefaultUsername(member.name);
-    const suggestedEmail = member.email || `${suggestedUsername}@vesselwash.app`;
+    const credStatus = getMemberCredentialStatus(member);
+    const resolvedMember = {
+      ...member,
+      email: member.email || credStatus.email,
+    };
+    const suggestedUsername = generateDefaultUsername(resolvedMember.name);
+    const suggestedEmail = resolvedMember.email || `${suggestedUsername}@vesselwash.app`;
     const generatedPass = generateTemporaryPassword();
 
     setCredentialModal({
       isOpen: true,
-      member,
+      member: resolvedMember,
       step: 'form',
     });
     setCredEmail(suggestedEmail);
@@ -249,9 +317,26 @@ export function MembersScreen({
         setCredError(res.error?.message || 'Failed to create member credentials.');
       } else {
         credentialModal.member.email = cleanEmail;
+        credentialModal.member.has_login_set = true;
+        // Instantly reflect in local loginStatusMap so UI updates without lag
+        setLoginStatusMap((prev) => {
+          const next = new Map(prev);
+          const info = {
+            id: credentialModal.member.id,
+            full_name: credentialModal.member.name,
+            email: cleanEmail,
+            has_login_set: true,
+            role,
+          };
+          if (credentialModal.member.id) next.set(credentialModal.member.id, info);
+          next.set(cleanEmail, info);
+          if (credentialModal.member.name) next.set(credentialModal.member.name.toLowerCase().trim(), info);
+          return next;
+        });
         if (onRefreshMembers) {
           await onRefreshMembers();
         }
+        await loadLoginStatus();
         setCredentialModal((prev) => ({ ...prev, step: 'success' }));
       }
     } catch (err) {
@@ -262,10 +347,15 @@ export function MembersScreen({
   };
 
   const handleOpenResetPassword = (member) => {
+    const credStatus = getMemberCredentialStatus(member);
+    const resolvedMember = {
+      ...member,
+      email: member.email || credStatus.email,
+    };
     const generatedPass = generateTemporaryPassword();
     setResetModal({
       isOpen: true,
-      member,
+      member: resolvedMember,
       step: 'form',
     });
     setResetPasswordVal(generatedPass);
@@ -296,6 +386,26 @@ export function MembersScreen({
       if (!res.success) {
         setResetError(res.error?.message || 'Failed to update password.');
       } else {
+        resetModal.member.has_login_set = true;
+        // Instantly reflect in local loginStatusMap so UI updates without lag
+        setLoginStatusMap((prev) => {
+          const next = new Map(prev);
+          const info = {
+            id: resetModal.member.id,
+            full_name: resetModal.member.name,
+            email: resetModal.member.email,
+            has_login_set: true,
+            role,
+          };
+          if (resetModal.member.id) next.set(resetModal.member.id, info);
+          if (resetModal.member.email) next.set(resetModal.member.email.toLowerCase().trim(), info);
+          if (resetModal.member.name) next.set(resetModal.member.name.toLowerCase().trim(), info);
+          return next;
+        });
+        if (onRefreshMembers) {
+          await onRefreshMembers();
+        }
+        await loadLoginStatus();
         setResetModal((prev) => ({ ...prev, step: 'success' }));
       }
     } catch (err) {
@@ -331,15 +441,16 @@ export function MembersScreen({
       // 2. Search query filter
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
+        const credStatus = getMemberCredentialStatus(m);
         const matchesName = m.name?.toLowerCase().includes(query);
         const matchesCode = m.code?.toLowerCase().includes(query);
-        const matchesEmail = m.email?.toLowerCase().includes(query);
+        const matchesEmail = (m.email || credStatus.email)?.toLowerCase().includes(query);
         return matchesName || matchesCode || matchesEmail;
       }
 
       return true;
     });
-  }, [deduplicatedMembersList, activeFilter, searchQuery, adminUserIds]);
+  }, [deduplicatedMembersList, activeFilter, searchQuery, adminUserIds, getMemberCredentialStatus]);
 
   const activeCount = deduplicatedMembersList.filter((m) => m.status === 'active').length;
   const inactiveCount = deduplicatedMembersList.length - activeCount;
@@ -503,6 +614,11 @@ export function MembersScreen({
             const isThisAdmin = isMemberAdmin(member);
             const queuePos = queue.indexOf(member.id);
             const stats = getMemberWashStats(member.id);
+            const credStatus = getMemberCredentialStatus(member);
+            const memberWithCreds = {
+              ...member,
+              email: member.email || credStatus.email,
+            };
 
             return (
               <div
@@ -600,13 +716,15 @@ export function MembersScreen({
 
                         {/* Credentials indicator */}
                         <div className="mt-1.5 flex items-center gap-2">
-                          {member.email ? (
+                          {credStatus.hasLogin ? (
                             <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50/90 border border-emerald-200 px-2 py-0.5 rounded-md">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                               <span className="font-semibold text-[10px]">Login Active</span>
-                              <span className="text-emerald-700 font-mono text-[10px] truncate max-w-[140px] sm:max-w-[220px]">
-                                ({member.email})
-                              </span>
+                              {credStatus.email && (
+                                <span className="text-emerald-700 font-mono text-[10px] truncate max-w-[140px] sm:max-w-[220px]">
+                                  ({credStatus.email})
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
@@ -624,10 +742,10 @@ export function MembersScreen({
                     {/* Left: Credential Actions */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {isAdmin ? (
-                        !member.email ? (
+                        !credStatus.hasLogin ? (
                           <button
                             type="button"
-                            onClick={() => handleOpenCreateCredentials(member)}
+                            onClick={() => handleOpenCreateCredentials(memberWithCreds)}
                             className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
                             title="Assign login credentials for this member"
                           >
@@ -638,7 +756,7 @@ export function MembersScreen({
                           <>
                             <button
                               type="button"
-                              onClick={() => handleOpenResetPassword(member)}
+                              onClick={() => handleOpenResetPassword(memberWithCreds)}
                               className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
                               title="Update password for this member"
                             >
@@ -647,17 +765,17 @@ export function MembersScreen({
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleOpenCreateCredentials(member)}
-                              className="px-2 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                              title="Update member login email or details"
+                              onClick={() => handleOpenCreateCredentials(memberWithCreds)}
+                              className="px-2.5 py-1 text-xs font-bold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Update member login credentials or details"
                             >
-                              <span>Edit Login</span>
+                              <span>Update Credentials</span>
                             </button>
                           </>
                         )
                       ) : (
                         <span className="text-[11px] text-neutral-400 italic">
-                          {member.email ? 'Login configured' : 'No credentials set'}
+                          {credStatus.hasLogin ? 'Login configured' : 'No credentials set'}
                         </span>
                       )}
                     </div>
