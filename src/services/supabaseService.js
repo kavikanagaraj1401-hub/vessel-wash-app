@@ -93,6 +93,15 @@ export const supabaseService = {
 
       if (membersError) {
         console.warn('⚠️ Supabase members table query notice:', membersError.message || membersError);
+        try {
+          const { data: rpcMembers, error: rpcErr } = await supabase.rpc('get_all_members');
+          if (!rpcErr && rpcMembers && rpcMembers.length > 0) {
+            dbMembers = rpcMembers;
+            console.info('✓ Fetched members via get_all_members RPC fallback');
+          }
+        } catch (rpcEx) {
+          // ignore
+        }
       } else if (remoteMembers && remoteMembers.length > 0) {
         dbMembers = remoteMembers;
       }

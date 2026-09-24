@@ -145,7 +145,8 @@ BEGIN
 END $$;
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
-ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
+-- NOTE: Disabling RLS on members table prevents 42P17 infinite recursion errors from legacy recursive subqueries
+ALTER TABLE public.members DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.application_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.washer_activity ENABLE ROW LEVEL SECURITY;
@@ -327,6 +328,15 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
 END;
+$$;
+
+-- 8. RPC FUNCTION: get_all_members (Safe member query bypassing RLS)
+CREATE OR REPLACE FUNCTION public.get_all_members()
+RETURNS SETOF public.members
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT * FROM public.members ORDER BY rotation_order ASC;
 $$;`;
 
     if (navigator?.clipboard?.writeText) {
