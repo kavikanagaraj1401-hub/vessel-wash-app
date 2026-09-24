@@ -87,21 +87,29 @@ function assert(condition, testName) {
   assert(updatedQueue[0] === 'm1', 'Test 6: Kavipriyan remains in 1st position (alphabets not considered for new member)');
 }
 
-// Test 7: Full month simulation produces expected days and slots
+// Test 7: Full month simulation produces expected days and slots matching Excel Timetable
 {
   const days = generateInitialMonthConfig();
   const { computedDays, finalQueue } = computeMonthRotation(INITIAL_MEMBERS, days, ['m1', 'm2', 'm3', 'm4', 'm5']);
   assert(computedDays.length === 30, 'Test 7: 30 days simulated for September 2026');
   assert(finalQueue.length === 5, 'Test 7: All 5 members present in final queue');
+  const day20 = computedDays.find(d => d.date === '2026-09-20');
   const day21 = computedDays.find(d => d.date === '2026-09-21');
-  assert(JSON.stringify(day21.queueBefore) === JSON.stringify(['m1', 'm2', 'm3', 'm4', 'm5']), 'Test 7: Rotation on 21-Sep starts in alphabetical format');
+  const day22 = computedDays.find(d => d.date === '2026-09-22');
+  const day24 = computedDays.find(d => d.date === '2026-09-24');
+  
+  assert(day20.slots.find(s => s.meal === 'lunch').assignedMemberId === 'm5', 'Test 7: Suryakumar washed on 20-Sep lunch');
+  assert(day21.slots.find(s => s.meal === 'dinner').assignedMemberId === 'm3', 'Test 7: Perumal washed on 21-Sep dinner');
+  assert(day22.slots.find(s => s.meal === 'dinner').assignedMemberId === 'm1', 'Test 7: Kavipriyan washed on 22-Sep dinner');
+  assert(day24.queueBefore[0] === 'm2', 'Test 7: Marudhu (m2) is at the front of queue on 24-Sep (Today)');
+  assert(day24.slots.find(s => s.meal === 'dinner').assignedMemberId === 'm2', 'Test 7: Marudhu (m2) is assigned as washer for today if dinner available');
 }
 
 // Test 8: Historical attendance integrity
 {
-  assert(INITIAL_ATTENDANCE_LOGS.length >= 7, 'Test 8: Historical attendance logs preserved');
+  assert(INITIAL_ATTENDANCE_LOGS.length >= 10, 'Test 8: Historical attendance logs preserved');
   const kavipriyanLogs = INITIAL_ATTENDANCE_LOGS.filter(l => l.memberId === 'm1' && l.status === 'present');
-  assert(kavipriyanLogs.length >= 2, 'Test 8: Kavipriyan historical wash count matches Excel');
+  assert(kavipriyanLogs.length >= 3, 'Test 8: Kavipriyan historical wash count matches Excel (3 washes)');
 }
 
 console.log(`\nRESULTS: ${passedTests} of ${totalTests} tests passed.`);

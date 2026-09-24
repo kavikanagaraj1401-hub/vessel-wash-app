@@ -102,6 +102,23 @@ export function generateInitialMonthConfig() {
       // 16-Sep: Dinner (1 washer), Kavipriyan, Ponneelan, Suryakumar
       dinnerProvided = true;
       dinnerEaters = ['m1', 'm4', 'm5'];
+    } else if (day === 20) {
+      // 20-Sep: Lunch (1 washer), Kavipriyan, Marudhu, Suryakumar
+      lunchProvided = true;
+      lunchWashers = 1;
+      lunchEaters = ['m1', 'm2', 'm5'];
+    } else if (day === 21) {
+      // 21-Sep: Dinner (1 washer), all 5 ate
+      dinnerProvided = true;
+      dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    } else if (day === 22) {
+      // 22-Sep: Dinner (1 washer), all 5 ate
+      dinnerProvided = true;
+      dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    } else if (day === 24) {
+      // 24-Sep: Dinner (1 washer), all 5 ate (Today)
+      dinnerProvided = true;
+      dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
     }
 
     days.push({
@@ -215,6 +232,42 @@ export const INITIAL_ATTENDANCE_LOGS = [
     memberName: 'Ponneelan',
     status: 'present',
     markedAt: '2026-09-16T20:30:00.000Z',
+    remarks: 'Dinner Washer',
+  },
+  {
+    id: 'att-2026-09-20-lunch-1',
+    slotId: '2026-09-20-lunch-1',
+    date: '2026-09-20',
+    meal: 'lunch',
+    slotIndex: 1,
+    memberId: 'm5',
+    memberName: 'Suryakumar',
+    status: 'present',
+    markedAt: '2026-09-20T13:40:00.000Z',
+    remarks: 'Lunch Washer',
+  },
+  {
+    id: 'att-2026-09-21-dinner-1',
+    slotId: '2026-09-21-dinner-1',
+    date: '2026-09-21',
+    meal: 'dinner',
+    slotIndex: 1,
+    memberId: 'm3',
+    memberName: 'Perumal',
+    status: 'present',
+    markedAt: '2026-09-21T20:30:00.000Z',
+    remarks: 'Dinner Washer',
+  },
+  {
+    id: 'att-2026-09-22-dinner-1',
+    slotId: '2026-09-22-dinner-1',
+    date: '2026-09-22',
+    meal: 'dinner',
+    slotIndex: 1,
+    memberId: 'm1',
+    memberName: 'Kavipriyan',
+    status: 'present',
+    markedAt: '2026-09-22T20:40:00.000Z',
     remarks: 'Dinner Washer',
   },
 ];

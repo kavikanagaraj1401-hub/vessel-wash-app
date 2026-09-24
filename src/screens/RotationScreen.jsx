@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Sun, Moon, Calendar, ArrowUpRight, Search } from 'lucide-react';
+import { getTodayDateStr } from '../logic/dateUtils';
 
 export function RotationScreen({
   computedDays = [],
-  todayDateStr = '2026-09-21',
+  todayDateStr = getTodayDateStr(),
   attendanceLogs = [],
   onSelectDay,
 }) {

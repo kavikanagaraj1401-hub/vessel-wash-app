@@ -73,7 +73,7 @@ export function assignLunchPair(queue, eligibleEaters) {
  * @param {string[]} initialQueueOrder - Initial order of member IDs
  * @returns {Array<any>} Computed days with assigned washers and queue state before/after
  */
-export function computeMonthRotation(members, daysConfig, initialQueueOrder, anchorDate = '2026-09-21') {
+export function computeMonthRotation(members, daysConfig, initialQueueOrder, anchorDate = null) {
   const activeMembers = members.filter(m => m.status === 'active');
   const activeIds = new Set(activeMembers.map(m => m.id));
 
@@ -92,9 +92,8 @@ export function computeMonthRotation(members, daysConfig, initialQueueOrder, anc
   const computedDays = [];
 
   for (const day of daysConfig) {
-    // When reaching anchor date (2026-09-21), start with the requested rotation order:
-    // 1. Kavipriyan 2. Marudhu 3. Perumal 4. Ponneelan 5. Suryakumar
-    if (day.date === anchorDate) {
+    // Optional anchor date reset (if explicitly specified)
+    if (anchorDate && day.date === anchorDate) {
       currentQueue = initialQueueOrder.filter(id => activeIds.has(id));
       activeMembers.forEach(m => {
         if (!currentQueue.includes(m.id)) {

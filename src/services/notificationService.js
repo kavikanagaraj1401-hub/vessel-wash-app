@@ -3,6 +3,8 @@
  * Handles 11:00 AM and 11:30 AM IST attendance reminders.
  */
 
+import { getTodayDateStr } from '../logic/dateUtils';
+
 // Helper to get current IST time
 export function getISTDate() {
   const now = new Date();
@@ -119,7 +121,7 @@ export const notificationService = {
   /**
    * Automatically check IST time and fire scheduled push reminders
    */
-  checkScheduledReminders(todayDateStr = '2026-09-18') {
+  checkScheduledReminders(todayDateStr = getTodayDateStr()) {
     const ist = getISTDate();
     const hours = ist.getHours();
     const minutes = ist.getMinutes();
