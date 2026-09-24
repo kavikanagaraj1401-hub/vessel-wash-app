@@ -528,8 +528,8 @@ export const supabaseService = {
       try {
         const queryPromise = supabase
           .from('members')
-          .select('email, full_name')
-          .or(`full_name.ilike.%${clean}%,email.ilike.${clean}@%`)
+          .select('email, full_name, name')
+          .or(`full_name.ilike.%${clean}%,name.ilike.%${clean}%,email.ilike.${clean}@%`)
           .not('email', 'is', null)
           .limit(1);
 
@@ -575,12 +575,13 @@ export const supabaseService = {
    * Admin-Only: Create or register credentials for a member in Supabase Auth and link to members table.
    * Uses RPC call create_member_credential if available, or isolated client auth.signUp fallback.
    */
-  async createMemberCredentials({ memberId, name, email, password, role = 'member' }) {
+  async createMemberCredentials({ memberId, name, username, email, password, role = 'member' }) {
     if (!isSupabaseConfigured || !supabase) {
       return { success: false, error: new Error('Supabase is not configured.') };
     }
 
     const cleanEmail = (email || '').trim().toLowerCase();
+    const displayName = (username || name || '').trim();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       return { success: false, error: new Error('A valid email address is required.') };
     }
@@ -599,7 +600,7 @@ export const supabaseService = {
         });
 
         if (!rpcErr && (rpcRes?.success || rpcRes === true)) {
-          console.info(`✓ Successfully created credentials for ${name} via RPC create_member_credential`);
+          console.info(`✓ Successfully created credentials for ${displayName} via RPC create_member_credential`);
           return { success: true, email: cleanEmail, method: 'rpc' };
         }
       } catch (rpcEx) {
@@ -614,7 +615,8 @@ export const supabaseService = {
           password: password,
           options: {
             data: {
-              full_name: name,
+              full_name: displayName,
+              username: displayName,
               role: role,
             },
           },
@@ -625,30 +627,70 @@ export const supabaseService = {
         }
       }
 
-      // 3. Update members table with email & role
+      // 3. Update members table with email, name, full_name & role
       const isUuid =
         typeof memberId === 'string' &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId);
 
-      let query = supabase.from('members').update({
+      const updatePayload = {
         email: cleanEmail,
         role: role,
         updated_at: new Date().toISOString(),
-      });
+      };
+      if (displayName) {
+        updatePayload.name = displayName;
+        updatePayload.full_name = displayName;
+      }
+
+      let query = supabase.from('members').update(updatePayload);
 
       if (isUuid) {
         query = query.eq('id', memberId);
       } else {
-        query = query.eq('full_name', name);
+        query = query.or(`id.eq.${memberId},full_name.eq.${name},name.eq.${name}`);
       }
 
       const { error: updateErr } = await query;
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        console.warn('⚠️ Warning updating members table in createMemberCredentials:', updateErr.message);
+      }
 
-      console.info(`✓ Successfully created and linked credentials for ${name} (${cleanEmail})`);
+      console.info(`✓ Successfully created and linked credentials for ${displayName} (${cleanEmail})`);
       return { success: true, email: cleanEmail, method: 'isolated_auth' };
     } catch (err) {
       console.error('Failed to create member credentials:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  /**
+   * Logged-in user: Update their own password using Supabase Auth updateUser.
+   * Allows users to change their password and immediately use it on next login.
+   */
+  async updateUserPassword(newPassword) {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: new Error('Supabase is not configured.') };
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: new Error('Password must be at least 6 characters long.') };
+    }
+
+    try {
+      const updatePromise = supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Password update timed out after 10 seconds. Please check your network connection.')), 10000)
+      );
+
+      const { data, error } = await Promise.race([updatePromise, timeoutPromise]);
+      if (error) throw error;
+
+      console.info('✓ User password updated successfully via supabase.auth.updateUser');
+      return { success: true, user: data.user };
+    } catch (err) {
+      console.error('Failed to update password:', err);
       return { success: false, error: err };
     }
   },

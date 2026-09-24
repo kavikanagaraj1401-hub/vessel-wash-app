@@ -189,8 +189,13 @@ export function MembersScreen({
 
   const handleSaveCredentials = async () => {
     const cleanEmail = credEmail.trim().toLowerCase();
+    const cleanUsername = credUsername.trim();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       setCredError('Please enter a valid email address.');
+      return;
+    }
+    if (!cleanUsername) {
+      setCredError('Username (display name) is required.');
       return;
     }
     if (!credPassword || credPassword.length < 6) {
@@ -205,7 +210,8 @@ export function MembersScreen({
       const role = isMemberAdmin(credentialModal.member) ? 'admin' : 'member';
       const res = await supabaseService.createMemberCredentials({
         memberId: credentialModal.member.id,
-        name: credentialModal.member.name,
+        name: cleanUsername || credentialModal.member.name,
+        username: cleanUsername,
         email: cleanEmail,
         password: credPassword,
         role,
@@ -214,8 +220,11 @@ export function MembersScreen({
       if (!res.success) {
         setCredError(res.error?.message || 'Failed to create member credentials.');
       } else {
-        // Link email locally
+        // Link email and name locally
         credentialModal.member.email = cleanEmail;
+        if (cleanUsername) {
+          credentialModal.member.name = cleanUsername;
+        }
         setCredentialModal(prev => ({ ...prev, step: 'success' }));
       }
     } catch (err) {
@@ -420,27 +429,38 @@ export function MembersScreen({
                 {/* Member action buttons: enabled only for Admin */}
                 {isAdmin ? (
                   <div className="flex items-center gap-1 flex-wrap justify-end">
-                    {/* Create Credentials / Reset Password Button */}
+                    {/* Create Credentials / Assign Login Button */}
                     {!member.email ? (
                       <button
                         type="button"
                         onClick={() => handleOpenCreateCredentials(member)}
                         className="px-2.5 py-1 rounded-full text-[10px] font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors flex items-center gap-1 active-scale shadow-2xs cursor-pointer"
-                        title="Create Login Credentials for this member"
+                        title="Assign Login / Create Credentials for this member"
                       >
                         <KeyRound className="w-3 h-3 text-violet-600" />
-                        <span>Create Credentials</span>
+                        <span>Assign Login</span>
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenResetPassword(member)}
-                        className="px-2 py-1 rounded-full text-[10px] font-bold text-neutral-700 bg-[#ECEEF0] hover:bg-neutral-200 border border-neutral-border transition-colors flex items-center gap-1 active-scale cursor-pointer"
-                        title="Reset Password for this member (Admin)"
-                      >
-                        <KeyRound className="w-3 h-3 text-neutral-600" />
-                        <span>Reset Pass</span>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCreateCredentials(member)}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-neutral-600 bg-neutral-100 hover:bg-neutral-200 border border-neutral-border transition-colors flex items-center gap-1 active-scale cursor-pointer"
+                          title="Reassign or update login credentials for this member"
+                        >
+                          <KeyRound className="w-2.5 h-2.5 text-neutral-500" />
+                          <span>Edit Login</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenResetPassword(member)}
+                          className="px-2.5 py-1 rounded-full text-[10px] font-bold text-neutral-700 bg-[#ECEEF0] hover:bg-neutral-200 border border-neutral-border transition-colors flex items-center gap-1 active-scale cursor-pointer"
+                          title="Reset Password for this member (Admin)"
+                        >
+                          <KeyRound className="w-3 h-3 text-neutral-600" />
+                          <span>Reset Pass</span>
+                        </button>
+                      </div>
                     )}
 
                     {/* Admin Delegation Button (Only on non-primary members) */}

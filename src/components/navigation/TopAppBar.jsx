@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Menu, Clock, ShieldCheck, Lock, Users, KeyRound, AlertCircle, LogOut, User } from 'lucide-react';
+import {
+  Calendar,
+  Menu,
+  Clock,
+  ShieldCheck,
+  Lock,
+  Users,
+  KeyRound,
+  AlertCircle,
+  LogOut,
+  User,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+} from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { supabaseService } from '../../services/supabaseService';
 
 export function TopAppBar({
   title = 'Vessel Washing',
@@ -21,6 +36,15 @@ export function TopAppBar({
   const [pinPromptOpen, setPinPromptOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+
+  // Change Password state for logged-in user
+  const [changePassOpen, setChangePassOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
 
   const isPrimaryAdmin = (m) => m?.id === 'm1' || (m?.name && m.name.toLowerCase().includes('kavipriyan'));
   const isMemberAdmin = (m) => isPrimaryAdmin(m) || (adminUserIds && adminUserIds.includes(m?.id));
@@ -399,6 +423,162 @@ export function TopAppBar({
                 ? 'You have full administrative privileges: modifying meal availability, washer requirements, Excel sync, and managing roster members.'
                 : 'You have member privileges: marking meal availability and selecting attending eaters in the roster.'}
             </p>
+          </div>
+
+          {/* Account Security / Change Password Card */}
+          <div className="p-3.5 rounded-2xl bg-white border border-neutral-border space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs text-[#1E1E1E] flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-violet-600" />
+                Account Security
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setChangePassOpen(!changePassOpen);
+                  setPassError('');
+                  setPassSuccess('');
+                }}
+                className="text-[11px] font-bold text-[#7D64F6] hover:underline cursor-pointer"
+              >
+                {changePassOpen ? 'Close' : 'Change Password'}
+              </button>
+            </div>
+
+            {changePassOpen ? (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setPassError('');
+                  setPassSuccess('');
+
+                  if (!newPassword || newPassword.length < 6) {
+                    setPassError('New password must be at least 6 characters long.');
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    setPassError('Passwords do not match. Please verify and re-enter.');
+                    return;
+                  }
+
+                  setPassLoading(true);
+                  try {
+                    const res = await supabaseService.updateUserPassword(newPassword);
+                    if (!res.success) {
+                      setPassError(res.error?.message || 'Failed to update password.');
+                    } else {
+                      setPassSuccess('✓ Password updated successfully! You can now use your new password on next login.');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                    }
+                  } catch (err) {
+                    setPassError(err.message || 'An unexpected error occurred while updating password.');
+                  } finally {
+                    setPassLoading(false);
+                  }
+                }}
+                className="space-y-2.5 pt-2 border-t border-neutral-border/60 animate-fadeIn"
+              >
+                {passError && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                    <span>{passError}</span>
+                  </div>
+                )}
+
+                {passSuccess && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>{passSuccess}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-neutral-textSecondary block">
+                    New Password (min 6 characters)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      disabled={passLoading}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (passError) setPassError('');
+                      }}
+                      placeholder="Enter new password"
+                      className="w-full h-9 px-3 pr-9 text-xs bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:bg-white focus:border-[#7D64F6] focus:ring-1 focus:ring-[#7D64F6]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2.5 top-2 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-neutral-textSecondary block">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    disabled={passLoading}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (passError) setPassError('');
+                    }}
+                    placeholder="Re-enter new password"
+                    className="w-full h-9 px-3 text-xs bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:bg-white focus:border-[#7D64F6] focus:ring-1 focus:ring-[#7D64F6]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={passLoading}
+                    className="flex-1 h-9 rounded-xl bg-[#1E1E1E] hover:bg-black text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 active-scale cursor-pointer disabled:opacity-60"
+                  >
+                    {passLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>Save New Password</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={passLoading}
+                    onClick={() => {
+                      setChangePassOpen(false);
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setPassError('');
+                    }}
+                    className="h-9 px-3 rounded-xl border border-neutral-border text-neutral-600 hover:bg-neutral-100 text-xs font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="text-[11px] text-neutral-textTertiary">
+                Update your login password anytime using Supabase Auth.
+              </p>
+            )}
           </div>
 
           {/* Action Buttons */}
