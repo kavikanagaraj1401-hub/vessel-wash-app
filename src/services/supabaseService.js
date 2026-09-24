@@ -74,10 +74,81 @@ export const supabaseService = {
         adminUserIds: settingsMap.get('admin_user_ids') || null,
         attendanceHistory: dbAttendance || [],
         washerActivity: dbWasherActivity || [],
+        attendanceLogs: settingsMap.get('attendance_logs') || null,
       };
     } catch (err) {
       console.warn('⚠️ Supabase fetchInitialData error:', err.message || err);
       return { success: false, error: err };
+    }
+  },
+
+  /**
+   * Fetch a fresh, normalized list of members directly from the Supabase members table.
+   * Guarantees deduplication and updates rotation_order.
+   */
+  async fetchMembers() {
+    if (!isSupabaseConfigured || !supabase) {
+      console.warn('⚠️ Supabase credentials missing when calling fetchMembers.');
+      return [];
+    }
+    try {
+      const { data: dbMembers, error } = await supabase
+        .from('members')
+        .select('*')
+        .order('rotation_order', { ascending: true });
+
+      if (error) throw error;
+
+      return (dbMembers || []).map((m, idx) => ({
+        id: m.id,
+        name: m.full_name || m.name,
+        email: m.email || null,
+        role: m.role || 'member',
+        code: m.code || `M${m.rotation_order || idx + 1}`,
+        status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
+        rotation_order: m.rotation_order || idx + 1,
+        createdAt: m.created_at || new Date().toISOString(),
+        updatedAt: m.updated_at || new Date().toISOString(),
+      }));
+    } catch (err) {
+      console.warn('⚠️ Failed to fetch fresh members from Supabase:', err.message || err);
+      return [];
+    }
+  },
+
+  /**
+   * Persist user-marked attendance records (attendanceLogs) to application_settings for real-time multi-device sync.
+   */
+  async saveAttendanceLogs(logs = []) {
+    if (!isSupabaseConfigured || !supabase || !Array.isArray(logs)) return false;
+    try {
+      const { data: existing } = await supabase
+        .from('application_settings')
+        .select('id')
+        .eq('setting_key', 'attendance_logs')
+        .maybeSingle();
+
+      if (existing?.id) {
+        await supabase
+          .from('application_settings')
+          .update({
+            setting_value: logs,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+      } else {
+        await supabase.from('application_settings').insert([
+          {
+            setting_key: 'attendance_logs',
+            setting_value: logs,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+      }
+      return true;
+    } catch (err) {
+      console.warn('⚠️ Could not sync attendanceLogs to application_settings:', err.message || err);
+      return false;
     }
   },
 
@@ -263,6 +334,36 @@ export const supabaseService = {
       return true;
     } catch (err) {
       console.error('Failed to update member in Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Delete a member directly from the Supabase members table.
+   * Handles both UUID and fallback matching by full_name.
+   */
+  async deleteMemberFromDatabase(memberId, memberName = '') {
+    if (!isSupabaseConfigured || !supabase || (!memberId && !memberName)) return false;
+    try {
+      const isUuid =
+        typeof memberId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId);
+
+      let query = supabase.from('members').delete();
+      if (isUuid) {
+        query = query.eq('id', memberId);
+      } else if (memberName) {
+        query = query.eq('full_name', memberName);
+      } else {
+        query = query.eq('id', memberId);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+      console.info(`✓ Successfully deleted member ${memberId || memberName} from Supabase.`);
+      return true;
+    } catch (err) {
+      console.error('Failed to delete member from Supabase:', err);
       return false;
     }
   },
@@ -577,7 +678,11 @@ export const supabaseService = {
    */
   async createMemberCredentials({ memberId, name, username, email, password, role = 'member' }) {
     if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: new Error('Supabase is not configured.') };
+      console.warn('⚠️ Supabase client is not initialized. Cannot create credentials.');
+      return {
+        success: false,
+        error: new Error('Database service is temporarily unavailable. Please verify network or configuration.'),
+      };
     }
 
     const cleanEmail = (email || '').trim().toLowerCase();
@@ -669,7 +774,11 @@ export const supabaseService = {
    */
   async updateUserPassword(newPassword) {
     if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: new Error('Supabase is not configured.') };
+      console.warn('⚠️ Supabase client is not initialized. Cannot update password.');
+      return {
+        success: false,
+        error: new Error('Database service is temporarily unavailable. Please verify network or configuration.'),
+      };
     }
     if (!newPassword || newPassword.length < 6) {
       return { success: false, error: new Error('Password must be at least 6 characters long.') };
@@ -701,7 +810,11 @@ export const supabaseService = {
    */
   async adminResetMemberPassword({ memberId, email, newPassword }) {
     if (!isSupabaseConfigured || !supabase || !email) {
-      return { success: false, error: new Error('Supabase is not configured or email is missing.') };
+      console.warn('⚠️ Supabase client is not initialized or email is missing.');
+      return {
+        success: false,
+        error: new Error('Database service is temporarily unavailable or email is missing.'),
+      };
     }
 
     const cleanEmail = email.trim().toLowerCase();
@@ -741,7 +854,11 @@ export const supabaseService = {
    */
   async signInWithEmail(email, password) {
     if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: new Error('Supabase is not configured.') };
+      console.warn('⚠️ Supabase client is not initialized. Cannot sign in.');
+      return {
+        success: false,
+        error: new Error('Database service is temporarily unavailable. Please verify network or configuration.'),
+      };
     }
     try {
       const cleanEmail = email.trim().toLowerCase();
@@ -767,7 +884,11 @@ export const supabaseService = {
    */
   async signUpWithEmail(email, password) {
     if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: new Error('Supabase is not configured.') };
+      console.warn('⚠️ Supabase client is not initialized. Cannot sign up.');
+      return {
+        success: false,
+        error: new Error('Database service is temporarily unavailable. Please verify network or configuration.'),
+      };
     }
     try {
       const trimmedEmail = email.trim();

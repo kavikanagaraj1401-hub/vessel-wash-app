@@ -49,6 +49,8 @@ export function SettingsModal({
   onAddMember,
   onEditMember,
   onToggleMemberStatus,
+  onRemoveMember,
+  onRefreshMembers,
   onImportExcel,
   onResetData,
 }) {
@@ -611,6 +613,8 @@ $$;`;
               onAddMember={onAddMember}
               onEditMember={onEditMember}
               onToggleMemberStatus={onToggleMemberStatus}
+              onRemoveMember={onRemoveMember}
+              onRefreshMembers={onRefreshMembers}
             />
           </div>
         )}

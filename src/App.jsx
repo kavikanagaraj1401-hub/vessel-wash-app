@@ -143,39 +143,53 @@ export default function App() {
       if (payload.eventType === 'INSERT') {
         const m = payload.new;
         setMembers(prev => {
-          if (prev.some(existing => existing.id === m.id)) return prev;
-          return [
-            ...prev,
-            {
-              id: m.id,
-              name: m.full_name || m.name,
-              code: m.code || `M${m.rotation_order || prev.length + 1}`,
-              email: m.email || null,
-              role: m.role || 'member',
-              status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : (m.status || 'active'),
-              createdAt: m.created_at || new Date().toISOString(),
-              updatedAt: m.updated_at || new Date().toISOString(),
-            },
-          ];
+          const matchIndex = prev.findIndex(
+            existing =>
+              existing.id === m.id ||
+              (existing.name &&
+                m.full_name &&
+                existing.name.trim().toLowerCase() === m.full_name.trim().toLowerCase())
+          );
+          const mappedMember = {
+            id: m.id,
+            name: m.full_name || m.name,
+            code: m.code || (matchIndex !== -1 ? prev[matchIndex].code : `M${m.rotation_order || prev.length + 1}`),
+            email: m.email || (matchIndex !== -1 ? prev[matchIndex].email : null),
+            role: m.role || (matchIndex !== -1 ? prev[matchIndex].role : 'member'),
+            status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : (m.status || 'active'),
+            createdAt: m.created_at || new Date().toISOString(),
+            updatedAt: m.updated_at || new Date().toISOString(),
+          };
+          if (matchIndex !== -1) {
+            const updated = [...prev];
+            updated[matchIndex] = { ...updated[matchIndex], ...mappedMember };
+            return updated;
+          }
+          return [...prev, mappedMember];
         });
       } else if (payload.eventType === 'UPDATE') {
         const m = payload.new;
         setMembers(prev =>
-          prev.map(existing =>
-            existing.id === m.id
-              ? {
-                  ...existing,
-                  name: m.full_name || m.name || existing.name,
-                  email: m.email !== undefined ? m.email : existing.email,
-                  role: m.role || existing.role || 'member',
-                  status:
-                    m.is_active !== undefined
-                      ? (m.is_active ? 'active' : 'inactive')
-                      : (m.status || existing.status),
-                  updatedAt: m.updated_at || new Date().toISOString(),
-                }
-              : existing
-          )
+          prev.map(existing => {
+            const isMatch =
+              existing.id === m.id ||
+              (existing.name &&
+                m.full_name &&
+                existing.name.trim().toLowerCase() === m.full_name.trim().toLowerCase());
+            if (!isMatch) return existing;
+            return {
+              ...existing,
+              id: m.id || existing.id,
+              name: m.full_name || m.name || existing.name,
+              email: m.email !== undefined ? m.email : existing.email,
+              role: m.role || existing.role || 'member',
+              status:
+                m.is_active !== undefined
+                  ? (m.is_active ? 'active' : 'inactive')
+                  : (m.status || existing.status),
+              updatedAt: m.updated_at || new Date().toISOString(),
+            };
+          })
         );
       } else if (payload.eventType === 'DELETE') {
         const m = payload.old;
@@ -192,6 +206,9 @@ export default function App() {
       } else if (key === 'admin_user_ids' && Array.isArray(val)) {
         setAdminUserIds(val);
         storage.saveAdminUserIds(val);
+      } else if (key === 'attendance_logs' && Array.isArray(val)) {
+        setAttendanceLogs(val);
+        storage.saveAttendanceLogs(val);
       }
     }
   }, []);
@@ -264,6 +281,11 @@ export default function App() {
           });
         }
 
+        if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs) && remote.attendanceLogs.length > 0) {
+          setAttendanceLogs(remote.attendanceLogs);
+          storage.saveAttendanceLogs(remote.attendanceLogs);
+        }
+
         // Auto-seed if database is empty on first connection
         if (!remote.members || remote.members.length === 0) {
           console.info('🌱 Seeding initial members & roster into Supabase...');
@@ -294,24 +316,40 @@ export default function App() {
     );
   }, [handleRealtimePayload]);
 
-  // Listen to Supabase Auth State changes and retrieve initial active session
+  // Fresh fetch of members from Supabase to prevent duplicates and keep list synchronized
+  const handleRefreshMembers = useCallback(async () => {
+    try {
+      const freshMembers = await supabaseService.fetchMembers();
+      if (freshMembers && freshMembers.length > 0) {
+        setMembers(freshMembers);
+      }
+    } catch (err) {
+      console.warn('Failed to refresh members list:', err);
+    }
+  }, []);
+
+  // Universal Realtime Sync on App Mount & Auth State Listeners
   useEffect(() => {
     let isMounted = true;
 
+    // 1. Immediately initialize data sync and bind Universal Realtime channels on mount for ALL users
+    syncRealtimeAndData(null);
+
+    // 2. Concurrently check existing auth session and update token if present
     async function checkAuthSession() {
       try {
         const currentSession = await supabaseService.getSession();
         if (isMounted) {
           setSession(currentSession);
           setAuthLoading(false);
-          // Subscribe immediately as soon as a valid user session is detected or restored from cache
-          syncRealtimeAndData(currentSession);
+          if (currentSession?.access_token) {
+            syncRealtimeAndData(currentSession);
+          }
         }
       } catch (err) {
         console.warn('Session check error:', err);
         if (isMounted) {
           setAuthLoading(false);
-          syncRealtimeAndData(null);
         }
       }
     }
@@ -632,7 +670,9 @@ export default function App() {
 
     // Remove existing log for this slot if any and add new
     const updated = attendanceLogs.filter(l => l.slotId !== slot.id);
-    setAttendanceLogs([newRecord, ...updated]);
+    const nextLogs = [newRecord, ...updated];
+    setAttendanceLogs(nextLogs);
+    supabaseService.saveAttendanceLogs(nextLogs);
 
     logUserActivity(
       status === 'present' ? 'MARK_WASHED' : 'MARK_NOT_WASHED',
@@ -647,7 +687,9 @@ export default function App() {
 
   const handleResetAttendanceForSlot = (slotId) => {
     const existingLog = attendanceLogs.find(l => l.slotId === slotId);
-    setAttendanceLogs(attendanceLogs.filter(l => l.slotId !== slotId));
+    const nextLogs = attendanceLogs.filter(l => l.slotId !== slotId);
+    setAttendanceLogs(nextLogs);
+    supabaseService.saveAttendanceLogs(nextLogs);
 
     if (existingLog) {
       logUserActivity(
@@ -833,6 +875,52 @@ export default function App() {
       'member',
       `${newStatus === 'active' ? 'Reactivated' : 'Deactivated'} Member: ${target?.name}`,
       `${target?.name} (${target?.code}) status changed to ${newStatus} by Admin ${currentMember.name}.`,
+      selectedDateStr
+    );
+  };
+
+  const handleRemoveMember = async (id) => {
+    if (!isAdmin) return;
+    const target = members.find(m => m.id === id);
+    if (!target) return;
+
+    // Safety guard: Kavipriyan / primary admin cannot be removed
+    const isPrimary = id === 'm1' || (target.name && target.name.trim().toLowerCase().includes('kavipriyan'));
+    if (isPrimary) {
+      alert('The primary administrator cannot be removed.');
+      return;
+    }
+
+    const updatedMembers = members.filter(m => m.id !== id);
+    const updatedQueue = initialQueue.filter(qId => qId !== id);
+    const updatedAdmins = adminUserIds.filter(aId => aId !== id);
+
+    const updatedDays = daysConfig.map(day => ({
+      ...day,
+      lunchEaters: (day.lunchEaters || []).filter(eId => eId !== id),
+      dinnerEaters: (day.dinnerEaters || []).filter(eId => eId !== id),
+    }));
+
+    setMembers(updatedMembers);
+    setInitialQueue(updatedQueue);
+    setAdminUserIds(updatedAdmins);
+    setDaysConfig(updatedDays);
+
+    // Persist updated rules to Supabase
+    await supabaseService.saveApplicationRules({
+      daysConfig: updatedDays,
+      initialQueue: updatedQueue,
+      adminUserIds: updatedAdmins,
+    });
+
+    // Delete member record from Supabase members table
+    await supabaseService.deleteMemberFromDatabase(id, target.name);
+
+    logUserActivity(
+      'MEMBER_REMOVED',
+      'member',
+      `Removed Member: ${target.name}`,
+      `Member ${target.name} (${target.code}) was removed from the roster and rotation queue by Admin ${currentMember.name}.`,
       selectedDateStr
     );
   };
@@ -1030,6 +1118,8 @@ export default function App() {
           onAddMember={handleAddMember}
           onEditMember={handleEditMember}
           onToggleMemberStatus={handleToggleMemberStatus}
+          onRemoveMember={handleRemoveMember}
+          onRefreshMembers={handleRefreshMembers}
           onImportExcel={handleImportExcel}
           onResetData={handleResetData}
         />

@@ -1,32 +1,46 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Retrieve Supabase credentials with fallback across localStorage, Vite, and Next.js conventions
+/**
+ * Retrieve Supabase configuration cleanly across process.env (Next.js / Node)
+ * and import.meta.env (Vite) conventions, with local persistence fallback.
+ */
 export const getSupabaseConfig = () => {
   let url = '';
   let key = '';
 
-  if (typeof window !== 'undefined' && window.localStorage) {
+  // 1. Process environment variables (Next.js & Vite define replacement)
+  if (typeof process !== 'undefined' && process.env) {
+    url =
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      '';
+    key =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      '';
+  }
+
+  // 2. Vite import.meta.env fallback
+  if (!url && typeof import.meta !== 'undefined' && import.meta.env) {
+    url =
+      import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+      import.meta.env.VITE_SUPABASE_URL ||
+      '';
+  }
+  if (!key && typeof import.meta !== 'undefined' && import.meta.env) {
+    key =
+      import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      '';
+  }
+
+  // 3. User custom config saved in localStorage
+  if ((!url || !key) && typeof window !== 'undefined' && window.localStorage) {
     try {
-      url = window.localStorage.getItem('vw_supabase_url') || '';
-      key = window.localStorage.getItem('vw_supabase_anon_key') || '';
+      if (!url) url = window.localStorage.getItem('vw_supabase_url') || '';
+      if (!key) key = window.localStorage.getItem('vw_supabase_anon_key') || '';
     } catch {
       // ignore
-    }
-  }
-
-  if (!url) {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      url = import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || '';
-    } else if (typeof process !== 'undefined' && process.env) {
-      url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-    }
-  }
-
-  if (!key) {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      key = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-    } else if (typeof process !== 'undefined' && process.env) {
-      key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
     }
   }
 
@@ -62,8 +76,17 @@ export const isSupabaseConfigured = Boolean(
   !supabaseAnonKey.includes('your-anon-key')
 );
 
+/**
+ * Global Supabase Client Singleton
+ * Configured with session persistence and automatic token refresh for the active user.
+ */
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
       realtime: {
         params: {
           eventsPerSecond: 10,
@@ -73,25 +96,30 @@ export const supabase = isSupabaseConfigured
   : null;
 
 /**
- * Creates an isolated Supabase client without session persistence,
- * allowing Admin to register new member accounts without interrupting the current Admin session.
+ * Creates an isolated Supabase client without session persistence.
+ * Used when an Admin creates credentials for another member so that the Admin's
+ * active session is NEVER hijacked, logged out, or overwritten.
  */
 export const getIsolatedAuthClient = () => {
-  if (!isSupabaseConfigured) return null;
+  if (!isSupabaseConfigured) {
+    console.warn('⚠️ Cannot initialize isolated auth client: Supabase credentials missing.');
+    return null;
+  }
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+      storageKey: `vw_isolated_auth_${Date.now()}`,
     },
   });
 };
 
 if (!isSupabaseConfigured) {
-  console.info(
-    'ℹ️ Supabase credentials not set or using placeholders. App running in robust local storage mode.'
+  console.warn(
+    '⚠️ Supabase credentials missing or unconfigured (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY). App operating in local storage mode without breaking user flows.'
   );
 } else {
-  console.info('🔌 Supabase client successfully initialized:', supabaseUrl);
+  console.info('🔌 Global Supabase client singleton successfully initialized:', supabaseUrl);
 }
 

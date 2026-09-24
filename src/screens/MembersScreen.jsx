@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
-import { TextInput, Toggle } from '../components/common/Inputs';
+import { TextInput } from '../components/common/Inputs';
 import {
   UserPlus,
   Edit2,
@@ -22,6 +22,12 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Trash2,
+  Search,
+  X,
+  Shield,
+  Utensils,
+  Hash,
 } from 'lucide-react';
 import {
   generateTemporaryPassword,
@@ -39,11 +45,15 @@ export function MembersScreen({
   onAddMember,
   onEditMember,
   onToggleMemberStatus,
+  onRemoveMember,
+  onRefreshMembers,
 }) {
+  // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModal, setEditModal] = useState({ isOpen: false, member: null });
   const [deactivateModal, setDeactivateModal] = useState({ isOpen: false, member: null });
   const [adminModal, setAdminModal] = useState({ isOpen: false, member: null, action: 'grant' });
+  const [removeModal, setRemoveModal] = useState({ isOpen: false, member: null });
 
   // Credential Creation Modal state
   const [credentialModal, setCredentialModal] = useState({
@@ -71,25 +81,31 @@ export function MembersScreen({
   const [resetError, setResetError] = useState('');
   const [copiedReset, setCopiedReset] = useState(false);
 
-  // Helpers to identify primary admin and delegated admins
-  const isKavipriyan = (m) => m?.id === 'm1' || (m?.name && m.name.trim().toLowerCase().includes('kavipriyan'));
-  const isMemberAdmin = (m) => isKavipriyan(m) || m?.role === 'admin' || (adminUserIds && adminUserIds.includes(m?.id));
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'active' | 'inactive' | 'admins'
 
-  // Form states
+  // Helpers to identify primary admin and delegated admins
+  const isKavipriyan = (m) =>
+    m?.id === 'm1' || (m?.name && m.name.trim().toLowerCase().includes('kavipriyan'));
+  const isMemberAdmin = (m) =>
+    isKavipriyan(m) || m?.role === 'admin' || (adminUserIds && adminUserIds.includes(m?.id));
+
+  // Add Member Form state
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
   const [formError, setFormError] = useState('');
 
-  // Edit form state
+  // Edit Member Form state
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('member');
   const [editError, setEditError] = useState('');
 
   // Calculate wash counts for each member
   const getMemberWashStats = (memberId) => {
-    const logs = attendanceLogs.filter(l => l.memberId === memberId && l.status === 'present');
-    const lunchCount = logs.filter(l => l.meal === 'lunch').length;
-    const dinnerCount = logs.filter(l => l.meal === 'dinner').length;
+    const logs = attendanceLogs.filter((l) => l.memberId === memberId && l.status === 'present');
+    const lunchCount = logs.filter((l) => l.meal === 'lunch').length;
+    const dinnerCount = logs.filter((l) => l.meal === 'dinner').length;
     return {
       lunch: lunchCount,
       dinner: dinnerCount,
@@ -111,8 +127,7 @@ export function MembersScreen({
       setFormError('Member name is required.');
       return;
     }
-    // Check duplicates
-    if (members.some(m => m.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (members.some((m) => m.name.toLowerCase() === trimmed.toLowerCase())) {
       setFormError('A member with this name already exists.');
       return;
     }
@@ -141,7 +156,7 @@ export function MembersScreen({
     }
     if (
       members.some(
-        m => m.id !== editModal.member.id && m.name.toLowerCase() === trimmed.toLowerCase()
+        (m) => m.id !== editModal.member.id && m.name.toLowerCase() === trimmed.toLowerCase()
       )
     ) {
       setEditError('Another member with this name already exists.');
@@ -167,6 +182,19 @@ export function MembersScreen({
     if (!deactivateModal.member) return;
     onToggleMemberStatus(deactivateModal.member.id);
     setDeactivateModal({ isOpen: false, member: null });
+  };
+
+  const handleOpenRemove = (member) => {
+    if (isKavipriyan(member)) return;
+    setRemoveModal({ isOpen: true, member });
+  };
+
+  const handleConfirmRemove = () => {
+    if (!removeModal.member) return;
+    if (onRemoveMember) {
+      onRemoveMember(removeModal.member.id);
+    }
+    setRemoveModal({ isOpen: false, member: null });
   };
 
   const handleOpenCreateCredentials = (member) => {
@@ -220,12 +248,14 @@ export function MembersScreen({
       if (!res.success) {
         setCredError(res.error?.message || 'Failed to create member credentials.');
       } else {
-        // Link email and name locally
         credentialModal.member.email = cleanEmail;
         if (cleanUsername) {
           credentialModal.member.name = cleanUsername;
         }
-        setCredentialModal(prev => ({ ...prev, step: 'success' }));
+        if (onRefreshMembers) {
+          await onRefreshMembers();
+        }
+        setCredentialModal((prev) => ({ ...prev, step: 'success' }));
       }
     } catch (err) {
       setCredError(err.message || 'An unexpected error occurred.');
@@ -266,7 +296,7 @@ export function MembersScreen({
       if (!res.success) {
         setResetError(res.error?.message || 'Failed to reset password.');
       } else {
-        setResetModal(prev => ({ ...prev, step: 'success' }));
+        setResetModal((prev) => ({ ...prev, step: 'success' }));
       }
     } catch (err) {
       setResetError(err.message || 'An unexpected error occurred.');
@@ -285,281 +315,464 @@ export function MembersScreen({
     }
   };
 
-  const activeCount = members.filter(m => m.status === 'active').length;
+  // Filtered members calculation
+  const filteredMembers = useMemo(() => {
+    return members.filter((m) => {
+      // 1. Tab filter
+      if (activeFilter === 'active' && m.status !== 'active') return false;
+      if (activeFilter === 'inactive' && m.status === 'active') return false;
+      if (activeFilter === 'admins' && !isMemberAdmin(m)) return false;
+
+      // 2. Search query filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.trim().toLowerCase();
+        const matchesName = m.name?.toLowerCase().includes(query);
+        const matchesCode = m.code?.toLowerCase().includes(query);
+        const matchesEmail = m.email?.toLowerCase().includes(query);
+        return matchesName || matchesCode || matchesEmail;
+      }
+
+      return true;
+    });
+  }, [members, activeFilter, searchQuery, adminUserIds]);
+
+  const activeCount = members.filter((m) => m.status === 'active').length;
+  const inactiveCount = members.length - activeCount;
+  const adminCount = members.filter((m) => isMemberAdmin(m)).length;
 
   return (
-    <div className="space-y-4 pb-24 px-4 pt-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-            Roster & Management
-          </span>
-          <h2 className="text-xl font-bold tracking-tight text-neutral-textPrimary">
-            Members ({members.length})
-          </h2>
-          <p className="text-xs text-neutral-textSecondary mt-0.5 flex items-center gap-2 flex-wrap">
-            <span>{activeCount} active in queue</span>
-            <span>&middot;</span>
-            <span className={adminUserIds.length >= 2 ? 'text-violet-700 font-bold' : 'text-neutral-600 font-medium'}>
-              Admins: {adminUserIds.length}/2 ({adminUserIds.length >= 2 ? 'Max 2 reached' : '1 slot available'})
-            </span>
-          </p>
+    <div className="space-y-4 pb-24 px-4 pt-2 max-w-4xl mx-auto">
+      {/* 1. Header & Summary Section */}
+      <div className="bg-gradient-to-br from-white to-neutral-50/80 p-4 sm:p-5 rounded-2xl border border-neutral-200/80 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-neutral-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200/60">
+                Roster & Roles
+              </span>
+              <span className="text-xs text-neutral-400">&bull;</span>
+              <span className="text-xs font-semibold text-neutral-500">
+                {members.length} {members.length === 1 ? 'Member' : 'Members'}
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 mt-1">
+              Member Directory
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isAdmin ? (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={UserPlus}
+                onClick={handleOpenAdd}
+                className="shadow-sm font-semibold"
+              >
+                Add Member
+              </Button>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
+                title="Only Administrator can add or edit members"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Admin Restricted</span>
+              </div>
+            )}
+          </div>
         </div>
-        {isAdmin ? (
-          <Button
-            variant="primary"
-            size="sm"
-            icon={UserPlus}
-            onClick={handleOpenAdd}
+
+        {/* Stats & Capacity Badges */}
+        <div className="flex items-center gap-3 pt-3 flex-wrap text-xs text-neutral-600">
+          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-200/80 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>{activeCount} Active in rotation</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-neutral-100 text-neutral-700 px-2.5 py-1 rounded-lg border border-neutral-200/80 font-medium">
+            <span>{inactiveCount} Inactive</span>
+          </div>
+
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-medium ${
+              adminUserIds.length >= 2
+                ? 'bg-violet-50 text-violet-800 border-violet-200'
+                : 'bg-neutral-50 text-neutral-600 border-neutral-200'
+            }`}
           >
-            Add Member
-          </Button>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-[#ECEEF0] text-neutral-textTertiary border border-neutral-border cursor-not-allowed opacity-75"
-            title="Only Admin (Kavipriyan) can add members"
-          >
-            <Lock className="w-3 h-3 text-neutral-textTertiary" />
-            <span>Add Member</span>
-          </button>
-        )}
+            <Crown className="w-3.5 h-3.5 text-violet-600" />
+            <span>
+              Admins: {adminUserIds.length}/2{' '}
+              {adminUserIds.length >= 2 ? '(Limit reached)' : '(1 slot open)'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Non-Admin Notice Banner */}
       {!isAdmin && (
-        <div className="p-3 rounded-[22px] bg-[#FFD89D]/20 border border-[#FFD89D]/50 text-[#1E1E1E] text-xs flex items-center justify-between gap-2 shadow-2xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <Lock className="w-4 h-4 text-amber-700 flex-shrink-0" />
-            <span className="text-[11px] font-medium leading-tight">
-              <strong>Admin Access Only:</strong> Member editing, additions, and admin delegation are restricted to <strong>Kavipriyan (Admin)</strong> and designated Admins.
-            </span>
-          </div>
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5 shadow-2xs">
+          <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+          <span className="leading-snug">
+            <strong>View-Only Mode:</strong> Member additions, credential assignments, role delegation, and removal are restricted to <strong>Kavipriyan (Primary Admin)</strong>.
+          </span>
         </div>
       )}
 
-      {/* Member List */}
-      <div className="space-y-2.5">
-        {members.map((member) => {
-          const isActive = member.status === 'active';
-          const isPrimary = isKavipriyan(member);
-          const isThisAdmin = isMemberAdmin(member);
-          const queuePos = queue.indexOf(member.id);
-          const stats = getMemberWashStats(member.id);
-
-          return (
-            <Card
-              key={member.id}
-              padding="default"
-              className={!isActive ? 'opacity-70 bg-[#ECEEF0]/40' : ''}
+      {/* 2. Search & Tab Filter Controls */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        {/* Search Bar */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-3 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name, code (e.g. M1), or email..."
+            className="w-full h-10 pl-9 pr-9 text-xs bg-white rounded-xl border border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15 shadow-2xs transition-all"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-2.5 text-neutral-400 hover:text-neutral-700 p-0.5 rounded-full hover:bg-neutral-100 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
-                      isPrimary || isThisAdmin
-                        ? 'bg-[#A28EF9] text-[#1E1E1E] ring-2 ring-[#A28EF9]/40'
-                        : isActive
-                        ? 'bg-[#A4F5A6]/35 text-[#1E1E1E] border border-[#A4F5A6]/40'
-                        : 'bg-[#ECEEF0] text-neutral-textTertiary border border-neutral-border'
-                    }`}
-                  >
-                    {isPrimary || isThisAdmin ? '👑' : member.code}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-bold text-neutral-textPrimary">
-                        {member.name}
-                      </h4>
-                      {isPrimary ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/25 text-[#2C1885] border border-[#A28EF9]/50 inline-flex items-center gap-0.5">
-                          👑 Primary Admin
-                        </span>
-                      ) : isThisAdmin ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/40 inline-flex items-center gap-0.5">
-                          👑 Admin
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200 inline-flex items-center gap-0.5">
-                          Member
-                        </span>
-                      )}
-                      <Badge variant={isActive ? 'completed' : 'inactive'} size="sm" showIcon={false}>
-                        {isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-                    {/* Queue position or status */}
-                    <div className="flex items-center gap-2 text-xs text-neutral-textSecondary mt-0.5">
-                      {isActive && queuePos !== -1 ? (
-                        <span className="text-[#2C1885] font-semibold">
-                          Queue position: #{queuePos + 1}
-                          {queuePos === 0 ? ' (Next Up)' : ''}
-                        </span>
-                      ) : (
-                        <span className="text-neutral-textTertiary">Excluded from queue</span>
-                      )}
-                      <span>&middot;</span>
-                      <span className="text-neutral-textTertiary">
-                        {stats.total} washes ({stats.lunch}L / {stats.dinner}D)
-                      </span>
-                    </div>
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1 bg-neutral-100/80 p-1 rounded-xl border border-neutral-200/60 overflow-x-auto">
+          {[
+            { id: 'all', label: `All (${members.length})` },
+            { id: 'active', label: `Active (${activeCount})` },
+            { id: 'inactive', label: `Inactive (${inactiveCount})` },
+            { id: 'admins', label: `Admins (${adminCount})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveFilter(tab.id)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                activeFilter === tab.id
+                  ? 'bg-white text-neutral-900 shadow-2xs'
+                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                    {/* Member Credentials Status */}
-                    {member.email ? (
-                      <div className="flex items-center gap-1.5 text-[11px] text-neutral-textSecondary mt-1">
-                        <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md font-semibold text-[10px] border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Credentials Active
-                        </span>
-                        <span className="truncate max-w-[130px] sm:max-w-[200px] text-neutral-500 font-mono text-[10px]">
-                          {member.email}
-                        </span>
+      {/* 3. Member Cards List */}
+      {filteredMembers.length === 0 ? (
+        <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50">
+          <Users className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-neutral-700">No members match your criteria</p>
+          <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
+            {searchQuery
+              ? `No results found for "${searchQuery}". Try a different name or clear the filter.`
+              : 'There are no members listed under this filter.'}
+          </p>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setActiveFilter('all');
+              }}
+              className="mt-3 text-xs font-bold text-violet-700 hover:underline"
+            >
+              Clear Search & Filter
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredMembers.map((member) => {
+            const isActive = member.status === 'active';
+            const isPrimary = isKavipriyan(member);
+            const isThisAdmin = isMemberAdmin(member);
+            const queuePos = queue.indexOf(member.id);
+            const stats = getMemberWashStats(member.id);
+
+            return (
+              <div
+                key={member.id}
+                className={`group rounded-2xl border transition-all ${
+                  isActive
+                    ? 'bg-white border-neutral-200/90 hover:border-neutral-300 shadow-xs'
+                    : 'bg-neutral-50/80 border-neutral-200/60 opacity-80'
+                }`}
+              >
+                <div className="p-3.5 sm:p-4">
+                  {/* Top: Member Info & Identity */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {/* Avatar */}
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
+                          isPrimary || isThisAdmin
+                            ? 'bg-violet-100 text-violet-900 border border-violet-300 ring-2 ring-violet-400/20'
+                            : isActive
+                            ? 'bg-emerald-50 text-emerald-900 border border-emerald-300/80'
+                            : 'bg-neutral-200/70 text-neutral-500 border border-neutral-300'
+                        }`}
+                      >
+                        {isPrimary || isThisAdmin ? (
+                          <Crown className="w-5 h-5 text-violet-700" />
+                        ) : (
+                          member.code
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded-md font-semibold mt-1 border border-amber-200 w-fit">
-                        <span>⚠️ No Credentials Created</span>
+
+                      {/* Name & Primary Attributes */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-bold text-neutral-900 truncate">
+                            {member.name}
+                          </h3>
+
+                          {/* Role Badge */}
+                          {isPrimary ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-900 border border-violet-300 inline-flex items-center gap-1 shadow-2xs">
+                              <Crown className="w-3 h-3 text-violet-700" />
+                              Primary Admin
+                            </span>
+                          ) : isThisAdmin ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200 inline-flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-violet-600" />
+                              Admin
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
+                              Member
+                            </span>
+                          )}
+
+                          {/* Active / Inactive Status Badge */}
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                              isActive
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isActive ? 'bg-emerald-500' : 'bg-neutral-400'
+                              }`}
+                            ></span>
+                            {isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+
+                        {/* Sub-line: Queue Position & Wash Stats */}
+                        <div className="flex items-center gap-2 text-xs text-neutral-500 mt-1 flex-wrap">
+                          {isActive && queuePos !== -1 ? (
+                            <span className="font-semibold text-violet-800 inline-flex items-center gap-1 bg-violet-50/80 px-1.5 py-0.5 rounded border border-violet-200/50">
+                              <Hash className="w-3 h-3" />
+                              Queue #{queuePos + 1}
+                              {queuePos === 0 ? ' (Next Up)' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-neutral-400">Not in rotation</span>
+                          )}
+
+                          <span className="text-neutral-300">&bull;</span>
+
+                          <span className="inline-flex items-center gap-1 text-neutral-600 font-medium">
+                            <Utensils className="w-3 h-3 text-neutral-400" />
+                            {stats.total} washes
+                            <span className="text-neutral-400 text-[11px]">
+                              ({stats.lunch} lunch &bull; {stats.dinner} dinner)
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Credentials indicator */}
+                        <div className="mt-1.5 flex items-center gap-2">
+                          {member.email ? (
+                            <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50/90 border border-emerald-200 px-2 py-0.5 rounded-md">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="font-semibold text-[10px]">Login Active</span>
+                              <span className="text-emerald-700 font-mono text-[10px] truncate max-w-[140px] sm:max-w-[220px]">
+                                ({member.email})
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              <span>No Login Set</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom: Action Toolbar (Separated with clean top border) */}
+                  <div className="mt-3 pt-2.5 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    {/* Left: Credential Actions */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {isAdmin ? (
+                        !member.email ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCreateCredentials(member)}
+                            className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <KeyRound className="w-3.5 h-3.5 text-violet-600" />
+                            <span>Assign Login</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenResetPassword(member)}
+                              className="px-2.5 py-1 text-xs font-bold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Reset temporary password"
+                            >
+                              <KeyRound className="w-3.5 h-3.5 text-neutral-600" />
+                              <span>Reset Password</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCreateCredentials(member)}
+                              className="px-2 py-1 text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
+                              title="Update member email / username"
+                            >
+                              Edit Login
+                            </button>
+                          </>
+                        )
+                      ) : (
+                        <span className="text-[11px] text-neutral-400 italic">
+                          {member.email ? 'Login configured' : 'No credentials set'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Right: Admin Action Buttons Toolbar */}
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 justify-end">
+                        {/* Admin Role Toggle */}
+                        {isPrimary ? (
+                          <span
+                            className="p-1.5 text-neutral-300 cursor-not-allowed opacity-50"
+                            title="Primary Admin (Permanent)"
+                          >
+                            <Crown className="w-4 h-4 text-violet-600" />
+                          </span>
+                        ) : isThisAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAdminModal({
+                                isOpen: true,
+                                member,
+                                action: 'revoke',
+                              })
+                            }
+                            className="px-2 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Remove Co-Admin privileges"
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Remove Admin</span>
+                          </button>
+                        ) : adminUserIds.length >= 2 ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="p-1.5 text-neutral-300 cursor-not-allowed rounded-lg"
+                            title="Max 2 Admins reached. Remove Co-Admin to designate another."
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAdminModal({
+                                isOpen: true,
+                                member,
+                                action: 'grant',
+                              })
+                            }
+                            className="p-1.5 text-neutral-500 hover:text-violet-700 hover:bg-violet-50 rounded-lg transition-colors cursor-pointer"
+                            title="Make Co-Admin (1 slot available)"
+                          >
+                            <Shield className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        <div className="w-[1px] h-4 bg-neutral-200 mx-1"></div>
+
+                        {/* Edit Name Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(member)}
+                          className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
+                          title="Edit member name and details"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        {/* Deactivate / Reactivate Button */}
+                        <button
+                          type="button"
+                          onClick={() => setDeactivateModal({ isOpen: true, member })}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            isActive
+                              ? 'text-neutral-500 hover:text-amber-700 hover:bg-amber-50'
+                              : 'text-emerald-700 hover:bg-emerald-50'
+                          }`}
+                          title={isActive ? 'Deactivate from queue' : 'Reactivate into queue'}
+                        >
+                          {isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                        </button>
+
+                        {/* Remove Member Button (Disabled for Primary Admin) */}
+                        {!isPrimary ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRemove(member)}
+                            className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Remove member permanently"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <span
+                            className="p-1.5 text-neutral-200 cursor-not-allowed"
+                            title="Primary Admin cannot be removed"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-
-                {/* Member action buttons: enabled only for Admin */}
-                {isAdmin ? (
-                  <div className="flex items-center gap-1 flex-wrap justify-end">
-                    {/* Create Credentials / Assign Login Button */}
-                    {!member.email ? (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCreateCredentials(member)}
-                        className="px-2.5 py-1 rounded-full text-[10px] font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors flex items-center gap-1 active-scale shadow-2xs cursor-pointer"
-                        title="Assign Login / Create Credentials for this member"
-                      >
-                        <KeyRound className="w-3 h-3 text-violet-600" />
-                        <span>Assign Login</span>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCreateCredentials(member)}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-neutral-600 bg-neutral-100 hover:bg-neutral-200 border border-neutral-border transition-colors flex items-center gap-1 active-scale cursor-pointer"
-                          title="Reassign or update login credentials for this member"
-                        >
-                          <KeyRound className="w-2.5 h-2.5 text-neutral-500" />
-                          <span>Edit Login</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenResetPassword(member)}
-                          className="px-2.5 py-1 rounded-full text-[10px] font-bold text-neutral-700 bg-[#ECEEF0] hover:bg-neutral-200 border border-neutral-border transition-colors flex items-center gap-1 active-scale cursor-pointer"
-                          title="Reset Password for this member (Admin)"
-                        >
-                          <KeyRound className="w-3 h-3 text-neutral-600" />
-                          <span>Reset Pass</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Admin Delegation Button (Only on non-primary members) */}
-                    {isPrimary ? (
-                      <span
-                        className="p-1.5 text-neutral-textTertiary cursor-not-allowed opacity-50 flex items-center"
-                        title="Primary Admin (Permanent)"
-                      >
-                        <Crown className="w-4 h-4 text-[#7D64F6]" />
-                      </span>
-                    ) : isThisAdmin ? (
-                      /* Co-Admin row: Explicit 'Remove from Admin' option */
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setAdminModal({
-                            isOpen: true,
-                            member,
-                            action: 'revoke',
-                          })
-                        }
-                        className="px-2.5 py-1 rounded-full text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center gap-1 active-scale shadow-2xs"
-                        title="Remove from Admin"
-                      >
-                        <ShieldAlert className="w-3 h-3 text-rose-600" />
-                        <span>Remove from Admin</span>
-                      </button>
-                    ) : adminUserIds.length >= 2 ? (
-                      /* Max 2 Admins reached -> disabled */
-                      <button
-                        type="button"
-                        disabled
-                        className="p-2 rounded-full text-neutral-300 cursor-not-allowed opacity-50"
-                        title="Maximum 2 Admins reached. Remove Co-Admin to designate another member."
-                      >
-                        <ShieldCheck className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      /* 1 slot available -> Make Admin */
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setAdminModal({
-                            isOpen: true,
-                            member,
-                            action: 'grant',
-                          })
-                        }
-                        className="p-2 rounded-full text-neutral-textTertiary hover:text-[#7D64F6] hover:bg-neutral-100 transition-colors active-scale"
-                        title="Make this member an Admin (1 slot available)"
-                      >
-                        <ShieldCheck className="w-4 h-4" />
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(member)}
-                      className="p-2 rounded-full text-neutral-textSecondary hover:text-neutral-textPrimary hover:bg-[#ECEEF0] transition-colors"
-                      title="Edit name (Admin)"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDeactivateModal({ isOpen: true, member })}
-                      className={`p-2 rounded-full transition-colors ${
-                        isActive
-                          ? 'text-neutral-textSecondary hover:text-status-error hover:bg-status-errorBg/40'
-                          : 'text-status-success hover:bg-status-successBg/40'
-                      }`}
-                      title={isActive ? 'Deactivate member' : 'Reactivate member'}
-                    >
-                      {isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <span
-                      className="p-1 text-neutral-textTertiary cursor-not-allowed opacity-50"
-                      title="Only Admin can modify members"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
-                )}
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* ADD MEMBER MODAL */}
+      {/* ========================================================================= */}
+      {/* MODALS                                                                    */}
+      {/* ========================================================================= */}
+
+      {/* 1. ADD MEMBER MODAL */}
       <Modal
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         title="Add New Member"
-        subtitle="New members enter the queue following the 'never-washed first' rotation rule."
+        subtitle="New members enter rotation following the 'never-washed first' scheduling rule."
         footer={
           <>
             <Button variant="secondary" size="sm" onClick={() => setAddModalOpen(false)}>
@@ -571,7 +784,7 @@ export function MembersScreen({
           </>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <TextInput
             label="Member Full Name"
             placeholder="e.g. Arun Kumar"
@@ -583,32 +796,36 @@ export function MembersScreen({
           />
           <TextInput
             label="Member Code"
-            placeholder="e.g. M6"
+            placeholder="e.g. M16"
             value={newCode}
             onChange={(e) => setNewCode(e.target.value)}
-            helperText="Short tag for cards and queue preview"
+            helperText="Short identification tag for badges and queue tables"
           />
         </div>
       </Modal>
 
-      {/* EDIT MEMBER MODAL */}
+      {/* 2. EDIT MEMBER MODAL */}
       <Modal
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, member: null })}
-        title="Edit Member Name"
-        subtitle="Renaming will update across all past and future assignments safely."
+        title="Edit Member"
+        subtitle="Name changes propagate across past attendance records and future rotations."
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setEditModal({ isOpen: false, member: null })}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setEditModal({ isOpen: false, member: null })}
+            >
               Cancel
             </Button>
             <Button variant="primary" size="sm" onClick={handleSaveEdit}>
-              Update Name
+              Update Details
             </Button>
           </>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <TextInput
             label="Member Full Name"
             value={editName}
@@ -618,20 +835,17 @@ export function MembersScreen({
             autoFocus
           />
 
-          {/* Role Selection for Non-Primary Members */}
           {editModal.member && !isKavipriyan(editModal.member) ? (
             <div className="space-y-1.5 pt-1">
-              <label className="text-xs font-bold text-[#1E1E1E] block">
-                Account Role
-              </label>
-              <div className="flex p-1 bg-[#ECEEF0] rounded-xl border border-neutral-border/60">
+              <label className="text-xs font-bold text-neutral-800 block">Account Role</label>
+              <div className="flex p-1 bg-neutral-100 rounded-xl border border-neutral-200">
                 <button
                   type="button"
                   onClick={() => setEditRole('member')}
                   className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     editRole === 'member'
-                      ? 'bg-white text-[#1E1E1E] shadow-2xs'
-                      : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
+                      ? 'bg-white text-neutral-900 shadow-2xs'
+                      : 'text-neutral-500 hover:text-neutral-900'
                   }`}
                 >
                   <span>Member</span>
@@ -641,26 +855,29 @@ export function MembersScreen({
                   onClick={() => setEditRole('admin')}
                   className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     editRole === 'admin'
-                      ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-2xs'
-                      : 'text-neutral-textSecondary hover:text-[#1E1E1E]'
+                      ? 'bg-violet-600 text-white shadow-2xs'
+                      : 'text-neutral-500 hover:text-neutral-900'
                   }`}
                 >
-                  <span>👑 Admin</span>
+                  <Crown className="w-3.5 h-3.5" />
+                  <span>Admin</span>
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-textTertiary">
-                Admins have full access to manage members and timetable rules. Members have daily attendance tools.
+              <p className="text-[10px] text-neutral-400">
+                Admins have full access to manage members and timetable rules. Members have daily
+                attendance entry.
               </p>
             </div>
           ) : (
-            <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200 text-[11px] text-violet-800 font-semibold flex items-center gap-1.5">
-              <span>👑 Primary Administrator (Permanent)</span>
+            <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 text-xs text-violet-900 font-semibold flex items-center gap-2">
+              <Crown className="w-4 h-4 text-violet-700" />
+              <span>Primary Administrator (Permanent Role)</span>
             </div>
           )}
         </div>
       </Modal>
 
-      {/* DEACTIVATE / REACTIVATE CONFIRMATION MODAL */}
+      {/* 3. DEACTIVATE / REACTIVATE MODAL */}
       <Modal
         isOpen={deactivateModal.isOpen}
         onClose={() => setDeactivateModal({ isOpen: false, member: null })}
@@ -671,7 +888,11 @@ export function MembersScreen({
         }
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setDeactivateModal({ isOpen: false, member: null })}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setDeactivateModal({ isOpen: false, member: null })}
+            >
               Cancel
             </Button>
             <Button
@@ -684,33 +905,35 @@ export function MembersScreen({
           </>
         }
       >
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border">
-          <AlertTriangle className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" />
-          <div className="text-xs">
-            <p className="font-semibold text-neutral-textPrimary text-sm mb-0.5">
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold text-neutral-900 text-sm">
               {deactivateModal.member?.name} ({deactivateModal.member?.code})
             </p>
             {deactivateModal.member?.status === 'active' ? (
-              <p className="text-neutral-textSecondary">
-                Deactivating this member will remove them from future washing rotations. Their past attendance records and history remain intact.
+              <p className="text-neutral-600 leading-relaxed">
+                Deactivating removes this member from future washing rotations. Their past attendance
+                logs and history remain safely recorded.
               </p>
             ) : (
-              <p className="text-neutral-textSecondary">
-                Reactivating this member will return them to the active rotation queue according to standard rules.
+              <p className="text-neutral-600 leading-relaxed">
+                Reactivating returns this member to the active rotation queue following standard rotation
+                priority.
               </p>
             )}
           </div>
         </div>
       </Modal>
 
-      {/* ADMIN ROLE CONFIRMATION MODAL */}
+      {/* 4. ADMIN ROLE CONFIRMATION MODAL */}
       <Modal
         isOpen={adminModal.isOpen}
         onClose={() => setAdminModal({ isOpen: false, member: null, action: 'grant' })}
         title={
           adminModal.action === 'grant'
             ? 'Designate as Co-Administrator?'
-            : 'Remove from Admin Role?'
+            : 'Revoke Admin Privileges?'
         }
         footer={
           <>
@@ -739,34 +962,96 @@ export function MembersScreen({
           </>
         }
       >
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border">
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs">
           {adminModal.action === 'grant' ? (
-            <ShieldCheck className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
           ) : (
-            <AlertTriangle className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           )}
-          <div className="text-xs">
-            <p className="font-semibold text-neutral-textPrimary text-sm mb-0.5">
+          <div className="space-y-1">
+            <p className="font-bold text-neutral-900 text-sm">
               {adminModal.member?.name} ({adminModal.member?.code})
             </p>
             {adminModal.action === 'grant' ? (
-              <p className="text-neutral-textSecondary">
-                This member will be given administrator permissions as Co-Admin (maximum 2 admins limit). They will be able to edit meal settings, attendance, members, and Excel rosters.
+              <p className="text-neutral-600 leading-relaxed">
+                This member will be granted Co-Admin permissions (maximum 2 admins). They will be able to
+                manage members, attendance, rosters, and timetable settings.
               </p>
             ) : (
-              <p className="text-neutral-textSecondary">
-                Remove administrator permissions from {adminModal.member?.name}? They will return to standard member access (attendance entry only).
+              <p className="text-neutral-600 leading-relaxed">
+                Revoke administrator privileges from {adminModal.member?.name}? They will return to
+                standard member access.
               </p>
             )}
           </div>
         </div>
       </Modal>
 
-      {/* 1. ADMIN CREATE CREDENTIALS MODAL */}
+      {/* 5. NEW: REMOVE MEMBER CONFIRMATION MODAL */}
+      <Modal
+        isOpen={removeModal.isOpen}
+        onClose={() => setRemoveModal({ isOpen: false, member: null })}
+        title="Remove Member from Roster?"
+        subtitle="This action will remove the member from active queue and future rotations."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setRemoveModal({ isOpen: false, member: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              icon={Trash2}
+              onClick={handleConfirmRemove}
+            >
+              Remove Member
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3.5">
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900">
+            <Trash2 className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-rose-950 text-sm">
+                Remove {removeModal.member?.name} ({removeModal.member?.code})
+              </p>
+              <p className="text-rose-800 leading-relaxed">
+                Are you sure you want to permanently remove this member from the roster and rotation queue?
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs space-y-2 text-neutral-600">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-neutral-500">Attendance Records:</span>
+              <span className="font-bold text-neutral-800">Preserved in history</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-neutral-500">Future Rotations:</span>
+              <span className="font-bold text-neutral-800">Excluded immediately</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-neutral-500">Database Sync:</span>
+              <span className="font-bold text-neutral-800">Deleted from Supabase members</span>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 6. ADMIN CREATE CREDENTIALS MODAL */}
       <Modal
         isOpen={credentialModal.isOpen}
         onClose={() => setCredentialModal({ isOpen: false, member: null, step: 'form' })}
-        title={credentialModal.step === 'form' ? 'Create Member Credentials' : 'Credentials Created Successfully!'}
+        title={
+          credentialModal.step === 'form'
+            ? 'Create Member Credentials'
+            : 'Credentials Created Successfully!'
+        }
         subtitle={
           credentialModal.step === 'form'
             ? `Register Supabase Auth login credentials for ${credentialModal.member?.name}.`
@@ -811,13 +1096,15 @@ export function MembersScreen({
               </div>
             )}
 
-            <div className="p-3 rounded-xl bg-[#ECEEF0]/60 border border-neutral-border text-xs flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#A28EF9] text-[#1E1E1E] font-extrabold flex items-center justify-center text-xs shrink-0">
+            <div className="p-3 rounded-xl bg-neutral-100/70 border border-neutral-200 text-xs flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-violet-600 text-white font-extrabold flex items-center justify-center text-xs shrink-0">
                 {credentialModal.member?.code || 'M'}
               </div>
               <div>
-                <strong className="text-neutral-textPrimary text-xs block">{credentialModal.member?.name}</strong>
-                <span className="text-[11px] text-neutral-textTertiary">
+                <strong className="text-neutral-900 text-xs block">
+                  {credentialModal.member?.name}
+                </strong>
+                <span className="text-[11px] text-neutral-500">
                   Role: {isMemberAdmin(credentialModal.member) ? '👑 Admin' : 'Standard Member'}
                 </span>
               </div>
@@ -843,13 +1130,13 @@ export function MembersScreen({
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-[#1E1E1E] block">
+                <label className="text-xs font-bold text-neutral-800 block">
                   Temporary Password
                 </label>
                 <button
                   type="button"
                   onClick={() => setCredPassword(generateTemporaryPassword())}
-                  className="text-[11px] font-bold text-[#7D64F6] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] font-bold text-violet-700 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>Generate Random</span>
@@ -864,51 +1151,51 @@ export function MembersScreen({
                   value={credPassword}
                   onChange={(e) => setCredPassword(e.target.value)}
                   placeholder="Enter or generate temporary password"
-                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20"
+                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white rounded-xl border border-neutral-200 text-neutral-900 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCredPassword(!showCredPassword)}
-                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-[#1E1E1E] cursor-pointer"
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-800 cursor-pointer"
                   tabIndex={-1}
                 >
                   {showCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-textTertiary">
+              <p className="text-[10px] text-neutral-400">
                 Temporary password for first login (min 6 characters).
               </p>
             </div>
           </div>
         ) : (
-          /* Success View with 1-click Copy Credentials */
-          <div className="space-y-4 p-0.5 animate-fadeIn">
+          <div className="space-y-4 p-0.5">
             <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1 text-xs">
               <span className="font-bold flex items-center gap-1.5 text-emerald-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 Account Created in Supabase Auth
               </span>
               <p className="text-[11px] text-emerald-700 leading-snug">
-                Credentials have been registered. The member can now log in using either their username or email.
+                Credentials have been registered. The member can now log in using either their username or
+                email.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#ECEEF0]/80 border border-neutral-border space-y-2.5 text-xs font-mono">
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+            <div className="p-4 rounded-2xl bg-neutral-100/80 border border-neutral-200 space-y-2.5 text-xs font-mono">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-200">
                 <span className="text-neutral-500 font-sans text-[11px]">Member:</span>
-                <strong className="text-neutral-800 font-sans">{credentialModal.member?.name}</strong>
+                <strong className="text-neutral-900 font-sans">{credentialModal.member?.name}</strong>
               </div>
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-200">
                 <span className="text-neutral-500 font-sans text-[11px]">Username:</span>
                 <span className="font-bold text-violet-700">{credUsername}</span>
               </div>
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-200">
                 <span className="text-neutral-500 font-sans text-[11px]">Email:</span>
                 <span className="text-neutral-700">{credEmail}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-neutral-500 font-sans text-[11px]">Temporary Password:</span>
-                <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-border">
+                <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-200">
                   {credPassword}
                 </span>
               </div>
@@ -916,8 +1203,10 @@ export function MembersScreen({
 
             <button
               type="button"
-              onClick={() => handleCopyCredentials(credUsername, credEmail, credPassword, setCopiedCreds)}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#1E1E1E] hover:bg-black text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+              onClick={() =>
+                handleCopyCredentials(credUsername, credEmail, credPassword, setCopiedCreds)
+              }
+              className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-black text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {copiedCreds ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               <span>{copiedCreds ? 'Credentials Copied to Clipboard!' : 'Copy Credentials'}</span>
@@ -926,11 +1215,13 @@ export function MembersScreen({
         )}
       </Modal>
 
-      {/* 2. ADMIN RESET PASSWORD MODAL */}
+      {/* 7. ADMIN RESET PASSWORD MODAL */}
       <Modal
         isOpen={resetModal.isOpen}
         onClose={() => setResetModal({ isOpen: false, member: null, step: 'form' })}
-        title={resetModal.step === 'form' ? 'Admin Password Reset' : 'Password Reset Successfully!'}
+        title={
+          resetModal.step === 'form' ? 'Admin Password Reset' : 'Password Reset Successfully!'
+        }
         subtitle={
           resetModal.step === 'form'
             ? `Set or generate a new temporary password for ${resetModal.member?.name}.`
@@ -976,19 +1267,21 @@ export function MembersScreen({
             )}
 
             <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 text-xs space-y-1">
-              <span className="font-bold text-violet-900 block">{resetModal.member?.name}</span>
-              <span className="text-[11px] text-violet-700 font-mono block">{resetModal.member?.email}</span>
+              <span className="font-bold text-violet-950 block">{resetModal.member?.name}</span>
+              <span className="text-[11px] text-violet-700 font-mono block">
+                {resetModal.member?.email}
+              </span>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-[#1E1E1E] block">
+                <label className="text-xs font-bold text-neutral-800 block">
                   New Temporary Password
                 </label>
                 <button
                   type="button"
                   onClick={() => setResetPasswordVal(generateTemporaryPassword())}
-                  className="text-[11px] font-bold text-[#7D64F6] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] font-bold text-violet-700 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>Generate Random</span>
@@ -1003,47 +1296,47 @@ export function MembersScreen({
                   value={resetPasswordVal}
                   onChange={(e) => setResetPasswordVal(e.target.value)}
                   placeholder="Enter new password"
-                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20"
+                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white rounded-xl border border-neutral-200 text-neutral-900 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15"
                 />
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(!showResetPassword)}
-                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-[#1E1E1E] cursor-pointer"
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-800 cursor-pointer"
                   tabIndex={-1}
                 >
                   {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-textTertiary">
-                Admin-controlled override: Changes password directly or dispatches reset token.
+              <p className="text-[10px] text-neutral-400">
+                Admin override: Immediately updates authentication password in Supabase Auth.
               </p>
             </div>
           </div>
         ) : (
-          /* Reset Success View */
-          <div className="space-y-4 p-0.5 animate-fadeIn">
+          <div className="space-y-4 p-0.5">
             <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1 text-xs">
               <span className="font-bold flex items-center gap-1.5 text-emerald-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 Password Reset Successfully
               </span>
               <p className="text-[11px] text-emerald-700 leading-snug">
-                The password for {resetModal.member?.name} has been updated. Provide the new password below so they can log in.
+                The password for {resetModal.member?.name} has been updated. Provide the new password
+                below.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#ECEEF0]/80 border border-neutral-border space-y-2 text-xs font-mono">
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+            <div className="p-4 rounded-2xl bg-neutral-100/80 border border-neutral-200 space-y-2 text-xs font-mono">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-200">
                 <span className="text-neutral-500 font-sans text-[11px]">Member:</span>
-                <strong className="text-neutral-800 font-sans">{resetModal.member?.name}</strong>
+                <strong className="text-neutral-900 font-sans">{resetModal.member?.name}</strong>
               </div>
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-border/60">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-200">
                 <span className="text-neutral-500 font-sans text-[11px]">Email:</span>
                 <span className="text-neutral-700">{resetModal.member?.email}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-neutral-500 font-sans text-[11px]">New Password:</span>
-                <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-border">
+                <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-200">
                   {resetPasswordVal}
                 </span>
               </div>
@@ -1051,8 +1344,15 @@ export function MembersScreen({
 
             <button
               type="button"
-              onClick={() => handleCopyCredentials(resetModal.member?.name, resetModal.member?.email, resetPasswordVal, setCopiedReset)}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#1E1E1E] hover:bg-black text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+              onClick={() =>
+                handleCopyCredentials(
+                  resetModal.member?.name,
+                  resetModal.member?.email,
+                  resetPasswordVal,
+                  setCopiedReset
+                )
+              }
+              className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-black text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {copiedReset ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               <span>{copiedReset ? 'New Password Copied!' : 'Copy New Password'}</span>
