@@ -23,6 +23,8 @@ import {
   Copy,
   LogOut,
   Activity,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { parseExcelTimetable } from '../../logic/excelImporter';
 import { MembersScreen } from '../../screens/MembersScreen';
@@ -34,6 +36,7 @@ import {
   isSupabaseConfigured,
 } from '../../services/supabaseClient';
 import { getTodayDateStr } from '../../logic/dateUtils';
+import { useTheme } from '../../context/ThemeContext';
 
 export function SettingsModal({
   isOpen,
@@ -59,6 +62,8 @@ export function SettingsModal({
   activityLogs = [],
   onClearLogs,
 }) {
+  const { theme, isDark, toggleTheme } = useTheme();
+
   // WhatsApp-style navigation view: null = WhatsApp list; 'members' | 'activity' | 'rules' | 'excel'
   const [currentView, setCurrentView] = useState(null);
   const [rulesSubTab, setRulesSubTab] = useState('rules'); // 'rules' | 'schedule'
@@ -418,7 +423,7 @@ $$;`;
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 bg-[#1E1E1E]/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
           isOpen ? 'opacity-100' : 'opacity-0'
         }`}
       />
@@ -426,44 +431,44 @@ $$;`;
       {/* Side Slide Drawer Container (Sliding in from the right) */}
       <div className="fixed inset-y-0 right-0 max-w-full flex justify-end">
         <div
-          className={`w-screen max-w-[450px] bg-white h-full shadow-2xl flex flex-col transition-transform duration-300 ease-out transform ${
+          className={`w-screen max-w-[450px] bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] h-full shadow-2xl flex flex-col border-l border-[#DDD9D0] dark:border-[#2A364B] transition-transform duration-300 ease-out transform ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
           {/* Drawer Header */}
           {currentView === null ? (
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-neutral-border/60 bg-white shrink-0">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#DDD9D0]/80 dark:border-[#2A364B]/80 bg-white dark:bg-[#171F2C] shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#1E1E1E] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                <div className="w-8 h-8 rounded-full bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] flex items-center justify-center font-bold text-xs shadow-2xs">
                   <Menu className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#1E1E1E] leading-tight">Menu & Settings</h3>
-                  <p className="text-[11px] text-neutral-textSecondary">Members, activity, rules & sync</p>
+                  <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">Menu &amp; Settings</h3>
+                  <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60">Members, activity, rules &amp; sync</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-full text-neutral-500 hover:text-[#1E1E1E] hover:bg-[#ECEEF0] transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-[#111216]/50 dark:text-[#F7F6F3]/50 hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
                 title="Close menu"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-border/60 bg-white shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#DDD9D0]/80 dark:border-[#2A364B]/80 bg-white dark:bg-[#171F2C] shrink-0">
               <button
                 type="button"
                 onClick={() => setCurrentView(null)}
-                className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 hover:text-[#1E1E1E] px-2.5 py-1.5 -ml-1 rounded-full hover:bg-neutral-100 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-bold text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3] px-2.5 py-1.5 -ml-1 rounded-full hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
 
-              <h3 className="text-sm font-bold text-[#1E1E1E]">
+              <h3 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3]">
                 {currentView === 'members' && 'Application Members'}
                 {currentView === 'activity' && 'Activity Logs'}
                 {currentView === 'rules' && 'Rotation Rules'}
@@ -473,7 +478,7 @@ $$;`;
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-full text-neutral-500 hover:text-[#1E1E1E] hover:bg-[#ECEEF0] transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-[#111216]/50 dark:text-[#F7F6F3]/50 hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
                 title="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -482,36 +487,36 @@ $$;`;
           )}
 
           {/* Drawer Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-neutral-textSecondary">
+          <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-[#111216] dark:text-[#F7F6F3]">
             {/* When at root: Show Account card + WhatsApp-style list */}
             {currentView === null && (
               <>
                 {/* Active User Account Banner in Drawer */}
-                <div className="p-3.5 rounded-2xl bg-white border border-neutral-border/80 shadow-2xs flex items-center justify-between gap-3">
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
                         isAdmin
-                          ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
-                          : 'bg-[#1E1E1E] text-white'
+                          ? 'admin-gradient text-white border border-[#ECBD56]/80 ring-2 ring-[#ECBD56]/30 shadow-xs'
+                          : 'bg-[#111216] dark:bg-[#1F2A3C] text-white dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
                       }`}
                     >
                       {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-[#1E1E1E] truncate">{userName}</span>
+                        <span className="text-xs sm:text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate">{userName}</span>
                         {isAdmin ? (
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 text-amber-950 border border-amber-400/80 inline-flex items-center gap-1 shadow-2xs">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 inline-flex items-center gap-1 shadow-2xs">
                             Admin
                           </span>
                         ) : (
-                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-neutral-100 text-neutral-600">
+                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216]/70 dark:text-[#F7F6F3]/70 border border-[#DDD9D0] dark:border-[#2A364B]">
                             Member
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-neutral-textSecondary block truncate">
+                      <span className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 block truncate">
                         {userEmail || 'Active session'}
                       </span>
                     </div>
@@ -524,7 +529,7 @@ $$;`;
                         onClose();
                         await onSignOut();
                       }}
-                      className="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1 active-scale flex-shrink-0 cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-[#D9483B] dark:text-[#FF5A4E] bg-[#D9483B]/10 dark:bg-[#FF5A4E]/10 hover:bg-[#D9483B]/20 dark:hover:bg-[#FF5A4E]/20 border border-[#D9483B]/20 dark:border-[#FF5A4E]/30 transition-colors flex items-center gap-1 active-scale flex-shrink-0 cursor-pointer"
                       title="Log Out"
                     >
                       <LogOut className="w-3 h-3" />
@@ -535,77 +540,77 @@ $$;`;
 
                 {/* Section Title */}
                 <div className="pt-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 px-1">
-                    Settings & Management
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#111216]/50 dark:text-[#F7F6F3]/50 px-1">
+                    Settings &amp; Management
                   </span>
                 </div>
 
-                {/* WhatsApp-Style Vertical List (Strictly ordered: 1. Members, 2. Activity, 3. Rotation rules, 4. Excel sync) */}
-                <div className="bg-white rounded-2xl border border-neutral-200/90 shadow-2xs divide-y divide-neutral-100 overflow-hidden">
+                {/* WhatsApp-Style Vertical List (Strictly ordered: 1. Members, 2. Activity, 3. Rotation rules, 4. Excel sync, 5. Appearance) */}
+                <div className="bg-white dark:bg-[#171F2C] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs divide-y divide-[#DDD9D0]/60 dark:divide-[#2A364B]/60 overflow-hidden">
                   {/* 1. Members */}
                   <button
                     type="button"
                     onClick={() => setCurrentView('members')}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-neutral-50/80 active:bg-neutral-100/70 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] flex items-center justify-center shrink-0 border border-[#22AC77]/20 group-hover:scale-105 transition-transform">
                         <Users className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#1E1E1E] leading-tight block">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
                           Members
                         </span>
-                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
-                          Manage member roster, passwords & admin roles
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          Manage member roster, passwords &amp; admin roles
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
                   </button>
 
                   {/* 2. Activity */}
                   <button
                     type="button"
                     onClick={() => setCurrentView('activity')}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-neutral-50/80 active:bg-neutral-100/70 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-[#2563EB]/10 dark:bg-[#BFB4FF]/15 text-[#2563EB] dark:text-[#BFB4FF] flex items-center justify-center shrink-0 border border-[#2563EB]/20 group-hover:scale-105 transition-transform">
                         <Activity className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#1E1E1E] leading-tight block">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
                           Activity
                         </span>
-                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
-                          Live audit log of wash assignments, duties & marks
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          Live audit log of wash assignments, duties &amp; marks
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
                   </button>
 
                   {/* 3. Rotation rules */}
                   <button
                     type="button"
                     onClick={() => setCurrentView('rules')}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-neutral-50/80 active:bg-neutral-100/70 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 dark:bg-[#ECBD56]/20 text-[#111216] dark:text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40 group-hover:scale-105 transition-transform">
                         <Repeat className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#1E1E1E] leading-tight block">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
                           Rotation rules
                         </span>
-                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
-                          FIFO queue rules, database sync & engine logic
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          FIFO queue rules, database sync &amp; engine logic
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
                   </button>
 
                   {/* 4. Excel sync (RBAC restricted to Admin) */}
@@ -617,48 +622,71 @@ $$;`;
                     }}
                     className={`w-full flex items-center justify-between p-3.5 text-left transition-colors group ${
                       isAdmin
-                        ? 'hover:bg-neutral-50/80 active:bg-neutral-100/70 cursor-pointer'
-                        : 'opacity-65 cursor-not-allowed bg-neutral-50/60'
+                        ? 'hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 cursor-pointer'
+                        : 'opacity-65 cursor-not-allowed bg-[#F2F1ED]/40 dark:bg-[#1F2A3C]/40'
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] flex items-center justify-center shrink-0 border border-[#22AC77]/20 group-hover:scale-105 transition-transform">
                         <FileSpreadsheet className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-[#1E1E1E] leading-tight">
+                          <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">
                             Excel sync
                           </span>
                           {!isAdmin && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-[9px] font-bold">
-                              <Lock className="w-2.5 h-2.5 text-amber-600" />
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/40 text-[9px] font-bold">
+                              <Lock className="w-2.5 h-2.5 text-[#ECBD56]" />
                               Admin Only
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
-                          Upload timetable file & sync historical attendance
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          Upload timetable file &amp; sync historical attendance
                         </p>
                       </div>
                     </div>
                     <div className="shrink-0 ml-2">
                       {isAdmin ? (
-                        <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
+                        <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3]" />
                       ) : (
-                        <Lock className="w-4 h-4 text-amber-700" />
+                        <Lock className="w-4 h-4 text-[#ECBD56]" />
                       )}
                     </div>
                   </button>
+
+                  {/* 5. Appearance Theme Switcher */}
+                  <div
+                    onClick={toggleTheme}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40 group-hover:scale-105 transition-transform">
+                        {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                          Appearance
+                        </span>
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          Currently in {isDark ? 'Dark Mode' : 'Light Mode'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
+                      {isDark ? 'Switch to Light' : 'Switch to Dark'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* App Info Footer */}
                 <div className="pt-4 text-center">
-                  <p className="text-[11px] text-neutral-400 font-medium">
-                    Vessel Washer App • Continuous Multi-Year Engine
+                  <p className="text-[11px] text-[#111216]/50 dark:text-[#F7F6F3]/50 font-medium">
+                    Vessel Washer App &bull; Continuous Multi-Year Engine
                   </p>
-                  <p className="text-[10px] text-neutral-300 mt-0.5">
-                    Supabase Cloud Sync • {todayDateStr}
+                  <p className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 mt-0.5">
+                    Supabase Cloud Sync &bull; {todayDateStr}
                   </p>
                 </div>
               </>
@@ -697,20 +725,20 @@ $$;`;
 
             {/* VIEW 3: ROTATION RULES */}
             {currentView === 'rules' && (
-              <div className="space-y-3.5 animate-fadeIn text-xs text-neutral-textSecondary">
+              <div className="space-y-3.5 animate-fadeIn text-xs text-[#111216]/80 dark:text-[#F7F6F3]/80">
                 {/* Sub-tab pills */}
-                <div className="grid grid-cols-2 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
+                <div className="grid grid-cols-2 p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-full border border-[#DDD9D0] dark:border-[#2A364B] text-[11px] font-bold">
                   <button
                     type="button"
                     onClick={() => setRulesSubTab('rules')}
                     className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
                       rulesSubTab === 'rules'
-                        ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                        : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                        ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs font-bold'
+                        : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
                     }`}
                   >
                     <Info className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">Engine Rules & DB</span>
+                    <span className="truncate">Engine Rules &amp; DB</span>
                   </button>
 
                   <button
@@ -718,8 +746,8 @@ $$;`;
                     onClick={() => setRulesSubTab('schedule')}
                     className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
                       rulesSubTab === 'schedule'
-                        ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                        : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                        ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs font-bold'
+                        : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
                     }`}
                   >
                     <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
@@ -729,12 +757,12 @@ $$;`;
 
                 {rulesSubTab === 'rules' ? (
                   <div className="space-y-3.5">
-                    <div className="p-3.5 rounded-2xl bg-neutral-surfaceSecondary border border-neutral-border space-y-2">
-                      <div className="flex items-center gap-1.5 text-neutral-textPrimary font-bold text-xs">
-                        <Info className="w-4 h-4 text-primary" />
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2">
+                      <div className="flex items-center gap-1.5 text-[#111216] dark:text-[#F7F6F3] font-bold text-xs">
+                        <Info className="w-4 h-4 text-[#ECBD56]" />
                         <span>Rotation System Engine Rules</span>
                       </div>
-                      <ul className="list-disc pl-4 space-y-1.5 text-neutral-textSecondary text-[11px]">
+                      <ul className="list-disc pl-4 space-y-1.5 text-[#111216]/70 dark:text-[#F7F6F3]/70 text-[11px]">
                         <li><strong>Single Shared Queue:</strong> One unified queue for Lunch and Dinner. Lunch is assigned first; dinner continues from the remainder.</li>
                         <li><strong>Washer Selection:</strong> Assigned to whoever is nearest the front of the queue who ate that meal.</li>
                         <li><strong>Absence Defers Turn:</strong> Absent members keep their place at the front; they wash next time they eat.</li>
@@ -744,32 +772,32 @@ $$;`;
                     </div>
 
                     {/* Supabase Cloud Connection Panel */}
-                    <div className="p-3.5 rounded-2xl bg-white border border-neutral-border space-y-2.5 text-xs">
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 font-bold text-neutral-textPrimary">
-                          <Database className="w-4 h-4 text-[#7D64F6]" />
+                        <div className="flex items-center gap-1.5 font-bold text-[#111216] dark:text-[#F7F6F3]">
+                          <Database className="w-4 h-4 text-[#ECBD56]" />
                           <span>Supabase Cloud Database</span>
                         </div>
                         {isSupabaseConfigured ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 text-[#22AC77] dark:text-[#4ADE80] text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] animate-pulse" />
                             Connected
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 border border-[#E0851A]/30 dark:border-[#FF9F45]/40 text-[#E0851A] dark:text-[#FF9F45] text-[10px] font-bold">
                             Local Storage Mode
                           </span>
                         )}
                       </div>
 
-                      <p className="text-[11px] text-neutral-textSecondary leading-relaxed">
+                      <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 leading-relaxed">
                         Connect your Supabase project to track attendance and sync assignments across devices in Realtime.
                       </p>
 
                       {isAdmin ? (
                         <div className="space-y-2.5 pt-1">
                           <div>
-                            <label className="block text-[10px] font-bold text-neutral-textPrimary uppercase tracking-wider mb-1">
+                            <label className="block text-[10px] font-bold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider mb-1">
                               Project URL
                             </label>
                             <input
@@ -777,12 +805,12 @@ $$;`;
                               value={dbUrl}
                               onChange={(e) => setDbUrl(e.target.value)}
                               placeholder="https://xyzcompany.supabase.co"
-                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-border focus:border-[#7D64F6] focus:outline-hidden font-mono bg-[#ECEEF0]/40"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] focus:border-[#ECBD56] focus:outline-hidden font-mono bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3]"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-neutral-textPrimary uppercase tracking-wider mb-1">
+                            <label className="block text-[10px] font-bold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider mb-1">
                               Anon / Public API Key
                             </label>
                             <input
@@ -790,7 +818,7 @@ $$;`;
                               value={dbKey}
                               onChange={(e) => setDbKey(e.target.value)}
                               placeholder="eyJhbGciOi..."
-                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-border focus:border-[#7D64F6] focus:outline-hidden font-mono bg-[#ECEEF0]/40"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] focus:border-[#ECBD56] focus:outline-hidden font-mono bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3]"
                             />
                           </div>
 
@@ -798,63 +826,63 @@ $$;`;
                             <button
                               type="button"
                               onClick={handleSaveCredentials}
-                              className="flex-1 py-1.5 px-3 rounded-lg bg-[#1E1E1E] text-white text-xs font-bold hover:bg-black transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              className="flex-1 py-1.5 px-3 rounded-lg bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
                             >
                               {savedSuccess ? 'Saved! Reloading...' : 'Save & Connect'}
                             </button>
                             <button
                               type="button"
                               onClick={handleCopySql}
-                              className="py-1.5 px-3 rounded-lg bg-[#ECEEF0] hover:bg-neutral-200 text-neutral-textPrimary text-xs font-semibold flex items-center gap-1 transition-colors border border-neutral-border/60 cursor-pointer"
+                              className="py-1.5 px-3 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#DDD9D0] dark:hover:bg-[#2A364B] text-[#111216] dark:text-[#F7F6F3] text-xs font-semibold flex items-center gap-1 transition-colors border border-[#DDD9D0] dark:border-[#2A364B] cursor-pointer"
                               title="Copy SQL Schema for Supabase SQL Editor"
                             >
-                              {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              {copiedSql ? <Check className="w-3.5 h-3.5 text-[#22AC77] dark:text-[#4ADE80]" /> : <Copy className="w-3.5 h-3.5 text-[#ECBD56]" />}
                               <span>{copiedSql ? 'Copied SQL!' : 'Copy SQL'}</span>
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border text-[11px] text-neutral-textTertiary">
+                        <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60">
                           Supabase database configuration is managed by Admin <strong>Kavipriyan</strong>.
                         </div>
                       )}
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white border border-neutral-border space-y-2 text-xs">
-                      <h4 className="font-bold text-neutral-textPrimary">Configuration</h4>
-                      <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
-                        <span>Timeline:</span>
-                        <span className="font-semibold text-neutral-textPrimary">Continuous Multi-Year</span>
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2 text-xs">
+                      <h4 className="font-bold text-[#111216] dark:text-[#F7F6F3]">Configuration</h4>
+                      <div className="flex justify-between py-1 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
+                        <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Timeline:</span>
+                        <span className="font-semibold text-[#111216] dark:text-[#F7F6F3]">Continuous Multi-Year</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
-                        <span>Current Date:</span>
-                        <span className="font-semibold text-neutral-textPrimary">{todayDateStr}</span>
+                      <div className="flex justify-between py-1 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
+                        <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Current Date:</span>
+                        <span className="font-semibold text-[#111216] dark:text-[#F7F6F3]">{todayDateStr}</span>
                       </div>
                       <div className="flex justify-between py-1 text-[11px]">
-                        <span>Admin:</span>
-                        <span className="font-semibold text-amber-900">👑 Kavipriyan (Primary Admin)</span>
+                        <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Admin:</span>
+                        <span className="font-semibold text-[#ECBD56]">👑 Kavipriyan (Primary Admin)</span>
                       </div>
                     </div>
 
                     {/* Factory Reset */}
-                    <div className="pt-2 border-t border-neutral-border">
+                    <div className="pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
                       {!isAdmin ? (
-                        <div className="p-2.5 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border text-[11px] text-neutral-textTertiary flex items-center gap-2">
-                          <Lock className="w-3.5 h-3.5 text-neutral-textSecondary shrink-0" />
+                        <div className="p-2.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-[#ECBD56] shrink-0" />
                           <span>System reset is locked to Admin <strong>Kavipriyan</strong> only.</span>
                         </div>
                       ) : !resetConfirm ? (
                         <button
                           type="button"
                           onClick={() => setResetConfirm(true)}
-                          className="text-status-error text-xs font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
+                          className="text-[#D9483B] dark:text-[#FF5A4E] text-xs font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
                           <span>Reset to Excel Seed Data (Admin Only)</span>
                         </button>
                       ) : (
-                        <div className="p-3 rounded-lg bg-status-errorBg border border-status-errorBorder space-y-2">
-                          <p className="text-xs text-status-error font-medium">
+                        <div className="p-3 rounded-lg bg-[#D9483B]/10 border border-[#D9483B]/30 space-y-2">
+                          <p className="text-xs text-[#D9483B] dark:text-[#FF5A4E] font-medium">
                             Reset all attendance records and restore initial members and continuous rotation?
                           </p>
                           <div className="flex gap-2">
@@ -884,12 +912,12 @@ $$;`;
             {/* VIEW 4: EXCEL SYNC & UPLOAD */}
             {currentView === 'excel' && (
               <div className="space-y-3 animate-fadeIn text-xs">
-                <div className="p-3.5 rounded-[22px] bg-[#A4F5A6]/20 border border-[#A4F5A6]/40 text-[#1E1E1E] space-y-1">
-                  <span className="font-bold flex items-center gap-1 text-xs text-[#1E1E1E]">
-                    <FileSpreadsheet className="w-4 h-4 text-[#1E1E1E]" />
+                <div className="p-3.5 rounded-2xl bg-[#ECBD56]/15 dark:bg-[#ECBD56]/10 border border-[#ECBD56]/40 text-[#111216] dark:text-[#F7F6F3] space-y-1">
+                  <span className="font-bold flex items-center gap-1 text-xs text-[#111216] dark:text-[#F7F6F3]">
+                    <FileSpreadsheet className="w-4 h-4 text-[#ECBD56]" />
                     Upload Updated Timetable Excel
                   </span>
-                  <p className="text-[11px] text-neutral-textSecondary leading-snug">
+                  <p className="text-[11px] text-[#111216]/70 dark:text-[#F7F6F3]/70 leading-snug">
                     Upload your updated Excel sheet with all past attendance records. The system will detect the last recorded date and seamlessly continue the rotation rules from today onwards.
                   </p>
                 </div>
@@ -897,7 +925,7 @@ $$;`;
                 {/* Upload Area */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-5 rounded-xl border-2 border-dashed border-neutral-border hover:border-primary bg-neutral-surfaceSecondary/40 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors active-scale text-center"
+                  className="p-5 rounded-xl border-2 border-dashed border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56] bg-white dark:bg-[#171F2C] flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors active-scale text-center"
                 >
                   <input
                     ref={fileInputRef}
@@ -906,14 +934,14 @@ $$;`;
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center shadow-xs">
+                  <div className="w-10 h-10 rounded-full bg-[#ECBD56]/20 text-[#ECBD56] flex items-center justify-center shadow-xs">
                     <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-neutral-textPrimary block">
+                    <span className="font-bold text-xs text-[#111216] dark:text-[#F7F6F3] block">
                       Click to Browse or Drop Excel File
                     </span>
-                    <span className="text-[10px] text-neutral-textTertiary">
+                    <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50">
                       Supports .xlsx, .xls, or .csv (Timetable Format)
                     </span>
                   </div>
@@ -921,64 +949,64 @@ $$;`;
 
                 {/* Status: Parsing */}
                 {uploadStatus === 'parsing' && (
-                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex items-center gap-2 text-xs">
-                    <Clock className="w-4 h-4 text-blue-600 animate-spin" />
+                  <div className="p-3 rounded-xl bg-[#2563EB]/10 border border-[#2563EB]/25 text-[#2563EB] dark:text-[#BFB4FF] flex items-center gap-2 text-xs">
+                    <Clock className="w-4 h-4 animate-spin" />
                     <span>Reading and analyzing timetable records...</span>
                   </div>
                 )}
 
                 {/* Status: Error */}
                 {uploadStatus === 'error' && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-1 text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-rose-800">
-                      <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  <div className="p-3 rounded-xl bg-[#D9483B]/10 border border-[#D9483B]/25 text-[#D9483B] dark:text-[#FF5A4E] space-y-1 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <AlertTriangle className="w-4 h-4" />
                       <span>Import Failed</span>
                     </div>
-                    <p className="text-[11px] text-rose-700">{uploadError}</p>
+                    <p className="text-[11px] opacity-90">{uploadError}</p>
                   </div>
                 )}
 
                 {/* Status: Preview */}
                 {uploadStatus === 'preview' && parsedData && (
-                  <div className="p-3.5 rounded-xl bg-white border border-neutral-border shadow-xs space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-neutral-border pb-2">
-                      <span className="font-bold text-xs text-neutral-textPrimary flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60 pb-2">
+                      <span className="font-bold text-xs text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />
                         File Ready for Sync
                       </span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-surfaceSecondary text-neutral-textSecondary border border-neutral-border">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216]/70 dark:text-[#F7F6F3]/70 border border-[#DDD9D0] dark:border-[#2A364B]">
                         {parsedData.sheetName}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60">
-                        <span className="text-neutral-textTertiary block text-[10px]">Total Days Found</span>
-                        <strong className="text-neutral-textPrimary text-xs">{parsedData.totalRows} days</strong>
+                      <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                        <span className="text-[#111216]/50 dark:text-[#F7F6F3]/50 block text-[10px]">Total Days Found</span>
+                        <strong className="text-[#111216] dark:text-[#F7F6F3] text-xs">{parsedData.totalRows} days</strong>
                       </div>
-                      <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60">
-                        <span className="text-neutral-textTertiary block text-[10px]">Last Marked Date</span>
-                        <strong className="text-primary text-xs">{parsedData.lastMarkedDate || 'None'}</strong>
+                      <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                        <span className="text-[#111216]/50 dark:text-[#F7F6F3]/50 block text-[10px]">Last Marked Date</span>
+                        <strong className="text-[#ECBD56] text-xs">{parsedData.lastMarkedDate || 'None'}</strong>
                       </div>
-                      <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60 col-span-2">
-                        <span className="text-neutral-textTertiary block text-[10px]">Recorded Duties Parsed</span>
-                        <strong className="text-neutral-textPrimary text-xs">{parsedData.attendanceLogs.length} historical wash records</strong>
+                      <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60 col-span-2">
+                        <span className="text-[#111216]/50 dark:text-[#F7F6F3]/50 block text-[10px]">Recorded Duties Parsed</span>
+                        <strong className="text-[#111216] dark:text-[#F7F6F3] text-xs">{parsedData.attendanceLogs.length} historical wash records</strong>
                       </div>
                     </div>
 
                     {!isAdmin ? (
-                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <div className="p-2 rounded-lg bg-[#E0851A]/10 border border-[#E0851A]/30 text-[#E0851A] dark:text-[#FF9F45] text-[11px] flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-[#E0851A] dark:text-[#FF9F45] shrink-0" />
                         <span>Applying Excel updates is locked to Admin <strong>Kavipriyan</strong>.</span>
                       </div>
                     ) : (
                       <button
                         type="button"
                         onClick={handleApplyExcel}
-                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
-                        <span>Apply & Sync Timetable from Excel</span>
+                        <span>Apply &amp; Sync Timetable from Excel</span>
                       </button>
                     )}
                   </div>
@@ -986,8 +1014,8 @@ $$;`;
 
                 {/* Status: Success */}
                 {uploadStatus === 'success' && (
-                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2 text-xs font-bold animate-fadeIn">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <div className="p-3 rounded-xl bg-[#22AC77]/10 border border-[#22AC77]/30 text-[#22AC77] dark:text-[#4ADE80] flex items-center gap-2 text-xs font-bold animate-fadeIn">
+                    <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />
                     <span>Timetable applied successfully! Recalculating rotation...</span>
                   </div>
                 )}

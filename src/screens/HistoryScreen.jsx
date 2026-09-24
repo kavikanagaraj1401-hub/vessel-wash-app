@@ -17,7 +17,6 @@ import {
   Users,
   UtensilsCrossed,
   Sparkles,
-  ArrowUpDown,
   ExternalLink,
   ShieldCheck,
 } from 'lucide-react';
@@ -36,7 +35,6 @@ export function HistoryScreen({
   // Default to 'logs' (Timeline Logs) as requested
   const [activeSubTab, setActiveSubTab] = useState('logs'); // 'logs' | 'report'
   const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'lunch' | 'dinner' | 'unmarked'
-  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (Today → Past) | 'asc' (Past → Today)
   const [copied, setCopied] = useState(false);
   const [expandedMembers, setExpandedMembers] = useState(new Set(members.map(m => m.id)));
 
@@ -213,13 +211,9 @@ export function HistoryScreen({
       filtered = dates.filter(d => d.isPending);
     }
 
-    // 3. Sort: Default descending order (today down to past)
-    return filtered.sort((a, b) => {
-      return sortOrder === 'desc'
-        ? b.date.localeCompare(a.date)
-        : a.date.localeCompare(b.date);
-    });
-  }, [daysConfig, computedDays, attendanceLogs, memberMap, dateFilter, sortOrder, todayDateStr]);
+    // 3. Sort: Strictly descending order starting from today down into the past
+    return filtered.sort((a, b) => b.date.localeCompare(a.date));
+  }, [daysConfig, computedDays, attendanceLogs, memberMap, dateFilter, todayDateStr]);
 
   const toggleMemberExpand = (memberId) => {
     const next = new Set(expandedMembers);
@@ -289,38 +283,38 @@ export function HistoryScreen({
         <button
           type="button"
           onClick={handleCopyReport}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-neutral-border text-neutral-textPrimary shadow-2xs active-scale hover:bg-[#ECEEF0] transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] shadow-2xs active-scale hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-all cursor-pointer"
         >
-          {copied ? <Check className="w-3.5 h-3.5 text-[#1E1E1E]" /> : <Copy className="w-3.5 h-3.5 text-neutral-textTertiary" />}
+          {copied ? <Check className="w-3.5 h-3.5 text-[#22AC77] dark:text-[#4ADE80]" /> : <Copy className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B]" />}
           <span>{copied ? 'Copied!' : 'Copy'}</span>
         </button>
       </div>
 
       {/* Top Segmented Sub-Tab Switcher */}
-      <div className="flex p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60">
+      <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-full border border-[#DDD9D0] dark:border-[#2A364B]">
         <button
           type="button"
           onClick={() => setActiveSubTab('logs')}
-          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-full transition-all select-none ${
+          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-full transition-all select-none cursor-pointer ${
             activeSubTab === 'logs'
-              ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-              : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+              ? 'bg-[#111216] text-[#F7F6F3] dark:bg-[#ECBD56] dark:text-[#111216] shadow-xs font-bold'
+              : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
           }`}
         >
-          <History className={`w-3.5 h-3.5 flex-shrink-0 ${activeSubTab === 'logs' ? 'text-white' : 'text-neutral-textTertiary'}`} />
+          <History className={`w-3.5 h-3.5 flex-shrink-0 ${activeSubTab === 'logs' ? 'text-inherit' : 'text-[#848A96] dark:text-[#64748B]'}`} />
           <span className="truncate">Timeline Logs</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('report')}
-          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-full transition-all select-none ${
+          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-full transition-all select-none cursor-pointer ${
             activeSubTab === 'report'
-              ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-              : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+              ? 'bg-[#111216] text-[#F7F6F3] dark:bg-[#ECBD56] dark:text-[#111216] shadow-xs font-bold'
+              : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
           }`}
         >
-          <BarChart3 className={`w-3.5 h-3.5 flex-shrink-0 ${activeSubTab === 'report' ? 'text-white' : 'text-neutral-textTertiary'}`} />
+          <BarChart3 className={`w-3.5 h-3.5 flex-shrink-0 ${activeSubTab === 'report' ? 'text-inherit' : 'text-[#848A96] dark:text-[#64748B]'}`} />
           <span className="truncate">Member Summary</span>
         </button>
       </div>
@@ -330,55 +324,41 @@ export function HistoryScreen({
         <div className="space-y-3">
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white border border-neutral-border/70 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-neutral-textTertiary block truncate">Total Washes</span>
-              <span className="text-lg font-bold text-neutral-textPrimary">{totalWashes}</span>
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
+              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white border border-[#FFD89D]/60 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-amber-700 block truncate">Lunch</span>
-              <span className="text-lg font-bold text-neutral-textPrimary">{totalLunchWashes}</span>
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#F7C68B]/60 dark:border-[#854D0E]/60 text-center shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-[#E0851A] dark:text-[#FF9F45] block truncate">Lunch</span>
+              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white border border-[#A28EF9]/50 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-[#42299C] block truncate">Dinner</span>
-              <span className="text-lg font-bold text-neutral-textPrimary">{totalDinnerWashes}</span>
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#93C5FD]/50 dark:border-[#4338CA]/50 text-center shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-[#2563EB] dark:text-[#BFB4FF] block truncate">Dinner</span>
+              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
             </div>
           </div>
 
-          {/* Filters & Sorting Controls */}
-          <div className="flex items-center justify-between gap-1.5 pt-0.5">
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0 flex-1">
-              {[
-                { id: 'all', label: 'All Dates' },
-                { id: 'lunch', label: 'Lunch ' },
-                { id: 'dinner', label: 'Dinner ' },
-                { id: 'unmarked', label: 'Unmarked' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setDateFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all select-none active-scale cursor-pointer ${
-                    dateFilter === f.id
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'bg-white text-neutral-textSecondary border border-neutral-border hover:bg-[#ECEEF0]'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sort Toggle (Descending vs Ascending) */}
-            <button
-              type="button"
-              onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-neutral-border text-neutral-textSecondary shadow-2xs hover:text-neutral-textPrimary select-none active-scale flex-shrink-0 whitespace-nowrap cursor-pointer"
-              title="Toggle date order"
-            >
-              <ArrowUpDown className="w-3 h-3 text-neutral-textTertiary" />
-              <span>{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
-            </button>
+          {/* Filter Tabs (Matching History Tab UI Theme) */}
+          <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-full border border-[#DDD9D0] dark:border-[#2A364B]">
+            {[
+              { id: 'all', label: 'All Dates' },
+              { id: 'lunch', label: 'Lunch ' },
+              { id: 'dinner', label: 'Dinner ' },
+              { id: 'unmarked', label: 'Unmarked' },
+            ].map(f => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setDateFilter(f.id)}
+                className={`flex-1 basis-0 min-w-0 py-2 px-1 text-xs font-bold rounded-full transition-all select-none truncate cursor-pointer text-center ${
+                  dateFilter === f.id
+                    ? 'bg-[#111216] text-[#F7F6F3] dark:bg-[#ECBD56] dark:text-[#111216] shadow-xs'
+                    : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
 
           {/* List of Dates */}

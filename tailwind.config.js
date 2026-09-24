@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,7 +8,55 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Design System Palette
+        // Exact Design Token Palette (Light & Dark)
+        gold: {
+          DEFAULT: '#ECBD56',
+          hover: '#DEAA3E',
+          active: '#C9972E',
+          light: '#FCF7ED',
+          dark: '#272115',
+        },
+        paper: {
+          light: '#F2F1ED',
+          dark: '#0B0C0E',
+          DEFAULT: '#F2F1ED',
+        },
+        surface: {
+          light: '#FFFFFF',
+          dark: '#171F2C',
+          DEFAULT: '#FFFFFF',
+        },
+        surfaceSecondary: {
+          light: '#EAE8E2',
+          dark: '#1F2A3C',
+          DEFAULT: '#EAE8E2',
+        },
+        ink: {
+          DEFAULT: '#111216',
+          light: '#F7F6F3',
+        },
+        semanticOk: {
+          light: '#22AC77',
+          dark: '#4ADE80',
+          DEFAULT: '#22AC77',
+        },
+        semanticWarn: {
+          light: '#E0851A',
+          dark: '#FF9F45',
+          DEFAULT: '#E0851A',
+        },
+        semanticError: {
+          light: '#D9483B',
+          dark: '#FF5A4E',
+          DEFAULT: '#D9483B',
+        },
+        semanticInfo: {
+          light: '#2563EB',
+          dark: '#BFB4FF',
+          DEFAULT: '#2563EB',
+        },
+
+        // Legacy / Compatibility Colors
         periwinkle: {
           DEFAULT: '#A28EF9',
           light: '#F3F0FE',
@@ -24,49 +73,46 @@ export default {
           dark: '#E8B669',
         },
         darkAccent: {
-          DEFAULT: '#1E1E1E',
+          DEFAULT: '#111216',
           hover: '#2D2D2D',
           light: '#333333',
         },
-        // Semantic Primary Tokens (mapped to Periwinkle #A28EF9)
         primary: {
-          DEFAULT: '#A28EF9',
-          hover: '#9077F7',
-          pressed: '#7D64F6',
-          light: '#F3F0FE',
-          50: '#F9F8FE',
-          100: '#F3F0FE',
-          200: '#E2DBFD',
-          500: '#A28EF9',
-          600: '#9077F7',
-          700: '#7D64F6',
+          DEFAULT: '#ECBD56',
+          hover: '#DEAA3E',
+          pressed: '#C9972E',
+          light: '#FCF7ED',
+          50: '#FDFBF7',
+          100: '#FCF7ED',
+          200: '#F9EBCB',
+          500: '#ECBD56',
+          600: '#DEAA3E',
+          700: '#C9972E',
         },
-        // Neutral Tokens
         neutral: {
-          bg: '#F7F8FA',
-          card: '#ECEEF0',
+          bg: '#F2F1ED',
+          card: '#FFFFFF',
           surface: '#FFFFFF',
-          surfaceSecondary: '#ECEEF0',
-          border: '#E2E5E9',
-          borderSubtle: '#ECEEF0',
-          textPrimary: '#1E1E1E',
-          textSecondary: '#5A606A',
-          textTertiary: '#8E95A2',
+          surfaceSecondary: '#EAE8E2',
+          border: '#DDD9D0',
+          borderSubtle: '#EAE8E2',
+          textPrimary: '#111216',
+          textSecondary: '#4E525D',
+          textTertiary: '#848A96',
         },
-        // Semantic Status Tokens using pastel accents
         status: {
-          success: '#1B6A22',
-          successBg: '#A4F5A6',
-          successBorder: '#8CEE8F',
-          warning: '#7A4300',
-          warningBg: '#FFD89D',
-          warningBorder: '#F9C679',
-          error: '#9E1C1C',
-          errorBg: '#FFE0E0',
-          errorBorder: '#FFB8B8',
-          info: '#312E81',
-          infoBg: '#E0DAFC',
-          infoBorder: '#C5BAFA',
+          success: '#22AC77',
+          successBg: '#EAF8F1',
+          successBorder: '#97E2C0',
+          warning: '#E0851A',
+          warningBg: '#FDF3E8',
+          warningBorder: '#F7C68B',
+          error: '#D9483B',
+          errorBg: '#FDF1F0',
+          errorBorder: '#F5A9A2',
+          info: '#2563EB',
+          infoBg: '#EFF6FF',
+          infoBorder: '#93C5FD',
         },
       },
       borderRadius: {
@@ -81,12 +127,12 @@ export default {
       },
       boxShadow: {
         none: 'none',
-        '2xs': '0px 1px 2px rgba(30, 30, 30, 0.04)',
-        xs: '0px 2px 4px rgba(30, 30, 30, 0.05)',
-        sm: '0px 2px 8px rgba(30, 30, 30, 0.06)',
-        md: '0px 4px 12px rgba(30, 30, 30, 0.08)',
-        lg: '0px 8px 24px rgba(30, 30, 30, 0.12)',
-        floating: '0px 10px 30px rgba(30, 30, 30, 0.22)',
+        '2xs': '0px 1px 2px rgba(17, 18, 22, 0.04)',
+        xs: '0px 2px 4px rgba(17, 18, 22, 0.05)',
+        sm: '0px 2px 8px rgba(17, 18, 22, 0.06)',
+        md: '0px 4px 12px rgba(17, 18, 22, 0.08)',
+        lg: '0px 8px 24px rgba(17, 18, 22, 0.12)',
+        floating: '0px 10px 30px rgba(17, 18, 22, 0.22)',
       },
       fontFamily: {
         sans: [

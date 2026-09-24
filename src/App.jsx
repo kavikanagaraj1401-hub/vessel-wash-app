@@ -1033,9 +1033,9 @@ export default function App() {
   }
 
   return (
-    <div className="w-full h-screen h-[100dvh] bg-[#ECEEF0] flex justify-center selection:bg-primary-100 selection:text-primary overflow-hidden">
+    <div className="w-full h-screen h-[100dvh] bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] flex justify-center selection:bg-[#ECBD56]/30 selection:text-[#111216] overflow-hidden transition-colors duration-200">
       {/* Responsive Container (Mobile: 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
-      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full flex flex-col bg-[#ECEEF0] shadow-2xl relative border-x border-neutral-border/60 overflow-hidden transition-all duration-300">
+      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full flex flex-col bg-[#F2F1ED] dark:bg-[#0B0C0E] shadow-2xl relative border-x border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden transition-all duration-200">
         {/* Static Top App Bar & Date Bar */}
         <TopAppBar
           title="Vessel Washing"

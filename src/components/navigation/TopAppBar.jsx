@@ -13,9 +13,12 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { supabaseService } from '../../services/supabaseService';
+import { useTheme } from '../../context/ThemeContext';
 
 export function TopAppBar({
   title = 'Vessel Washing',
@@ -32,6 +35,7 @@ export function TopAppBar({
   onSettingsClick,
   isLiveConnected = false,
 }) {
+  const { isDark, toggleTheme } = useTheme();
   const [istTime, setIstTime] = useState('');
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -93,21 +97,21 @@ export function TopAppBar({
   return (
     <>
       {/* Static Non-Scrolling Header Bar */}
-      <header className="flex-shrink-0 z-40 bg-white border-b border-neutral-border pt-safe shadow-2xs">
-        {/* Tier 1: App Title & Action Icons (Members & Burger Menu) */}
+      <header className="flex-shrink-0 z-40 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0] dark:border-[#2A364B] pt-safe shadow-2xs transition-colors duration-200">
+        {/* Tier 1: App Title & Action Icons (Members, Theme Toggle & Burger Menu) */}
         <div className="flex items-center justify-between px-4 h-14 gap-3">
           {/* App Brand & Logged-in Member Identity */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-[#A28EF9] flex items-center justify-center text-[#1E1E1E] shadow-2xs flex-shrink-0 font-extrabold text-xs">
+            <div className="w-9 h-9 rounded-full bg-[#ECBD56] flex items-center justify-center text-[#111216] shadow-2xs flex-shrink-0 font-extrabold text-xs">
               {resolvedCode || 'VW'}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#1E1E1E] leading-tight truncate">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3] leading-tight truncate">
                   {resolvedName}
                 </h1>
                 {resolvedCode && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 text-[10px] font-extrabold border border-violet-200 shadow-2xs flex-shrink-0">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] text-[10px] font-extrabold border border-[#ECBD56]/40 shadow-2xs flex-shrink-0">
                     {resolvedCode}
                   </span>
                 )}
@@ -118,24 +122,39 @@ export function TopAppBar({
                 >
                   <span
                     className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      isLiveConnected ? 'bg-emerald-400' : 'bg-amber-400'
+                      isLiveConnected ? 'bg-[#22AC77] dark:bg-[#4ADE80]' : 'bg-[#E0851A] dark:bg-[#FF9F45]'
                     }`}
                   />
                   <span
                     className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                      isLiveConnected ? 'bg-emerald-500' : 'bg-amber-500'
+                      isLiveConnected ? 'bg-[#22AC77] dark:bg-[#4ADE80]' : 'bg-[#E0851A] dark:bg-[#FF9F45]'
                     }`}
                   />
                 </span>
               </div>
-              <span className="text-[10px] sm:text-[11px] text-neutral-textTertiary font-medium block truncate">
+              <span className="text-[10px] sm:text-[11px] text-[#4E525D] dark:text-[#9BA5B7] font-medium block truncate">
                 {isAdmin ? 'Primary Admin • Live Roster' : 'Member • Daily Roster'}
               </span>
             </div>
           </div>
 
-          {/* Right: User Profile Avatar & Burger Menu (Redundant name chip removed) */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Right: Theme Toggle, Profile Avatar & Burger Menu */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Dark / Light Mode Switcher */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-9 h-9 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] flex items-center justify-center border border-[#DDD9D0] dark:border-[#2A364B] active-scale transition-all cursor-pointer"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-[#ECBD56]" strokeWidth={2.2} />
+              ) : (
+                <Moon className="w-4 h-4 text-[#111216]" strokeWidth={2.2} />
+              )}
+            </button>
+
             {/* User Profile Avatar Trigger */}
             <button
               type="button"
@@ -144,8 +163,8 @@ export function TopAppBar({
               title={`Logged in as ${resolvedName} (${resolvedCode}) - ${userEmail || 'Active session'}`}
               className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs select-none active-scale transition-all cursor-pointer ${
                 isAdmin
-                  ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
-                  : 'bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] border border-neutral-border/70'
+                  ? 'admin-gradient text-white border border-[#ECBD56] ring-2 ring-[#ECBD56]/40 shadow-xs'
+                  : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
               }`}
             >
               {isAdmin ? '👑' : (resolvedCode || resolvedName.charAt(0) || 'U')}
@@ -158,7 +177,7 @@ export function TopAppBar({
                 onClick={onSettingsClick}
                 aria-label="Open menu and settings"
                 title="Menu & Settings"
-                className="w-9 h-9 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] flex items-center justify-center border border-[#DDD9D0] dark:border-[#2A364B] active-scale transition-all cursor-pointer"
               >
                 <Menu className="w-4 h-4" strokeWidth={2.2} />
               </button>
@@ -167,15 +186,15 @@ export function TopAppBar({
         </div>
 
         {/* Tier 2: Static Dedicated Date & Time Placement Bar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-[#ECEEF0]/60 border-t border-neutral-border/60 text-[11px]">
-          <div className="flex items-center gap-2 text-[#1E1E1E] font-semibold truncate">
-            <Calendar className="w-3.5 h-3.5 text-[#7D64F6] flex-shrink-0" />
+        <div className="flex items-center justify-between px-4 py-2 bg-[#F2F1ED]/80 dark:bg-[#0B0C0E]/80 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
+          <div className="flex items-center gap-2 text-[#111216] dark:text-[#F7F6F3] font-semibold truncate">
+            <Calendar className="w-3.5 h-3.5 text-[#ECBD56] flex-shrink-0" />
             <span className="truncate">{currentDateStr}</span>
           </div>
 
           {istTime && (
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white text-[#1E1E1E] font-bold text-[10px] border border-neutral-border/70 shadow-2xs flex-shrink-0">
-              <Clock className="w-2.5 h-2.5 text-[#7D64F6]" />
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] font-bold text-[10px] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs flex-shrink-0">
+              <Clock className="w-2.5 h-2.5 text-[#ECBD56]" />
               <span>{istTime}</span>
             </div>
           )}
@@ -193,20 +212,20 @@ export function TopAppBar({
           {/* Admin Role Status Card */}
           <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
             isAdmin
-              ? 'bg-violet-50/80 border-violet-200'
-              : 'bg-[#ECEEF0]/60 border-neutral-border'
+              ? 'admin-gradient text-white border-[#ECBD56]/60 shadow-xs'
+              : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B]'
           }`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isAdmin ? 'bg-violet-600 text-white' : 'bg-neutral-200 text-neutral-600'
+                isAdmin ? 'bg-[#ECBD56] text-[#111216] font-bold' : 'bg-[#DDD9D0] dark:bg-[#2A364B] text-[#4E525D] dark:text-[#9BA5B7]'
               }`}>
                 {isAdmin ? <ShieldCheck className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-bold text-[#1E1E1E] block truncate">
+                <span className={`text-xs font-bold block truncate ${isAdmin ? 'text-white' : 'text-[#111216] dark:text-[#F7F6F3]'}`}>
                   {isAdmin ? 'Admin Mode (Kavipriyan)' : 'Standard Member View'}
                 </span>
-                <span className="text-[10px] text-neutral-textSecondary block truncate">
+                <span className={`text-[10px] block truncate ${isAdmin ? 'text-white/80' : 'text-[#4E525D] dark:text-[#9BA5B7]'}`}>
                   {isAdmin
                     ? 'Full edit access: meals, attendance, Excel, members'
                     : 'Meal status & attendance entry enabled'}
@@ -218,7 +237,7 @@ export function TopAppBar({
               <button
                 type="button"
                 onClick={() => onToggleAdminMode && onToggleAdminMode(false)}
-                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-white border border-violet-200 text-violet-800 hover:bg-violet-100 flex-shrink-0 shadow-2xs active-scale"
+                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-white text-[#111216] hover:bg-neutral-100 flex-shrink-0 shadow-2xs active-scale cursor-pointer"
               >
                 Member View
               </button>
@@ -230,7 +249,7 @@ export function TopAppBar({
                   setPinError('');
                   setPinInput('');
                 }}
-                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-[#A28EF9] text-[#1E1E1E] border border-[#7D64F6]/40 hover:bg-[#8F78F5] flex-shrink-0 shadow-2xs active-scale"
+                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] flex-shrink-0 shadow-2xs active-scale cursor-pointer"
               >
                 Unlock Admin
               </button>
@@ -240,10 +259,10 @@ export function TopAppBar({
           {/* Members List (Informative Only) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#1E1E1E]">
+              <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
                 All Members ({allMembers.length})
               </span>
-              <span className="text-[10px] font-semibold text-neutral-textTertiary">
+              <span className="text-[10px] font-semibold text-[#848A96] dark:text-[#64748B]">
                 Admins: {adminUserIds.length}/2
               </span>
             </div>
@@ -257,21 +276,21 @@ export function TopAppBar({
                 return (
                   <div
                     key={m.id}
-                    className="w-full p-2.5 rounded-xl border border-neutral-border bg-white flex items-center justify-between text-xs"
+                    className="w-full p-2.5 rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-white dark:bg-[#171F2C] flex items-center justify-between text-xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
                           isPrimary || isThisAdmin
-                            ? 'bg-[#A28EF9] text-[#1E1E1E] shadow-2xs'
-                            : 'bg-[#ECEEF0] text-neutral-textSecondary'
+                            ? 'admin-gradient text-white border border-[#ECBD56]/40 shadow-2xs'
+                            : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7]'
                         }`}
                       >
                         {isPrimary || isThisAdmin ? '👑' : m.code}
                       </div>
                       <div className="text-left min-w-0">
-                        <span className="font-bold text-[#1E1E1E] block truncate">{m.name}</span>
-                        <span className="text-[10px] text-neutral-textTertiary block truncate">
+                        <span className="font-bold text-[#111216] dark:text-[#F7F6F3] block truncate">{m.name}</span>
+                        <span className="text-[10px] text-[#848A96] dark:text-[#64748B] block truncate">
                           {isPrimary
                             ? 'Primary Admin (Permanent)'
                             : isThisAdmin
@@ -283,22 +302,22 @@ export function TopAppBar({
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {isPrimary ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/25 text-[#2C1885] border border-[#A28EF9]/40">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/60">
                           👑 Primary Admin
                         </span>
                       ) : isThisAdmin ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/30">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40">
                           👑 Admin
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#ECEEF0] text-neutral-textSecondary border border-neutral-border">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
                           Member
                         </span>
                       )}
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                         isActive
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-neutral-100 text-neutral-500'
+                          ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534]'
+                          : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
                       }`}>
                         {isActive ? 'Active' : 'Inactive'}
                       </span>

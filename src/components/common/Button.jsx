@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Design System Button component
- * Pill shaped (rounded-full) with pastel and dark accent styling
+ * Pill shaped (rounded-full) with exact Light/Dark tokens & Gold accent
  */
 export function Button({
   children,
@@ -18,7 +18,7 @@ export function Button({
   type = 'button',
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active-scale disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-full font-sans';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active-scale disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-full font-sans cursor-pointer';
 
   const sizeStyles = {
     sm: 'h-9 px-3.5 text-xs gap-1.5',
@@ -28,12 +28,20 @@ export function Button({
   };
 
   const variantStyles = {
-    primary: 'bg-[#A28EF9] text-[#1E1E1E] hover:bg-[#9077F7] active:bg-[#7D64F6] focus-visible:ring-[#A28EF9] shadow-xs hover:shadow-sm font-bold',
-    dark: 'bg-[#1E1E1E] text-white hover:bg-[#2D2D2D] active:bg-[#111111] focus-visible:ring-[#1E1E1E] shadow-xs font-bold',
-    secondary: 'bg-white text-[#1E1E1E] border border-neutral-border hover:bg-[#ECEEF0] active:bg-neutral-200 focus-visible:ring-neutral-border shadow-2xs',
-    tertiary: 'bg-transparent text-neutral-textSecondary hover:text-neutral-textPrimary hover:bg-[#ECEEF0]/60 active:bg-[#ECEEF0] focus-visible:ring-neutral-border',
-    destructive: 'bg-[#FFE2E2] text-[#8C1414] border border-[#FFBABA] hover:bg-[#FFD2D2] active:bg-[#FFC4C4] shadow-2xs',
-    success: 'bg-[#A4F5A6] text-[#0C4E10] border border-[#8DEB90] hover:bg-[#8EF190] active:bg-[#7AE87C] shadow-2xs',
+    // Primary Gold Accent
+    primary: 'bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] active:bg-[#C9972E] focus-visible:ring-[#ECBD56] shadow-xs hover:shadow-sm font-bold',
+    // Rich Ink / Dark
+    dark: 'bg-[#111216] text-[#F7F6F3] dark:bg-[#ECBD56] dark:text-[#111216] hover:bg-[#2D2D2D] active:bg-[#000000] focus-visible:ring-[#111216] shadow-xs font-bold',
+    // White/Slate Secondary Surface
+    secondary: 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active:bg-[#EAE8E2] dark:active:bg-[#253248] focus-visible:ring-[#ECBD56] shadow-2xs',
+    // Ghost / Tertiary
+    tertiary: 'bg-transparent text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2]/60 dark:hover:bg-[#1F2A3C]/60 active:bg-[#EAE8E2] dark:active:bg-[#1F2A3C] focus-visible:ring-[#DDD9D0]',
+    // Semantic Error
+    destructive: 'bg-[#FDF1F0] dark:bg-[#331310] text-[#D9483B] dark:text-[#FF5A4E] border border-[#F5A9A2] dark:border-[#991B1B] hover:bg-[#FCE3E1] dark:hover:bg-[#451714] shadow-2xs',
+    // Semantic OK
+    success: 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534] hover:bg-[#D7F3E5] dark:hover:bg-[#14432B] shadow-2xs',
+    // Admin Gradient
+    admin: 'admin-gradient text-white border border-[#ECBD56]/40 hover:opacity-95 shadow-xs font-bold',
   };
 
   const currentSizeStyle = variant === 'icon' ? sizeStyles.icon : sizeStyles[size];

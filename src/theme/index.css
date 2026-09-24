@@ -12,20 +12,43 @@
     margin: 0;
     padding: 0;
     font-family: 'Fustat', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #F7F8FA;
-    color: #1E1E1E;
+    background-color: #F2F1ED;
+    color: #111216;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
   
-  /* Mobile container viewport handling with subtle pastel aura */
+  html.dark, html.dark body {
+    background-color: #0B0C0E;
+    color: #F7F6F3;
+  }
+  
+  /* Mobile container viewport handling */
   #root {
     min-height: 100%;
     display: flex;
     justify-content: center;
-    background: linear-gradient(135deg, #EBF9EE 0%, #F5F3FF 50%, #FFF8EE 100%);
+    background-color: #F2F1ED;
+  }
+
+  html.dark #root {
+    background-color: #0B0C0E;
   }
 }
 
 @layer utilities {
+  /* Admin Gradient Specification: Gold (#ECBD56) into Deep Ink (#111216) */
+  .admin-gradient {
+    background: linear-gradient(135deg, #ECBD56 0%, #111216 100%);
+  }
+
+  .admin-gradient-subtle {
+    background: linear-gradient(135deg, rgba(236, 189, 86, 0.18) 0%, rgba(17, 18, 22, 0.06) 100%);
+  }
+
+  .dark .admin-gradient-subtle {
+    background: linear-gradient(135deg, rgba(236, 189, 86, 0.22) 0%, rgba(23, 31, 44, 0.7) 100%);
+  }
+
   /* Safe area padding for mobile notches and home indicators */
   .pt-safe {
     padding-top: env(safe-area-inset-top, 0px);

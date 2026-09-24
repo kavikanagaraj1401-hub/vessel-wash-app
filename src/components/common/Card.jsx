@@ -2,7 +2,8 @@ import React from 'react';
 
 /**
  * Modern Design System Card Component
- * Surface container with 20px-24px rounded corners and pure white surface
+ * Surface container with 22px rounded corners and Light/Dark token support
+ * Light: #FFFFFF (Pure White) | Dark: #171F2C (Deep Slate)
  */
 export function Card({
   children,
@@ -21,17 +22,17 @@ export function Card({
   };
 
   const highlightBorder = highlight
-    ? 'border-[#A28EF9] ring-2 ring-[#A28EF9]/20 shadow-md'
-    : 'border-neutral-border/80 shadow-2xs hover:shadow-xs';
+    ? 'border-[#ECBD56] ring-2 ring-[#ECBD56]/20 shadow-md'
+    : 'border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs';
 
   const clickableStyles = onClick
-    ? 'cursor-pointer active-scale hover:border-neutral-300 transition-all'
+    ? 'cursor-pointer active-scale hover:border-[#ECBD56]/60 dark:hover:border-[#ECBD56]/60 transition-all'
     : '';
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-[22px] border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
+      className={`bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-[22px] border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
       {...props}
     >
       {children}

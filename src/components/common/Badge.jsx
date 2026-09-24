@@ -1,9 +1,9 @@
 import React from 'react';
-import { CheckCircle2, XCircle, Clock, AlertCircle, UserX, Sparkles } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, UserX, Sparkles, Crown } from 'lucide-react';
 
 /**
  * Design System Status Badge
- * Fully rounded pill tags using pastel accents (#A28EF9, #FFD89D, #A4F5A6, #ECEEF0, #1E1E1E)
+ * Fully rounded pill tags supporting Light & Dark tokens, Gold accents, and Admin gradient
  */
 export function Badge({
   children,
@@ -13,66 +13,79 @@ export function Badge({
   className = '',
 }) {
   const configs = {
+    // Semantic OK (Success) - Light #22AC77 | Dark #4ADE80
     present: {
-      bg: 'bg-[#A4F5A6]',
-      text: 'text-[#0C4E10]',
-      border: 'border-[#8DEB90]',
+      bg: 'bg-[#EAF8F1] dark:bg-[#0E2E1D]',
+      text: 'text-[#22AC77] dark:text-[#4ADE80]',
+      border: 'border-[#97E2C0] dark:border-[#166534]',
       icon: CheckCircle2,
       label: 'Present',
     },
     completed: {
-      bg: 'bg-[#A4F5A6]',
-      text: 'text-[#0C4E10]',
-      border: 'border-[#8DEB90]',
+      bg: 'bg-[#EAF8F1] dark:bg-[#0E2E1D]',
+      text: 'text-[#22AC77] dark:text-[#4ADE80]',
+      border: 'border-[#97E2C0] dark:border-[#166534]',
       icon: CheckCircle2,
       label: 'Completed',
     },
+    // Semantic Error - Light #D9483B | Dark #FF5A4E
     absent: {
-      bg: 'bg-[#FFE2E2]',
-      text: 'text-[#8C1414]',
-      border: 'border-[#FFBABA]',
+      bg: 'bg-[#FDF1F0] dark:bg-[#331310]',
+      text: 'text-[#D9483B] dark:text-[#FF5A4E]',
+      border: 'border-[#F5A9A2] dark:border-[#991B1B]',
       icon: XCircle,
       label: 'Absent',
     },
+    // Semantic Warn - Light #E0851A | Dark #FF9F45
     pending: {
-      bg: 'bg-[#FFD89D]',
-      text: 'text-[#613500]',
-      border: 'border-[#F8C67B]',
+      bg: 'bg-[#FDF3E8] dark:bg-[#331C08]',
+      text: 'text-[#E0851A] dark:text-[#FF9F45]',
+      border: 'border-[#F7C68B] dark:border-[#854D0E]',
       icon: Clock,
       label: 'Pending',
     },
-    inactive: {
-      bg: 'bg-[#ECEEF0]',
-      text: 'text-neutral-textTertiary',
-      border: 'border-neutral-border',
-      icon: UserX,
-      label: 'Inactive',
+    // Admin Gradient Badge (#ECBD56 to #111216)
+    admin: {
+      bg: 'admin-gradient',
+      text: 'text-white',
+      border: 'border-[#ECBD56]/60',
+      icon: Crown,
+      label: 'Admin',
     },
-    periwinkle: {
-      bg: 'bg-[#A28EF9]',
-      text: 'text-[#1E1E1E]',
-      border: 'border-[#9079F7]',
+    // Gold Accent Badge (#ECBD56)
+    gold: {
+      bg: 'bg-[#FCF7ED] dark:bg-[#272115]',
+      text: 'text-[#845D08] dark:text-[#FBE6AB]',
+      border: 'border-[#ECBD56]/60 dark:border-[#ECBD56]/40',
       icon: Sparkles,
-      label: 'Accent',
+      label: 'Gold',
     },
+    // Semantic Info - Light #2563EB | Dark #BFB4FF
     info: {
-      bg: 'bg-[#A28EF9]/20',
-      text: 'text-[#4730A3]',
-      border: 'border-[#A28EF9]/40',
+      bg: 'bg-[#EFF6FF] dark:bg-[#1B1E3B]',
+      text: 'text-[#2563EB] dark:text-[#BFB4FF]',
+      border: 'border-[#93C5FD] dark:border-[#4338CA]',
       icon: AlertCircle,
       label: 'Info',
     },
+    inactive: {
+      bg: 'bg-[#EAE8E2] dark:bg-[#1F2A3C]',
+      text: 'text-[#848A96] dark:text-[#64748B]',
+      border: 'border-[#DDD9D0] dark:border-[#2A364B]',
+      icon: UserX,
+      label: 'Inactive',
+    },
     neutral: {
-      bg: 'bg-[#ECEEF0]',
-      text: 'text-[#1E1E1E]',
-      border: 'border-neutral-border/60',
+      bg: 'bg-[#EAE8E2] dark:bg-[#1F2A3C]',
+      text: 'text-[#111216] dark:text-[#F7F6F3]',
+      border: 'border-[#DDD9D0] dark:border-[#2A364B]',
       icon: null,
       label: '',
     },
     dark: {
-      bg: 'bg-[#1E1E1E]',
-      text: 'text-white',
-      border: 'border-[#333333]',
+      bg: 'bg-[#111216] dark:bg-[#171F2C]',
+      text: 'text-[#F7F6F3]',
+      border: 'border-[#333333] dark:border-[#2A364B]',
       icon: null,
       label: '',
     },
@@ -89,7 +102,7 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center font-medium rounded-full border shadow-2xs ${config.bg} ${config.text} ${config.border} ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center font-bold rounded-full border shadow-2xs ${config.bg} ${config.text} ${config.border} ${sizeStyles[size]} ${className}`}
     >
       {showIcon && IconComponent && <IconComponent className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.2} />}
       <span>{children || config.label}</span>

@@ -143,22 +143,22 @@ export function ActivityScreen({
       </div>
 
       {/* 2. Admin Info Notice */}
-      <div className="p-3.5 rounded-[22px] bg-[#A28EF9]/15 border border-[#A28EF9]/30 text-[#2C1885] flex items-center justify-between gap-2 shadow-2xs">
+      <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-[#A28EF9] text-[#1E1E1E] flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+          <div className="w-8 h-8 rounded-full admin-gradient text-white border border-[#ECBD56]/80 flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
             👑
           </div>
           <div className="min-w-0">
-            <span className="text-xs font-bold text-[#1E1E1E] block truncate">
+            <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block truncate">
               Admin: Kavipriyan (Member 1)
             </span>
-            <span className="text-[11px] text-[#42299C] block truncate">
+            <span className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 block truncate">
               Designated Admin with roster edit and management access.
             </span>
           </div>
         </div>
-        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#2C1885] border border-[#A28EF9]/40 flex-shrink-0 flex items-center gap-1 shadow-2xs">
-          <ShieldCheck className="w-3 h-3 text-[#7D64F6]" />
+        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 flex-shrink-0 flex items-center gap-1 shadow-2xs">
+          <ShieldCheck className="w-3 h-3 text-[#ECBD56]" />
           Admin Only
         </span>
       </div>
@@ -171,14 +171,14 @@ export function ActivityScreen({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search activity by actor, action, date..."
-            className="w-full h-10 px-4 pl-9 text-xs bg-white rounded-full border border-neutral-border text-neutral-textPrimary placeholder:text-neutral-textTertiary outline-none focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20 shadow-2xs"
+            className="w-full h-10 px-4 pl-9 text-xs bg-white dark:bg-[#171F2C] rounded-full border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#111216]/40 dark:placeholder:text-[#F7F6F3]/40 outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 shadow-2xs transition-colors"
           />
-          <Search className="w-4 h-4 text-neutral-textTertiary absolute left-3 top-3 pointer-events-none" />
+          <Search className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 absolute left-3 top-3 pointer-events-none" />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-[11px] font-semibold text-neutral-textTertiary hover:text-neutral-textPrimary absolute right-3.5 top-2.5"
+              className="text-[11px] font-semibold text-[#111216]/50 dark:text-[#F7F6F3]/50 hover:text-[#111216] dark:hover:text-[#F7F6F3] absolute right-3.5 top-2.5"
             >
               Clear
             </button>
@@ -195,8 +195,8 @@ export function ActivityScreen({
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all select-none active-scale ${
                   isActive
-                    ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                    : 'bg-white text-neutral-textSecondary border border-neutral-border hover:bg-[#ECEEF0]'
+                    ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs font-bold'
+                    : 'bg-white dark:bg-[#171F2C] text-[#111216]/70 dark:text-[#F7F6F3]/70 border border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C]'
                 }`}
               >
                 {cat.label}
@@ -225,8 +225,8 @@ export function ActivityScreen({
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs ${
                         isActorAdmin
-                          ? 'bg-[#A28EF9]/25 text-[#1E1E1E] border border-[#A28EF9]/40'
-                          : 'bg-[#A4F5A6]/35 text-[#1E1E1E] border border-[#A4F5A6]/40'
+                          ? 'admin-gradient text-white border border-[#ECBD56]/80'
+                          : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
                       }`}
                     >
                       {log.actorCode || 'M'}
@@ -234,17 +234,17 @@ export function ActivityScreen({
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-neutral-textPrimary truncate">
+                        <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] truncate">
                           {log.actorName || 'User'}
                         </span>
                         {isActorAdmin && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/40 inline-flex items-center gap-0.5">
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 inline-flex items-center gap-0.5">
                             👑 Admin
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-neutral-textTertiary flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5 text-neutral-textTertiary" />
+                      <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />
                         {formatTimestamp(log.timestamp)}
                       </span>
                     </div>
@@ -255,15 +255,15 @@ export function ActivityScreen({
                   </Badge>
                 </div>
 
-                <div className="p-2.5 rounded-2xl bg-[#ECEEF0]/60 border border-neutral-border/60 text-xs text-neutral-textSecondary flex items-start gap-2">
+                <div className="p-2.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-xs text-[#111216]/80 dark:text-[#F7F6F3]/80 flex items-start gap-2">
                   <div className="pt-0.5 flex-shrink-0">{getActionIcon(log)}</div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-neutral-textPrimary leading-snug">
+                    <p className="font-medium text-[#111216] dark:text-[#F7F6F3] leading-snug">
                       {log.details}
                     </p>
                     {log.targetDate && (
-                      <span className="text-[10px] font-semibold text-neutral-textTertiary inline-flex items-center gap-1 mt-1">
-                        <Calendar className="w-3 h-3 text-neutral-textTertiary" />
+                      <span className="text-[10px] font-semibold text-[#111216]/50 dark:text-[#F7F6F3]/50 inline-flex items-center gap-1 mt-1">
+                        <Calendar className="w-3 h-3" />
                         Target Date: {log.targetDate}
                       </span>
                     )}

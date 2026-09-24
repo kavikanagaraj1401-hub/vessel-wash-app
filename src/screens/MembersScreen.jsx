@@ -625,8 +625,8 @@ export function MembersScreen({
                 key={member.id}
                 className={`group rounded-2xl border transition-all ${
                   isActive
-                    ? 'bg-white border-neutral-200/90 hover:border-neutral-300 shadow-xs'
-                    : 'bg-neutral-50/80 border-neutral-200/60 opacity-80'
+                    ? 'bg-white dark:bg-[#171F2C] border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56]/60 dark:hover:border-[#ECBD56]/60 shadow-xs'
+                    : 'bg-[#F2F1ED]/80 dark:bg-[#1F2A3C]/70 border-[#DDD9D0]/60 dark:border-[#2A364B]/60 opacity-80'
                 }`}
               >
                 <div className="p-3.5 sm:p-4">
@@ -637,14 +637,14 @@ export function MembersScreen({
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
                           isPrimary || isThisAdmin
-                            ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/40 shadow-amber-300/30'
+                            ? 'admin-gradient text-white border border-[#ECBD56] ring-2 ring-[#ECBD56]/40 shadow-xs'
                             : isActive
-                            ? 'bg-emerald-50 text-emerald-900 border border-emerald-300/80'
-                            : 'bg-neutral-200/70 text-neutral-500 border border-neutral-300'
+                            ? 'bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40'
+                            : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
                         }`}
                       >
                         {isPrimary || isThisAdmin ? (
-                          <Crown className="w-5 h-5 text-amber-950 fill-amber-200" />
+                          <Crown className="w-5 h-5 text-[#ECBD56] fill-[#ECBD56]" />
                         ) : (
                           member.code
                         )}
@@ -653,23 +653,23 @@ export function MembersScreen({
                       {/* Name & Primary Attributes */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-neutral-900 truncate">
+                          <h3 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate">
                             {member.name}
                           </h3>
 
-                          {/* Role Badge - Gold Theme for Admins */}
+                          {/* Role Badge - Gold Theme & Admin Gradient */}
                           {isPrimary ? (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 text-amber-950 border border-amber-400/80 inline-flex items-center gap-1 shadow-2xs">
-                              <Crown className="w-3 h-3 text-amber-700 fill-amber-500" />
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 inline-flex items-center gap-1 shadow-2xs">
+                              <Crown className="w-3 h-3 text-[#ECBD56] fill-[#ECBD56]" />
                               Primary Admin
                             </span>
                           ) : isThisAdmin ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                              <ShieldCheck className="w-3 h-3 text-amber-600" />
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/60 inline-flex items-center gap-1 shadow-2xs">
+                              <ShieldCheck className="w-3 h-3 text-[#ECBD56]" />
                               Admin
                             </span>
                           ) : (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
                               Member
                             </span>
                           )}
@@ -678,13 +678,13 @@ export function MembersScreen({
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
                               isActive
-                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
+                                ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534]'
+                                : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
-                                isActive ? 'bg-emerald-500' : 'bg-neutral-400'
+                                isActive ? 'bg-[#22AC77] dark:bg-[#4ADE80]' : 'bg-[#848A96] dark:bg-[#64748B]'
                               }`}
                             ></span>
                             {isActive ? 'Active' : 'Inactive'}
@@ -738,7 +738,7 @@ export function MembersScreen({
                   </div>
 
                   {/* Bottom: Action Toolbar (Separated with clean top border) */}
-                  <div className="mt-3 pt-2.5 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="mt-3 pt-2.5 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     {/* Left: Credential Actions - Strictly Generate Credential OR Update Password */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {isAdmin ? (
@@ -746,25 +746,25 @@ export function MembersScreen({
                           <button
                             type="button"
                             onClick={() => handleOpenCreateCredentials(memberWithCreds)}
-                            className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            className="px-3 py-1.5 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale"
                             title="Generate login credentials for this member"
                           >
-                            <KeyRound className="w-3.5 h-3.5 text-violet-600" />
+                            <KeyRound className="w-3.5 h-3.5 text-[#111216]" />
                             <span>Generate Credential</span>
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleOpenResetPassword(memberWithCreds)}
-                            className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            className="px-3 py-1.5 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale"
                             title="Update password for this member"
                           >
-                            <KeyRound className="w-3.5 h-3.5 text-violet-600" />
+                            <KeyRound className="w-3.5 h-3.5 text-[#111216]" />
                             <span>Update Password</span>
                           </button>
                         )
                       ) : (
-                        <span className="text-[11px] text-neutral-400 italic">
+                        <span className="text-[11px] text-[#848A96] dark:text-[#64748B] italic">
                           {credStatus.hasLogin ? 'Login configured' : 'No credentials set'}
                         </span>
                       )}
