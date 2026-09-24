@@ -35,8 +35,8 @@ export function HistoryScreen({
 }) {
   // Default to 'logs' (Timeline Logs) as requested
   const [activeSubTab, setActiveSubTab] = useState('logs'); // 'logs' | 'report'
-  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'with_meals' | 'no_data'
-  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' (1-30) | 'desc' (30-1)
+  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'lunch' | 'dinner' | 'unmarked'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (Today → Past) | 'asc' (Past → Today)
   const [copied, setCopied] = useState(false);
   const [expandedMembers, setExpandedMembers] = useState(new Set(members.map(m => m.id)));
 
@@ -71,13 +71,16 @@ export function HistoryScreen({
     }).sort((a, b) => b.totalCount - a.totalCount);
   }, [members, attendanceLogs]);
 
-  // Build unified date-by-date timeline logs
+  // Build unified date-by-date timeline logs (excluding future dates, up to today)
   const timelineDates = useMemo(() => {
     if (!daysConfig || daysConfig.length === 0) return [];
 
     const computedMap = new Map(computedDays.map(d => [d.date, d]));
 
-    const dates = daysConfig.map(day => {
+    // 1. Completely hide or exclude future dates (starts at today and goes backward into past)
+    const historicalDays = daysConfig.filter(day => day.date <= todayDateStr);
+
+    const dates = historicalDays.map(day => {
       const compDay = computedMap.get(day.date) || day;
       const isLunchAvail = Boolean(day.lunchProvided);
       const isDinnerAvail = Boolean(day.dinnerProvided);
@@ -93,12 +96,16 @@ export function HistoryScreen({
         .filter(Boolean);
 
       // Extract who washed on this date
-      // 1. Lunch washers: check verified attendanceLogs first, then computed slot
+      // Check verified attendance records in attendanceLogs
       let lunchWashers = [];
+      const verifiedLunch = attendanceLogs.filter(
+        l => l.date === day.date && l.meal === 'lunch' && l.status === 'present'
+      );
+      const isLunchVerified = isLunchAvail && attendanceLogs.some(
+        l => l.date === day.date && l.meal === 'lunch'
+      );
+
       if (isLunchAvail) {
-        const verifiedLunch = attendanceLogs.filter(
-          l => l.date === day.date && l.meal === 'lunch' && l.status === 'present'
-        );
         if (verifiedLunch.length > 0) {
           lunchWashers = verifiedLunch.map(l => ({
             id: l.memberId,
@@ -108,7 +115,7 @@ export function HistoryScreen({
             verified: true,
             markedBy: l.markedBy,
           }));
-        } else if (day.date <= todayDateStr) {
+        } else {
           // Fall back to computed slots for past/today
           const lunchSlots = (compDay.slots || []).filter(s => s.meal === 'lunch');
           lunchWashers = lunchSlots
@@ -123,12 +130,16 @@ export function HistoryScreen({
         }
       }
 
-      // 2. Dinner washer: check verified attendanceLogs first, then computed slot
+      // Dinner washer
       let dinnerWashers = [];
+      const verifiedDinner = attendanceLogs.filter(
+        l => l.date === day.date && l.meal === 'dinner' && l.status === 'present'
+      );
+      const isDinnerVerified = isDinnerAvail && attendanceLogs.some(
+        l => l.date === day.date && l.meal === 'dinner'
+      );
+
       if (isDinnerAvail) {
-        const verifiedDinner = attendanceLogs.filter(
-          l => l.date === day.date && l.meal === 'dinner' && l.status === 'present'
-        );
         if (verifiedDinner.length > 0) {
           dinnerWashers = verifiedDinner.map(l => ({
             id: l.memberId,
@@ -138,7 +149,7 @@ export function HistoryScreen({
             verified: true,
             markedBy: l.markedBy,
           }));
-        } else if (day.date <= todayDateStr) {
+        } else {
           const dinnerSlot = (compDay.slots || []).find(s => s.meal === 'dinner');
           if (dinnerSlot && dinnerSlot.assignedMemberId && dinnerSlot.assignedMemberName !== '-') {
             dinnerWashers = [{
@@ -151,6 +162,12 @@ export function HistoryScreen({
           }
         }
       }
+
+      // Check whether day has any unmarked / pending verification
+      const isPending =
+        !hasAnyMeal ||
+        (isLunchAvail && !isLunchVerified) ||
+        (isDinnerAvail && !isDinnerVerified);
 
       // Parse date components
       const dateParts = day.date.split('-');
@@ -175,25 +192,34 @@ export function HistoryScreen({
         dinnerPresentMembers,
         lunchWashers,
         dinnerWashers,
-        isToday: day.date === selectedDateStr,
+        isLunchVerified,
+        isDinnerVerified,
+        isPending,
+        isToday: day.date === todayDateStr,
       };
     });
 
-    // Filter
+    // 2. Refined Filter Options & Logic:
+    // - 'all': All historical records up to today
+    // - 'lunch': Dates where lunch occurred (displays both entries if dinner also occurred)
+    // - 'dinner': Dates where dinner occurred (displays both entries if lunch also occurred)
+    // - 'unmarked': Records pending status / unmarked
     let filtered = dates;
-    if (dateFilter === 'with_meals') {
-      filtered = dates.filter(d => d.hasAnyMeal);
-    } else if (dateFilter === 'no_data') {
-      filtered = dates.filter(d => !d.hasAnyMeal);
+    if (dateFilter === 'lunch') {
+      filtered = dates.filter(d => d.isLunchAvail);
+    } else if (dateFilter === 'dinner') {
+      filtered = dates.filter(d => d.isDinnerAvail);
+    } else if (dateFilter === 'unmarked') {
+      filtered = dates.filter(d => d.isPending);
     }
 
-    // Sort
+    // 3. Sort: Default descending order (today down to past)
     return filtered.sort((a, b) => {
-      return sortOrder === 'asc'
-        ? a.date.localeCompare(b.date)
-        : b.date.localeCompare(a.date);
+      return sortOrder === 'desc'
+        ? b.date.localeCompare(a.date)
+        : a.date.localeCompare(b.date);
     });
-  }, [daysConfig, computedDays, attendanceLogs, memberMap, dateFilter, sortOrder, selectedDateStr]);
+  }, [daysConfig, computedDays, attendanceLogs, memberMap, dateFilter, sortOrder, todayDateStr]);
 
   const toggleMemberExpand = (memberId) => {
     const next = new Set(expandedMembers);
@@ -324,14 +350,15 @@ export function HistoryScreen({
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0 flex-1">
               {[
                 { id: 'all', label: 'All Dates' },
-                { id: 'with_meals', label: 'With Meals' },
-                { id: 'no_data', label: 'No Data' },
+                { id: 'lunch', label: 'Lunch ' },
+                { id: 'dinner', label: 'Dinner ' },
+                { id: 'unmarked', label: 'Unmarked' },
               ].map(f => (
                 <button
                   key={f.id}
                   type="button"
                   onClick={() => setDateFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all select-none active-scale ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all select-none active-scale cursor-pointer ${
                     dateFilter === f.id
                       ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
                       : 'bg-white text-neutral-textSecondary border border-neutral-border hover:bg-[#ECEEF0]'
@@ -342,15 +369,15 @@ export function HistoryScreen({
               ))}
             </div>
 
-            {/* Sort Toggle (Ascending vs Descending) */}
+            {/* Sort Toggle (Descending vs Ascending) */}
             <button
               type="button"
-              onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-neutral-border text-neutral-textSecondary shadow-2xs hover:text-neutral-textPrimary select-none active-scale flex-shrink-0 whitespace-nowrap"
+              onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-neutral-border text-neutral-textSecondary shadow-2xs hover:text-neutral-textPrimary select-none active-scale flex-shrink-0 whitespace-nowrap cursor-pointer"
               title="Toggle date order"
             >
               <ArrowUpDown className="w-3 h-3 text-neutral-textTertiary" />
-              <span>{sortOrder === 'asc' ? '1 → 30' : '30 → 1'}</span>
+              <span>{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
             </button>
           </div>
 
@@ -358,8 +385,16 @@ export function HistoryScreen({
           {timelineDates.length === 0 ? (
             <EmptyState
               icon={History}
-              title="No dates match the filter"
-              description="Change your filter selection above to view logs."
+              title="No records found"
+              description={
+                dateFilter === 'unmarked'
+                  ? 'All historical records up to today have verified attendance.'
+                  : dateFilter === 'lunch'
+                  ? 'No historical lunch records found up to today.'
+                  : dateFilter === 'dinner'
+                  ? 'No historical dinner records found up to today.'
+                  : 'No historical records found up to today.'
+              }
             />
           ) : (
             <div className="space-y-2.5">
@@ -376,6 +411,9 @@ export function HistoryScreen({
                   dinnerPresentMembers,
                   lunchWashers,
                   dinnerWashers,
+                  isLunchVerified,
+                  isDinnerVerified,
+                  isPending,
                   isToday,
                 } = item;
 
@@ -419,10 +457,10 @@ export function HistoryScreen({
                           </div>
                         </div>
 
-                        {/* No Data Badge */}
+                        {/* Unmarked Badge */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#ECEEF0] text-neutral-textTertiary border border-neutral-300/60">
-                            Without Data
+                          <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            Unmarked
                           </span>
                           {onSelectDate && onTabChange && (
                             <button
@@ -469,13 +507,18 @@ export function HistoryScreen({
                         </div>
 
                         <div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <h4 className="text-xs font-bold text-neutral-textPrimary">
                               {fullDateStr}
                             </h4>
                             {isToday && (
                               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/25 text-[#2C1885] border border-[#A28EF9]/40">
                                 Today
+                              </span>
+                            )}
+                            {isPending && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                Unmarked
                               </span>
                             )}
                           </div>
@@ -525,9 +568,15 @@ export function HistoryScreen({
                           </div>
 
                           {/* Washer Row */}
-                          <div className="p-2.5 rounded-xl bg-[#A4F5A6]/20 border border-[#A4F5A6]/40 flex items-center justify-between">
+                          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                            isLunchVerified
+                              ? 'bg-[#A4F5A6]/20 border-[#A4F5A6]/40'
+                              : 'bg-amber-50/60 border-amber-200/60'
+                          }`}>
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-[#A4F5A6] text-[#1E1E1E] flex items-center justify-center text-[10px] font-bold">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                isLunchVerified ? 'bg-[#A4F5A6] text-[#1E1E1E]' : 'bg-amber-100 text-amber-900'
+                              }`}>
                                 🧼
                               </div>
                               <div>
@@ -541,8 +590,12 @@ export function HistoryScreen({
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#A4F5A6] text-[#1E1E1E]">
-                              Washed
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                              isLunchVerified
+                                ? 'bg-[#A4F5A6] text-[#1E1E1E]'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}>
+                              {isLunchVerified ? 'Washed' : 'Pending'}
                             </span>
                           </div>
 
@@ -612,9 +665,15 @@ export function HistoryScreen({
                           </div>
 
                           {/* Washer Row */}
-                          <div className="p-2.5 rounded-xl bg-[#A4F5A6]/20 border border-[#A4F5A6]/40 flex items-center justify-between">
+                          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                            isDinnerVerified
+                              ? 'bg-[#A4F5A6]/20 border-[#A4F5A6]/40'
+                              : 'bg-amber-50/60 border-amber-200/60'
+                          }`}>
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-[#A4F5A6] text-[#1E1E1E] flex items-center justify-center text-[10px] font-bold">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                isDinnerVerified ? 'bg-[#A4F5A6] text-[#1E1E1E]' : 'bg-amber-100 text-amber-900'
+                              }`}>
                                 🧼
                               </div>
                               <div>
@@ -628,8 +687,12 @@ export function HistoryScreen({
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#A4F5A6] text-[#1E1E1E]">
-                              Washed
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                              isDinnerVerified
+                                ? 'bg-[#A4F5A6] text-[#1E1E1E]'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}>
+                              {isDinnerVerified ? 'Washed' : 'Pending'}
                             </span>
                           </div>
 
