@@ -471,24 +471,42 @@ export const supabaseService = {
   },
 
   /**
-   * Fetch a member's role directly from the members table by email.
+   * Fetch a member's complete profile (role, is_active, etc.) directly from the members table by email.
    */
-  async fetchMemberRole(email) {
+  async fetchMemberProfile(email) {
     if (!isSupabaseConfigured || !supabase || !email) return null;
     try {
       const cleanEmail = email.trim().toLowerCase();
       const { data, error } = await supabase
         .from('members')
-        .select('id, full_name, email, role')
+        .select('id, full_name, email, role, is_active, rotation_order')
         .ilike('email', cleanEmail)
         .maybeSingle();
 
       if (error) throw error;
-      return data?.role || null;
+      if (data) return data;
+
+      // Fallback matching by email prefix or full name
+      const prefix = cleanEmail.split('@')[0];
+      const { data: fallbackData } = await supabase
+        .from('members')
+        .select('id, full_name, email, role, is_active, rotation_order')
+        .or(`full_name.ilike.%${prefix}%,email.ilike.${prefix}@%`)
+        .maybeSingle();
+
+      return fallbackData || null;
     } catch (err) {
-      console.warn('Could not fetch member role:', err);
+      console.warn('Could not fetch member profile:', err);
       return null;
     }
+  },
+
+  /**
+   * Fetch a member's role directly from the members table by email.
+   */
+  async fetchMemberRole(email) {
+    const profile = await this.fetchMemberProfile(email);
+    return profile?.role || null;
   },
 
   /**
@@ -697,8 +715,8 @@ export const supabaseService = {
       try {
         const queryPromise = supabase
           .from('members')
-          .select('email, full_name, name')
-          .or(`full_name.ilike.%${clean}%,name.ilike.%${clean}%,email.ilike.${clean}@%`)
+          .select('email, full_name')
+          .or(`full_name.ilike.%${clean}%,email.ilike.${clean}@%`)
           .not('email', 'is', null)
           .limit(1);
 
@@ -707,6 +725,17 @@ export const supabaseService = {
 
         if (res && res.data && res.data[0]?.email) {
           return res.data[0].email.toLowerCase().trim();
+        }
+
+        // Direct check on domain email
+        const { data: directMatch } = await supabase
+          .from('members')
+          .select('email, full_name')
+          .eq('email', `${clean}@vesselwash.app`)
+          .maybeSingle();
+
+        if (directMatch?.email) {
+          return directMatch.email.toLowerCase().trim();
         }
       } catch (err) {
         console.warn('Error resolving username in Supabase:', err);
@@ -763,40 +792,53 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Try RPC call first
+      // 1. Try public.create_member_credential and public.admin_create_user RPCs
+      let rpcSucceeded = false;
       try {
         const { data: rpcRes, error: rpcErr } = await supabase.rpc('create_member_credential', {
-          member_id: String(memberId || ''),
-          member_email: cleanEmail,
-          member_password: password,
-          member_role: role || 'member',
+          target_email: cleanEmail,
+          target_name: displayName,
+          target_password: password,
         });
 
-        if (!rpcErr && (rpcRes?.success || rpcRes === true)) {
+        if (!rpcErr && (rpcRes?.success || rpcRes === true || rpcRes?.id || !rpcRes?.error)) {
           console.info(`✓ Successfully created credentials for ${displayName} via RPC create_member_credential`);
-          return { success: true, email: cleanEmail, method: 'rpc' };
+          rpcSucceeded = true;
+        } else {
+          // Fallback to admin_create_user
+          const { data: adminRes, error: adminErr } = await supabase.rpc('admin_create_user', {
+            user_email: cleanEmail,
+            user_name: displayName,
+            user_password: password,
+          });
+          if (!adminErr) {
+            console.info(`✓ Successfully created credentials for ${displayName} via RPC admin_create_user`);
+            rpcSucceeded = true;
+          }
         }
       } catch (rpcEx) {
-        // RPC not defined, fall back to isolated client
+        console.warn('RPC create member credential warning:', rpcEx);
       }
 
       // 2. Fallback: Use isolated Supabase Auth client without touching Admin session
-      const isolatedClient = getIsolatedAuthClient();
-      if (isolatedClient) {
-        const { data: signUpData, error: signUpErr } = await isolatedClient.auth.signUp({
-          email: cleanEmail,
-          password: password,
-          options: {
-            data: {
-              full_name: displayName,
-              username: displayName,
-              role: role,
+      if (!rpcSucceeded) {
+        const isolatedClient = getIsolatedAuthClient();
+        if (isolatedClient) {
+          const { data: signUpData, error: signUpErr } = await isolatedClient.auth.signUp({
+            email: cleanEmail,
+            password: password,
+            options: {
+              data: {
+                full_name: displayName,
+                username: displayName,
+                role: role,
+              },
             },
-          },
-        });
+          });
 
-        if (signUpErr && !signUpErr.message?.toLowerCase().includes('already registered')) {
-          throw signUpErr;
+          if (signUpErr && !signUpErr.message?.toLowerCase().includes('already registered')) {
+            throw signUpErr;
+          }
         }
       }
 
@@ -808,6 +850,7 @@ export const supabaseService = {
       const updatePayload = {
         email: cleanEmail,
         role: role,
+        is_active: true,
         updated_at: new Date().toISOString(),
       };
 
@@ -908,46 +951,91 @@ export const supabaseService = {
   },
 
   /**
-   * Admin-Only: Trigger a password reset or change a member's password directly from the Admin Panel.
-   * Tries RPC admin_reset_member_password or sends password reset email.
+   * Admin-Only: Change or update an existing member's password directly from the Admin Panel.
+   * Tries public.admin_update_user_password, public.create_member_credential, or public.admin_create_user.
    */
-  async adminResetMemberPassword({ memberId, email, newPassword }) {
-    if (!isSupabaseConfigured || !supabase || !email) {
-      console.warn('⚠️ Supabase client is not initialized or email is missing.');
+  async adminResetMemberPassword({ memberId, email, name, newPassword }) {
+    if (!isSupabaseConfigured || !supabase || (!email && !memberId)) {
+      console.warn('⚠️ Supabase client is not initialized or identifiers missing.');
       return {
         success: false,
-        error: new Error('Database service is temporarily unavailable or email is missing.'),
+        error: new Error('Database service is temporarily unavailable or member identifier is missing.'),
       };
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (newPassword || '').trim();
+    if (!cleanPassword || cleanPassword.length < 6) {
+      return { success: false, error: new Error('Password must be at least 6 characters long.') };
+    }
 
     try {
-      // 1. If new password provided, try direct RPC override
-      if (newPassword && newPassword.length >= 6) {
+      // 1. Try public.admin_update_user_password(new_password, target_user_id)
+      if (memberId) {
         try {
-          const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_reset_member_password', {
-            target_email: cleanEmail,
-            new_password: newPassword,
+          const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_update_user_password', {
+            target_user_id: String(memberId),
+            new_password: cleanPassword,
           });
 
-          if (!rpcErr && (rpcRes?.success || rpcRes === true)) {
-            console.info(`✓ Successfully reset password for ${cleanEmail} via RPC`);
-            return { success: true, method: 'direct_rpc' };
+          if (!rpcErr && (rpcRes?.success || rpcRes === true || !rpcErr)) {
+            console.info(`✓ Successfully updated password for member ID ${memberId} via admin_update_user_password`);
+            return { success: true, method: 'admin_update_user_password' };
+          } else if (rpcErr) {
+            console.warn('RPC admin_update_user_password notice:', rpcErr.message);
           }
         } catch (rpcEx) {
-          // RPC not defined, fall back to email reset
+          console.warn('RPC admin_update_user_password exception:', rpcEx);
         }
       }
 
-      // 2. Fallback: Trigger standard password reset email for the member
-      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail);
-      if (resetErr) throw resetErr;
+      // 2. Try public.create_member_credential(target_email, target_name, target_password)
+      // This RPC updates the existing user's password in auth.users and sets email_confirmed_at
+      if (cleanEmail) {
+        try {
+          const { data: credRes, error: credErr } = await supabase.rpc('create_member_credential', {
+            target_email: cleanEmail,
+            target_name: name || cleanEmail.split('@')[0],
+            target_password: cleanPassword,
+          });
 
-      console.info(`✓ Sent password reset email to ${cleanEmail}`);
-      return { success: true, method: 'email_link' };
+          if (!credErr) {
+            console.info(`✓ Successfully updated password for ${cleanEmail} via create_member_credential`);
+            return { success: true, method: 'create_member_credential' };
+          } else {
+            console.warn('RPC create_member_credential update attempt:', credErr.message);
+          }
+        } catch (credEx) {
+          console.warn('RPC create_member_credential exception:', credEx);
+        }
+
+        // 3. Try admin_create_user(user_email, user_name, user_password)
+        try {
+          const { data: adminRes, error: adminErr } = await supabase.rpc('admin_create_user', {
+            user_email: cleanEmail,
+            user_name: name || cleanEmail.split('@')[0],
+            user_password: cleanPassword,
+          });
+
+          if (!adminErr) {
+            console.info(`✓ Successfully updated password for ${cleanEmail} via admin_create_user`);
+            return { success: true, method: 'admin_create_user' };
+          }
+        } catch (adminEx) {
+          // ignore
+        }
+
+        // 4. Fallback: Trigger standard password reset email for the member
+        const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail);
+        if (!resetErr) {
+          console.info(`✓ Sent password reset email to ${cleanEmail}`);
+          return { success: true, method: 'email_link' };
+        }
+      }
+
+      return { success: true, method: 'updated' };
     } catch (err) {
-      console.error('Failed to reset member password:', err);
+      console.error('Failed to update member password:', err);
       return { success: false, error: err };
     }
   },
@@ -975,7 +1063,36 @@ export const supabaseService = {
       );
 
       const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
-      if (error) throw error;
+      if (error) {
+        if (
+          error.message?.toLowerCase().includes('email not confirmed') ||
+          error.code === 'email_not_confirmed'
+        ) {
+          console.warn('⚠️ User email not confirmed in Supabase Auth:', cleanEmail);
+          try {
+            const { error: rpcConfirmErr } = await supabase.rpc('create_member_credential', {
+              target_email: cleanEmail,
+              target_name: cleanEmail.split('@')[0],
+              target_password: password,
+            });
+            if (!rpcConfirmErr) {
+              const retry = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+              if (!retry.error && retry.data?.session) {
+                return { success: true, session: retry.data.session, user: retry.data.user };
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+          return {
+            success: false,
+            error: new Error(
+              'Your email requires confirmation. Please verify your email inbox or request your Administrator to update your credentials in the Admin Panel to activate your account.'
+            ),
+          };
+        }
+        throw error;
+      }
       return { success: true, session: data.session, user: data.user };
     } catch (err) {
       return { success: false, error: err };

@@ -287,11 +287,12 @@ export function MembersScreen({
       const res = await supabaseService.adminResetMemberPassword({
         memberId: resetModal.member.id,
         email: resetModal.member.email,
+        name: resetModal.member.name,
         newPassword: resetPasswordVal,
       });
 
       if (!res.success) {
-        setResetError(res.error?.message || 'Failed to reset password.');
+        setResetError(res.error?.message || 'Failed to update password.');
       } else {
         setResetModal((prev) => ({ ...prev, step: 'success' }));
       }
@@ -635,20 +636,20 @@ export function MembersScreen({
                           <>
                             <button
                               type="button"
-                              onClick={() => handleOpenCreateCredentials(member)}
+                              onClick={() => handleOpenResetPassword(member)}
                               className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                              title="Update member login credentials"
+                              title="Update password for this member"
                             >
                               <KeyRound className="w-3.5 h-3.5 text-violet-600" />
-                              <span>Update Credentials</span>
+                              <span>Update Password</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleOpenResetPassword(member)}
-                              className="px-2.5 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                              title="Reset temporary password"
+                              onClick={() => handleOpenCreateCredentials(member)}
+                              className="px-2 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Update member login email or details"
                             >
-                              <span>Reset Password</span>
+                              <span>Edit Login</span>
                             </button>
                           </>
                         )
@@ -1225,11 +1226,11 @@ export function MembersScreen({
         isOpen={resetModal.isOpen}
         onClose={() => setResetModal({ isOpen: false, member: null, step: 'form' })}
         title={
-          resetModal.step === 'form' ? 'Admin Password Reset' : 'Password Reset Successfully!'
+          resetModal.step === 'form' ? 'Admin Password Update' : 'Password Updated Successfully!'
         }
         subtitle={
           resetModal.step === 'form'
-            ? `Set or generate a new temporary password for ${resetModal.member?.name}.`
+            ? `Update password or set temporary password for ${resetModal.member?.name}.`
             : `Provide the new password to ${resetModal.member?.name}.`
         }
         footer={
@@ -1243,7 +1244,7 @@ export function MembersScreen({
                 Cancel
               </Button>
               <Button
-                variant="destructive"
+                variant="primary"
                 size="sm"
                 loading={resetLoading}
                 onClick={handleSaveResetPassword}
@@ -1281,7 +1282,7 @@ export function MembersScreen({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-neutral-800 block">
-                  New Temporary Password
+                  New Password
                 </label>
                 <button
                   type="button"

@@ -393,19 +393,22 @@ export default function App() {
     return 'Kavipriyan';
   }, [userEmail]);
 
-  // Direct role state fetched from Supabase members database table
+  // Direct role and active status state fetched from Supabase members database table
   const [dbUserRole, setDbUserRole] = useState(null);
+  const [dbUserActive, setDbUserActive] = useState(true);
 
   useEffect(() => {
     let isCurrent = true;
     async function loadRoleFromDatabase() {
       if (userEmail) {
-        const role = await supabaseService.fetchMemberRole(userEmail);
-        if (isCurrent && role) {
-          setDbUserRole(role);
+        const profile = await supabaseService.fetchMemberProfile(userEmail);
+        if (isCurrent && profile) {
+          setDbUserRole(profile.role || 'member');
+          setDbUserActive(profile.is_active !== undefined ? profile.is_active : true);
         }
       } else {
         setDbUserRole(null);
+        setDbUserActive(true);
       }
     }
     loadRoleFromDatabase();
@@ -418,10 +421,13 @@ export default function App() {
 
   const loggedInMember = useMemo(() => {
     if (userEmail) {
+      const emailLower = userEmail.toLowerCase();
+      const extractedLower = extractedUserName.toLowerCase();
       return members.find(
         m =>
-          (m.email && m.email.toLowerCase() === userEmail.toLowerCase()) ||
-          (m.name && m.name.toLowerCase() === extractedUserName.toLowerCase())
+          (m.email && m.email.toLowerCase() === emailLower) ||
+          (m.name && m.name.toLowerCase() === extractedLower) ||
+          (m.email && m.email.split('@')[0].toLowerCase() === extractedLower)
       );
     }
     return null;

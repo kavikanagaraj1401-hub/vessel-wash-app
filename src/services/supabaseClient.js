@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
+export const DEFAULT_SUPABASE_URL = 'https://oskbfpjljbregpguwemh.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9za2JmcGpsamJyZWdwZ3V3ZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwOTAzODksImV4cCI6MjEwNTY2NjM4OX0.YtNtHBd2WXrOlY7DXwvD8ls68EOECq0UvLog5kIxpoI';
+
 /**
  * Retrieve Supabase configuration cleanly across process.env (Next.js / Node)
  * and import.meta.env (Vite) conventions, with local persistence fallback.
@@ -44,9 +48,17 @@ export const getSupabaseConfig = () => {
     }
   }
 
+  // 4. Robust production project fallback (Never leaves client unconfigured)
+  if (!url || !url.startsWith('http') || url.includes('your-project-id')) {
+    url = DEFAULT_SUPABASE_URL;
+  }
+  if (!key || key.includes('your-anon-key')) {
+    key = DEFAULT_SUPABASE_ANON_KEY;
+  }
+
   return {
-    url: url ? url.trim() : '',
-    key: key ? key.trim() : '',
+    url: url ? url.trim() : DEFAULT_SUPABASE_URL,
+    key: key ? key.trim() : DEFAULT_SUPABASE_ANON_KEY,
   };
 };
 
