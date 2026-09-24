@@ -820,32 +820,54 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Try public.create_member_credential and public.admin_create_user RPCs
+      // 1. Primary: Use public.admin_create_member_auth RPC
+      // This sets password bcrypt hash in auth.users and sets email_confirmed_at = NOW()
       let rpcSucceeded = false;
       try {
-        const { data: rpcRes, error: rpcErr } = await supabase.rpc('create_member_credential', {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_create_member_auth', {
           target_email: cleanEmail,
-          target_name: displayName,
           target_password: password,
+          target_name: displayName,
+          target_role: role || 'member',
         });
 
-        if (!rpcErr && (rpcRes?.success || rpcRes === true || rpcRes?.id || !rpcRes?.error)) {
-          console.info(`✓ Successfully created credentials for ${displayName} via RPC create_member_credential`);
+        if (!rpcErr && (rpcRes?.status === 'success' || rpcRes?.user_id || rpcRes?.success)) {
+          console.info(`✓ Successfully created/updated credentials for ${displayName} via RPC admin_create_member_auth:`, rpcRes);
           rpcSucceeded = true;
-        } else {
-          // Fallback to admin_create_user
-          const { data: adminRes, error: adminErr } = await supabase.rpc('admin_create_user', {
-            user_email: cleanEmail,
-            user_name: displayName,
-            user_password: password,
-          });
-          if (!adminErr) {
-            console.info(`✓ Successfully created credentials for ${displayName} via RPC admin_create_user`);
-            rpcSucceeded = true;
-          }
+        } else if (rpcErr) {
+          console.warn('RPC admin_create_member_auth warning, trying fallback:', rpcErr.message);
         }
       } catch (rpcEx) {
-        console.warn('RPC create member credential warning:', rpcEx);
+        console.warn('RPC admin_create_member_auth exception:', rpcEx);
+      }
+
+      // 2. Secondary fallback: Try public.create_member_credential and public.admin_create_user RPCs
+      if (!rpcSucceeded) {
+        try {
+          const { data: credRes, error: credErr } = await supabase.rpc('create_member_credential', {
+            target_email: cleanEmail,
+            target_name: displayName,
+            target_password: password,
+          });
+
+          if (!credErr && (credRes?.success || credRes === true || credRes?.id || !credRes?.error)) {
+            console.info(`✓ Successfully created credentials for ${displayName} via RPC create_member_credential`);
+            rpcSucceeded = true;
+          } else {
+            // Fallback to admin_create_user
+            const { data: adminRes, error: adminErr } = await supabase.rpc('admin_create_user', {
+              user_email: cleanEmail,
+              user_name: displayName,
+              user_password: password,
+            });
+            if (!adminErr) {
+              console.info(`✓ Successfully created credentials for ${displayName} via RPC admin_create_user`);
+              rpcSucceeded = true;
+            }
+          }
+        } catch (rpcEx) {
+          console.warn('RPC create member credential warning:', rpcEx);
+        }
       }
 
       // 2. Fallback: Use isolated Supabase Auth client without touching Admin session
@@ -982,7 +1004,7 @@ export const supabaseService = {
    * Admin-Only: Change or update an existing member's password directly from the Admin Panel.
    * Tries public.admin_update_user_password, public.create_member_credential, or public.admin_create_user.
    */
-  async adminResetMemberPassword({ memberId, email, name, newPassword }) {
+  async adminResetMemberPassword({ memberId, email, name, newPassword, role = 'member' }) {
     if (!isSupabaseConfigured || !supabase || (!email && !memberId)) {
       console.warn('⚠️ Supabase client is not initialized or identifiers missing.');
       return {
@@ -998,7 +1020,29 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Try public.admin_update_user_password(new_password, target_user_id)
+      // 1. Primary: Use public.admin_create_member_auth RPC
+      // Sets the user's password in auth.users with pre-confirmed email status
+      if (cleanEmail) {
+        try {
+          const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_create_member_auth', {
+            target_email: cleanEmail,
+            target_password: cleanPassword,
+            target_name: (name || cleanEmail.split('@')[0]).trim(),
+            target_role: role || 'member',
+          });
+
+          if (!rpcErr && (rpcRes?.status === 'success' || rpcRes?.user_id || rpcRes?.success)) {
+            console.info(`✓ Successfully updated password for ${cleanEmail} via admin_create_member_auth:`, rpcRes);
+            return { success: true, method: 'admin_create_member_auth' };
+          } else if (rpcErr) {
+            console.warn('RPC admin_create_member_auth password update notice:', rpcErr.message);
+          }
+        } catch (rpcEx) {
+          console.warn('RPC admin_create_member_auth exception:', rpcEx);
+        }
+      }
+
+      // 2. Try public.admin_update_user_password(new_password, target_user_id)
       if (memberId) {
         try {
           const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_update_user_password', {
@@ -1017,7 +1061,7 @@ export const supabaseService = {
         }
       }
 
-      // 2. Try public.create_member_credential(target_email, target_name, target_password)
+      // 3. Try public.create_member_credential(target_email, target_name, target_password)
       // This RPC updates the existing user's password in auth.users and sets email_confirmed_at
       if (cleanEmail) {
         try {
@@ -1037,7 +1081,7 @@ export const supabaseService = {
           console.warn('RPC create_member_credential exception:', credEx);
         }
 
-        // 3. Try admin_create_user(user_email, user_name, user_password)
+        // 4. Try admin_create_user(user_email, user_name, user_password)
         try {
           const { data: adminRes, error: adminErr } = await supabase.rpc('admin_create_user', {
             user_email: cleanEmail,
@@ -1053,7 +1097,7 @@ export const supabaseService = {
           // ignore
         }
 
-        // 4. Fallback: Trigger standard password reset email for the member
+        // 5. Fallback: Trigger standard password reset email for the member
         const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail);
         if (!resetErr) {
           console.info(`✓ Sent password reset email to ${cleanEmail}`);
@@ -1098,15 +1142,28 @@ export const supabaseService = {
         ) {
           console.warn('⚠️ User email not confirmed in Supabase Auth:', cleanEmail);
           try {
-            const { error: rpcConfirmErr } = await supabase.rpc('create_member_credential', {
+            const { error: rpcConfirmErr } = await supabase.rpc('admin_create_member_auth', {
               target_email: cleanEmail,
-              target_name: cleanEmail.split('@')[0],
               target_password: password,
+              target_name: cleanEmail.split('@')[0],
+              target_role: 'member',
             });
             if (!rpcConfirmErr) {
               const retry = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
               if (!retry.error && retry.data?.session) {
                 return { success: true, session: retry.data.session, user: retry.data.user };
+              }
+            } else {
+              const { error: fbErr } = await supabase.rpc('create_member_credential', {
+                target_email: cleanEmail,
+                target_name: cleanEmail.split('@')[0],
+                target_password: password,
+              });
+              if (!fbErr) {
+                const retry = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+                if (!retry.error && retry.data?.session) {
+                  return { success: true, session: retry.data.session, user: retry.data.user };
+                }
               }
             }
           } catch (e) {

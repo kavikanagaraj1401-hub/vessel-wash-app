@@ -255,6 +255,78 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object('success', false, 'error', SQLERRM);
 END;
+$$;
+
+-- 7. RPC FUNCTION: admin_create_member_auth (Admin Member Auth & Pre-Confirmed Password Creation)
+CREATE OR REPLACE FUNCTION public.admin_create_member_auth(
+    target_email TEXT,
+    target_password TEXT,
+    target_name TEXT DEFAULT '',
+    target_role TEXT DEFAULT 'member'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    new_user_id UUID;
+    clean_email TEXT;
+BEGIN
+    clean_email := LOWER(TRIM(target_email));
+    SELECT id INTO new_user_id FROM auth.users WHERE LOWER(TRIM(email)) = clean_email;
+    
+    IF new_user_id IS NULL THEN
+        new_user_id := gen_random_uuid();
+        INSERT INTO auth.users (
+            instance_id,
+            id,
+            aud,
+            role,
+            email,
+            encrypted_password,
+            email_confirmed_at,
+            raw_app_meta_data,
+            raw_user_meta_data,
+            created_at,
+            updated_at
+        ) VALUES (
+            '00000000-0000-0000-0000-000000000000',
+            new_user_id,
+            'authenticated',
+            'authenticated',
+            clean_email,
+            crypt(target_password, gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}'::jsonb,
+            jsonb_build_object('role', target_role, 'full_name', target_name, 'username', target_name),
+            NOW(),
+            NOW()
+        );
+    ELSE
+        UPDATE auth.users
+        SET encrypted_password = crypt(target_password, gen_salt('bf')),
+            email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+            raw_user_meta_data = jsonb_build_object('role', target_role, 'full_name', target_name, 'username', target_name),
+            updated_at = NOW()
+        WHERE id = new_user_id;
+    END IF;
+
+    UPDATE public.members
+    SET email = clean_email,
+        role = target_role,
+        is_active = true,
+        updated_at = NOW()
+    WHERE LOWER(TRIM(email)) = clean_email
+       OR (target_name <> '' AND LOWER(TRIM(full_name)) = LOWER(TRIM(target_name)));
+
+    RETURN jsonb_build_object(
+        'status', 'success',
+        'message', 'Member credential created and validated successfully.',
+        'user_id', new_user_id
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
+END;
 $$;`;
 
     if (navigator?.clipboard?.writeText) {

@@ -284,11 +284,13 @@ export function MembersScreen({
     setResetError('');
 
     try {
+      const role = isMemberAdmin(resetModal.member) ? 'admin' : 'member';
       const res = await supabaseService.adminResetMemberPassword({
         memberId: resetModal.member.id,
         email: resetModal.member.email,
         name: resetModal.member.name,
         newPassword: resetPasswordVal,
+        role,
       });
 
       if (!res.success) {
