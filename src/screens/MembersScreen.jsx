@@ -238,7 +238,7 @@ export function MembersScreen({
       const role = isMemberAdmin(credentialModal.member) ? 'admin' : 'member';
       const res = await supabaseService.createMemberCredentials({
         memberId: credentialModal.member.id,
-        name: cleanUsername || credentialModal.member.name,
+        name: credentialModal.member.name,
         username: cleanUsername,
         email: cleanEmail,
         password: credPassword,
@@ -249,9 +249,6 @@ export function MembersScreen({
         setCredError(res.error?.message || 'Failed to create member credentials.');
       } else {
         credentialModal.member.email = cleanEmail;
-        if (cleanUsername) {
-          credentialModal.member.name = cleanUsername;
-        }
         if (onRefreshMembers) {
           await onRefreshMembers();
         }
@@ -315,9 +312,14 @@ export function MembersScreen({
     }
   };
 
+  // Deduplicate members list to guarantee UI never shows duplicate entries
+  const deduplicatedMembersList = useMemo(() => {
+    return supabaseService.deduplicateMembers(members);
+  }, [members]);
+
   // Filtered members calculation
   const filteredMembers = useMemo(() => {
-    return members.filter((m) => {
+    return deduplicatedMembersList.filter((m) => {
       // 1. Tab filter
       if (activeFilter === 'active' && m.status !== 'active') return false;
       if (activeFilter === 'inactive' && m.status === 'active') return false;
@@ -334,11 +336,11 @@ export function MembersScreen({
 
       return true;
     });
-  }, [members, activeFilter, searchQuery, adminUserIds]);
+  }, [deduplicatedMembersList, activeFilter, searchQuery, adminUserIds]);
 
-  const activeCount = members.filter((m) => m.status === 'active').length;
-  const inactiveCount = members.length - activeCount;
-  const adminCount = members.filter((m) => isMemberAdmin(m)).length;
+  const activeCount = deduplicatedMembersList.filter((m) => m.status === 'active').length;
+  const inactiveCount = deduplicatedMembersList.length - activeCount;
+  const adminCount = deduplicatedMembersList.filter((m) => isMemberAdmin(m)).length;
 
   return (
     <div className="space-y-4 pb-24 px-4 pt-2 max-w-4xl mx-auto">
@@ -352,7 +354,7 @@ export function MembersScreen({
               </span>
               <span className="text-xs text-neutral-400">&bull;</span>
               <span className="text-xs font-semibold text-neutral-500">
-                {members.length} {members.length === 1 ? 'Member' : 'Members'}
+                {deduplicatedMembersList.length} {deduplicatedMembersList.length === 1 ? 'Member' : 'Members'}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 mt-1">
@@ -624,6 +626,7 @@ export function MembersScreen({
                             type="button"
                             onClick={() => handleOpenCreateCredentials(member)}
                             className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            title="Assign login credentials for this member"
                           >
                             <KeyRound className="w-3.5 h-3.5 text-violet-600" />
                             <span>Assign Login</span>
@@ -632,20 +635,20 @@ export function MembersScreen({
                           <>
                             <button
                               type="button"
-                              onClick={() => handleOpenResetPassword(member)}
-                              className="px-2.5 py-1 text-xs font-bold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                              title="Reset temporary password"
+                              onClick={() => handleOpenCreateCredentials(member)}
+                              className="px-2.5 py-1 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              title="Update member login credentials"
                             >
-                              <KeyRound className="w-3.5 h-3.5 text-neutral-600" />
-                              <span>Reset Password</span>
+                              <KeyRound className="w-3.5 h-3.5 text-violet-600" />
+                              <span>Update Credentials</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleOpenCreateCredentials(member)}
-                              className="px-2 py-1 text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
-                              title="Update member email / username"
+                              onClick={() => handleOpenResetPassword(member)}
+                              className="px-2.5 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Reset temporary password"
                             >
-                              Edit Login
+                              <span>Reset Password</span>
                             </button>
                           </>
                         )
@@ -1049,12 +1052,14 @@ export function MembersScreen({
         onClose={() => setCredentialModal({ isOpen: false, member: null, step: 'form' })}
         title={
           credentialModal.step === 'form'
-            ? 'Create Member Credentials'
-            : 'Credentials Created Successfully!'
+            ? (!credentialModal.member?.email ? 'Assign Login Credentials' : 'Update Credentials')
+            : (!credentialModal.member?.email ? 'Credentials Assigned Successfully!' : 'Credentials Updated Successfully!')
         }
         subtitle={
           credentialModal.step === 'form'
-            ? `Register Supabase Auth login credentials for ${credentialModal.member?.name}.`
+            ? (!credentialModal.member?.email
+                ? `Register Supabase Auth login credentials for existing member ${credentialModal.member?.name}.`
+                : `Update login credentials for existing member ${credentialModal.member?.name}.`)
             : `Provide these login credentials to ${credentialModal.member?.name}.`
         }
         footer={
@@ -1073,7 +1078,7 @@ export function MembersScreen({
                 loading={credLoading}
                 onClick={handleSaveCredentials}
               >
-                Register Credentials
+                {!credentialModal.member?.email ? 'Assign Credentials' : 'Update Credentials'}
               </Button>
             </>
           ) : (

@@ -12,6 +12,70 @@ import { extractNameFromEmail, isKavipriyanEmail } from '../logic/authUtils';
  */
 export const supabaseService = {
   /**
+   * Deduplicate a list of members uniquely by ID, email, and canonical full name.
+   * Prioritizes valid UUID records, non-null email addresses, and admin roles.
+   */
+  deduplicateMembers(members = []) {
+    if (!Array.isArray(members) || members.length === 0) return [];
+
+    const result = [];
+
+    for (const member of members) {
+      if (!member) continue;
+      const idKey = member.id ? String(member.id).toLowerCase() : null;
+      const emailKey = member.email ? String(member.email).trim().toLowerCase() : null;
+      const rawName = member.name || member.full_name || '';
+      const nameKey = rawName.trim().toLowerCase();
+
+      // Check if this member matches any already processed member
+      let foundIndex = -1;
+      for (let i = 0; i < result.length; i++) {
+        const item = result[i];
+        const itemId = item.id ? String(item.id).toLowerCase() : null;
+        const itemEmail = item.email ? String(item.email).trim().toLowerCase() : null;
+        const itemRawName = item.name || item.full_name || '';
+        const itemName = itemRawName.trim().toLowerCase();
+
+        const idMatches = idKey && itemId && idKey === itemId;
+        const emailMatches = emailKey && itemEmail && emailKey === itemEmail;
+        const nameMatches = nameKey && itemName && (
+          nameKey === itemName ||
+          (nameKey.length >= 3 && (itemName.includes(nameKey) || nameKey.includes(itemName)))
+        );
+
+        if (idMatches || emailMatches || nameMatches) {
+          foundIndex = i;
+          break;
+        }
+      }
+
+      if (foundIndex !== -1) {
+        // Merge records, prioritizing UUID id, non-null email, admin role, and canonical name
+        const prev = result[foundIndex];
+        const isPrevUuid = typeof prev.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prev.id);
+        const isCurrUuid = typeof member.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(member.id);
+
+        result[foundIndex] = {
+          ...prev,
+          ...member,
+          id: isPrevUuid ? prev.id : (isCurrUuid ? member.id : prev.id || member.id),
+          email: prev.email || member.email || null,
+          role: (prev.role === 'admin' || member.role === 'admin') ? 'admin' : (prev.role || member.role || 'member'),
+          name: prev.name || member.name || prev.full_name || member.full_name,
+          rotation_order: prev.rotation_order !== undefined ? prev.rotation_order : member.rotation_order,
+          code: prev.code || member.code,
+          status: (prev.status === 'active' || member.status === 'active') ? 'active' : (prev.status || member.status),
+        };
+      } else {
+        result.push({ ...member });
+      }
+    }
+
+    result.sort((a, b) => (a.rotation_order || 999) - (b.rotation_order || 999));
+    return result;
+  },
+
+  /**
    * Fetch active members, application rules, and attendance from Supabase on app load.
    */
   async fetchInitialData() {
@@ -40,6 +104,8 @@ export const supabaseService = {
         updated_at: m.updated_at,
       }));
 
+      const deduplicatedMembers = this.deduplicateMembers(normalizedMembers);
+
       // 2. Fetch Application Settings (Rules, days config, queue)
       const { data: dbSettings, error: settingsError } = await supabase
         .from('application_settings')
@@ -67,7 +133,7 @@ export const supabaseService = {
 
       return {
         success: true,
-        members: normalizedMembers.length > 0 ? normalizedMembers : null,
+        members: deduplicatedMembers.length > 0 ? deduplicatedMembers : null,
         daysConfig: settingsMap.get('days_config') || null,
         initialQueue: settingsMap.get('initial_queue') || null,
         rosterRules: settingsMap.get('roster_rules') || null,
@@ -99,7 +165,7 @@ export const supabaseService = {
 
       if (error) throw error;
 
-      return (dbMembers || []).map((m, idx) => ({
+      const mapped = (dbMembers || []).map((m, idx) => ({
         id: m.id,
         name: m.full_name || m.name,
         email: m.email || null,
@@ -110,6 +176,8 @@ export const supabaseService = {
         createdAt: m.created_at || new Date().toISOString(),
         updatedAt: m.updated_at || new Date().toISOString(),
       }));
+
+      return this.deduplicateMembers(mapped);
     } catch (err) {
       console.warn('⚠️ Failed to fetch fresh members from Supabase:', err.message || err);
       return [];
@@ -732,7 +800,7 @@ export const supabaseService = {
         }
       }
 
-      // 3. Update members table with email, name, full_name & role
+      // 3. Update existing record in members table (STRICTLY UPDATE - DO NOT INSERT NEW ROW)
       const isUuid =
         typeof memberId === 'string' &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId);
@@ -742,22 +810,57 @@ export const supabaseService = {
         role: role,
         updated_at: new Date().toISOString(),
       };
-      if (displayName) {
-        updatePayload.name = displayName;
-        updatePayload.full_name = displayName;
+
+      let targetMemberId = isUuid ? memberId : null;
+
+      if (!targetMemberId) {
+        // Find existing record by email
+        const { data: matchedEmail } = await supabase
+          .from('members')
+          .select('id, full_name, email')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (matchedEmail?.id) {
+          targetMemberId = matchedEmail.id;
+        } else {
+          // Find existing record by canonical name
+          const targetName = (name || displayName).trim();
+          if (targetName) {
+            const { data: matchedName } = await supabase
+              .from('members')
+              .select('id, full_name, email')
+              .ilike('full_name', targetName)
+              .maybeSingle();
+
+            if (matchedName?.id) {
+              targetMemberId = matchedName.id;
+            }
+          }
+        }
       }
 
-      let query = supabase.from('members').update(updatePayload);
+      if (targetMemberId) {
+        const { error: updateErr } = await supabase
+          .from('members')
+          .update(updatePayload)
+          .eq('id', targetMemberId);
 
-      if (isUuid) {
-        query = query.eq('id', memberId);
+        if (updateErr) {
+          console.warn('⚠️ Warning updating members table by ID in createMemberCredentials:', updateErr.message);
+        }
       } else {
-        query = query.or(`id.eq.${memberId},full_name.eq.${name},name.eq.${name}`);
-      }
+        const targetName = (name || displayName || '').trim();
+        if (targetName) {
+          const { error: updateErr } = await supabase
+            .from('members')
+            .update(updatePayload)
+            .ilike('full_name', targetName);
 
-      const { error: updateErr } = await query;
-      if (updateErr) {
-        console.warn('⚠️ Warning updating members table in createMemberCredentials:', updateErr.message);
+          if (updateErr) {
+            console.warn('⚠️ Warning updating members table by name in createMemberCredentials:', updateErr.message);
+          }
+        }
       }
 
       console.info(`✓ Successfully created and linked credentials for ${displayName} (${cleanEmail})`);
@@ -987,11 +1090,13 @@ export const supabaseService = {
 
       if (existingByEmail && existingByEmail.id) {
         const updatePayload = {
-          full_name: cleanName || existingByEmail.full_name,
           role: assignedRole,
           is_active: true,
           updated_at: new Date().toISOString(),
         };
+        if (cleanName && !existingByEmail.full_name) {
+          updatePayload.full_name = cleanName;
+        }
         const { data: updated } = await supabase
           .from('members')
           .update(updatePayload)
@@ -1001,14 +1106,34 @@ export const supabaseService = {
         return updated || existingByEmail;
       }
 
-      // 2. Check if an existing member with the same name exists (e.g. Kavipriyan created from seed)
-      const { data: existingByName } = await supabase
-        .from('members')
-        .select('*')
-        .ilike('full_name', cleanName)
-        .maybeSingle();
+      // 2. Check if an existing member with matching name or email prefix exists
+      let existingMember = null;
+      if (cleanName) {
+        const { data: existingByName } = await supabase
+          .from('members')
+          .select('*')
+          .ilike('full_name', cleanName)
+          .maybeSingle();
+        if (existingByName && existingByName.id) {
+          existingMember = existingByName;
+        }
+      }
 
-      if (existingByName && existingByName.id) {
+      if (!existingMember) {
+        const emailPrefix = trimmedEmail.split('@')[0].replace(/[0-9._-]/g, '').trim();
+        if (emailPrefix && emailPrefix.length >= 3) {
+          const { data: matchedPrefix } = await supabase
+            .from('members')
+            .select('*')
+            .ilike('full_name', `%${emailPrefix}%`)
+            .maybeSingle();
+          if (matchedPrefix && matchedPrefix.id) {
+            existingMember = matchedPrefix;
+          }
+        }
+      }
+
+      if (existingMember && existingMember.id) {
         const updatePayload = {
           email: trimmedEmail,
           role: assignedRole,
@@ -1018,13 +1143,13 @@ export const supabaseService = {
         const { data: updated } = await supabase
           .from('members')
           .update(updatePayload)
-          .eq('id', existingByName.id)
+          .eq('id', existingMember.id)
           .select()
           .single();
-        return updated || existingByName;
+        return updated || existingMember;
       }
 
-      // 3. Otherwise, insert a new record with next rotation_order
+      // 3. Otherwise, insert a new record with next rotation_order ONLY if no existing member matched
       const { data: allMembers } = await supabase
         .from('members')
         .select('rotation_order')

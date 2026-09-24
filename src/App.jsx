@@ -163,9 +163,9 @@ export default function App() {
           if (matchIndex !== -1) {
             const updated = [...prev];
             updated[matchIndex] = { ...updated[matchIndex], ...mappedMember };
-            return updated;
+            return supabaseService.deduplicateMembers(updated);
           }
-          return [...prev, mappedMember];
+          return supabaseService.deduplicateMembers([...prev, mappedMember]);
         });
       } else if (payload.eventType === 'UPDATE') {
         const m = payload.new;
@@ -428,7 +428,7 @@ export default function App() {
   }, [members, userEmail, extractedUserName]);
 
   // Display name in header profile badge is extracted name from email
-  const userName = extractedUserName || loggedInMember?.name || 'Kavipriyan';
+  const userName = loggedInMember?.name || extractedUserName || 'Kavipriyan';
 
   // Role Access Control: Fetch role from members table. If role === 'admin', unlock admin settings.
   // If role === 'member', show only daily roster and attendance tools.
