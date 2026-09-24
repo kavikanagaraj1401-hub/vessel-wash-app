@@ -23,6 +23,8 @@ export function TopAppBar({
   isAdmin = false,
   userName = 'Kavipriyan',
   userEmail = '',
+  currentMember = null,
+  memberCode = '',
   onSignOut,
   onToggleAdminMode,
   allMembers = [],
@@ -77,31 +79,57 @@ export function TopAppBar({
     }
   };
 
+  const resolvedName = currentMember?.name || userName || 'Kavipriyan';
+  const resolvedCode =
+    currentMember?.code ||
+    memberCode ||
+    allMembers.find(
+      (m) =>
+        m.name === resolvedName ||
+        (m.email && userEmail && m.email.toLowerCase() === userEmail.toLowerCase())
+    )?.code ||
+    'M1';
+
   return (
     <>
       {/* Static Non-Scrolling Header Bar */}
       <header className="flex-shrink-0 z-40 bg-white border-b border-neutral-border pt-safe shadow-2xs">
         {/* Tier 1: App Title & Action Icons (Members & Burger Menu) */}
         <div className="flex items-center justify-between px-4 h-14 gap-3">
-          {/* App Brand */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-[#A28EF9] flex items-center justify-center text-[#1E1E1E] shadow-2xs flex-shrink-0">
-              <span className="text-xs font-extrabold tracking-tight">VW</span>
+          {/* App Brand & Logged-in Member Identity */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-[#A28EF9] flex items-center justify-center text-[#1E1E1E] shadow-2xs flex-shrink-0 font-extrabold text-xs">
+              {resolvedCode || 'VW'}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-base font-bold tracking-tight text-[#1E1E1E] leading-tight truncate">
-                  {title}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#1E1E1E] leading-tight truncate">
+                  {resolvedName}
                 </h1>
-                {isLiveConnected && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live Sync
+                {resolvedCode && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 text-[10px] font-extrabold border border-violet-200 shadow-2xs flex-shrink-0">
+                    {resolvedCode}
                   </span>
                 )}
+                {/* Blinking connection status dot indicator representing live Supabase sync */}
+                <span
+                  className="relative flex h-2.5 w-2.5 flex-shrink-0"
+                  title={isLiveConnected ? "Supabase Live Synchronization Active" : "Connecting to Supabase..."}
+                >
+                  <span
+                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      isLiveConnected ? 'bg-emerald-400' : 'bg-amber-400'
+                    }`}
+                  />
+                  <span
+                    className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                      isLiveConnected ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
+                  />
+                </span>
               </div>
-              <span className="text-[11px] text-neutral-textTertiary font-medium block truncate">
-                Daily Roster System
+              <span className="text-[10px] sm:text-[11px] text-neutral-textTertiary font-medium block truncate">
+                {isAdmin ? 'Primary Admin • Live Roster' : 'Member • Daily Roster'}
               </span>
             </div>
           </div>
@@ -113,34 +141,25 @@ export function TopAppBar({
               type="button"
               onClick={() => setProfileModalOpen(true)}
               aria-label="User profile & account"
-              title={`Logged in as ${userName} (${userEmail || 'Active session'})`}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] border border-neutral-border/70 active-scale transition-all"
+              title={`Logged in as ${resolvedName} (${resolvedCode}) - ${userEmail || 'Active session'}`}
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] border border-neutral-border/70 active-scale transition-all cursor-pointer"
             >
               <div
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
                   isAdmin ? 'bg-violet-600 text-white shadow-2xs' : 'bg-[#1E1E1E] text-white'
                 }`}
               >
-                {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
+                {isAdmin ? '👑' : (resolvedCode || resolvedName.charAt(0) || 'U')}
               </div>
-              <span className="text-xs font-bold text-[#1E1E1E] max-w-[70px] sm:max-w-[120px] truncate leading-none">
-                {userName}
+              <span className="text-xs font-bold text-[#1E1E1E] max-w-[65px] sm:max-w-[110px] truncate leading-none">
+                {resolvedName}
               </span>
+              {resolvedCode && (
+                <span className="text-[10px] font-bold text-violet-700 bg-violet-50 px-1 py-0.5 rounded border border-violet-200/60 leading-none">
+                  {resolvedCode}
+                </span>
+              )}
             </button>
-
-            {/* Direct Log Out Button in Navigation Header */}
-            {onSignOut && (
-              <button
-                type="button"
-                onClick={onSignOut}
-                aria-label="Log Out"
-                title={`Log Out (${userName})`}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold active-scale transition-all cursor-pointer shadow-2xs"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
-                <span className="hidden sm:inline">Log Out</span>
-              </button>
-            )}
 
             {/* Application Members Button (Shows directory without switching) */}
             <button
@@ -148,19 +167,19 @@ export function TopAppBar({
               onClick={() => setMembersModalOpen(true)}
               aria-label="View application members and admins"
               title="Members & Admins Directory"
-              className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all"
+              className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all cursor-pointer"
             >
               <Users className="w-3.5 h-3.5" strokeWidth={2.2} />
             </button>
 
-            {/* Burger Menu Button */}
+            {/* Burger Menu Button (Access Menu, Excel, Settings, and Log Out) */}
             {onSettingsClick && (
               <button
                 type="button"
                 onClick={onSettingsClick}
                 aria-label="Open menu and settings"
                 title="Menu & Settings"
-                className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all"
+                className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all cursor-pointer"
               >
                 <Menu className="w-3.5 h-3.5" strokeWidth={2.2} />
               </button>

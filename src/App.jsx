@@ -6,6 +6,8 @@ import { SettingsModal } from './components/common/SettingsModal';
 import { TodayScreen } from './screens/TodayScreen';
 import { ActivityScreen } from './screens/ActivityScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
+import { MembersScreen } from './screens/MembersScreen';
+import { BillScreen } from './screens/BillScreen';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { extractNameFromEmail, extractUsername, isKavipriyanEmail } from './logic/authUtils';
 
@@ -27,7 +29,7 @@ import { supabaseService } from './services/supabaseService';
 import { isSupabaseConfigured } from './services/supabaseClient';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('today'); // 'today' | 'activity' | 'history'
+  const [activeTab, setActiveTab] = useState('today'); // 'today' | 'members' | 'bill' | 'history' | 'activity'
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Dynamic Live Today date (resolves to user's real current date, e.g. 2026-09-23)
@@ -1041,6 +1043,8 @@ export default function App() {
           isAdmin={isAdmin}
           userName={userName}
           userEmail={userEmail}
+          currentMember={currentMember}
+          memberCode={currentMember?.code}
           onSignOut={handleSignOut}
           onToggleAdminMode={handleToggleAdminMode}
           allMembers={members}
@@ -1072,12 +1076,31 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'activity' && (
-            <ActivityScreen
-              activityLogs={activityLogs}
+          {activeTab === 'members' && (
+            <MembersScreen
               members={members}
+              queue={currentDayQueue}
+              attendanceLogs={attendanceLogs}
               isAdmin={isAdmin}
-              onClearLogs={handleClearActivityLogs}
+              adminUserIds={adminUserIds}
+              onToggleAdminRole={handleToggleAdminRole}
+              onAddMember={handleAddMember}
+              onEditMember={handleEditMember}
+              onToggleMemberStatus={handleToggleMemberStatus}
+              onRemoveMember={handleRemoveMember}
+              onRefreshMembers={handleRefreshMembers}
+            />
+          )}
+
+          {activeTab === 'bill' && (
+            <BillScreen
+              members={members}
+              daysConfig={daysConfig}
+              computedDays={computedDays}
+              attendanceLogs={attendanceLogs}
+              isAdmin={isAdmin}
+              todayDateStr={actualTodayDateStr}
+              currentMember={currentMember}
             />
           )}
 
@@ -1091,6 +1114,15 @@ export default function App() {
               onSelectDate={handleSelectDate}
               onTabChange={setActiveTab}
               todayDateStr={actualTodayDateStr}
+            />
+          )}
+
+          {activeTab === 'activity' && (
+            <ActivityScreen
+              activityLogs={activityLogs}
+              members={members}
+              isAdmin={isAdmin}
+              onClearLogs={handleClearActivityLogs}
             />
           )}
         </main>
