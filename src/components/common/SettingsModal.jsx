@@ -16,15 +16,18 @@ import {
   CheckCircle2,
   Clock,
   ChevronRight,
+  ChevronLeft,
   X,
   Menu,
   Database,
   Copy,
   LogOut,
+  Activity,
 } from 'lucide-react';
 import { parseExcelTimetable } from '../../logic/excelImporter';
 import { MembersScreen } from '../../screens/MembersScreen';
 import { RotationScreen } from '../../screens/RotationScreen';
+import { ActivityScreen } from '../../screens/ActivityScreen';
 import {
   getSupabaseConfig,
   saveSupabaseConfig,
@@ -53,16 +56,28 @@ export function SettingsModal({
   onRefreshMembers,
   onImportExcel,
   onResetData,
+  activityLogs = [],
+  onClearLogs,
 }) {
-  const [activeTab, setActiveTab] = useState(() => (isAdmin ? 'excel' : 'rotation')); // 'excel' | 'members' | 'rotation' | 'rules'
+  // WhatsApp-style navigation view: null = WhatsApp list; 'members' | 'activity' | 'rules' | 'excel'
+  const [currentView, setCurrentView] = useState(null);
+  const [rulesSubTab, setRulesSubTab] = useState('rules'); // 'rules' | 'schedule'
   const [resetConfirm, setResetConfirm] = useState(false);
 
-  // If user is not admin, ensure they cannot stay on admin-only tabs
+  // If user is not admin and tries to access excel, keep on main menu
   useEffect(() => {
-    if (!isAdmin && (activeTab === 'excel' || activeTab === 'members')) {
-      setActiveTab('rotation');
+    if (!isAdmin && currentView === 'excel') {
+      setCurrentView(null);
     }
-  }, [isAdmin, activeTab]);
+  }, [isAdmin, currentView]);
+
+  // Reset to root menu whenever modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentView(null);
+      setResetConfirm(false);
+    }
+  }, [isOpen]);
 
   // Excel Upload states
   const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle' | 'parsing' | 'preview' | 'success' | 'error'
@@ -411,451 +426,573 @@ $$;`;
       {/* Side Slide Drawer Container (Sliding in from the right) */}
       <div className="fixed inset-y-0 right-0 max-w-full flex justify-end">
         <div
-          className={`w-screen max-w-[420px] bg-white h-full shadow-2xl flex flex-col transition-transform duration-300 ease-out transform ${
+          className={`w-screen max-w-[450px] bg-white h-full shadow-2xl flex flex-col transition-transform duration-300 ease-out transform ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
           {/* Drawer Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-neutral-border/60 bg-white">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#1E1E1E] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-                <Menu className="w-4 h-4" />
+          {currentView === null ? (
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-neutral-border/60 bg-white shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#1E1E1E] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                  <Menu className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#1E1E1E] leading-tight">Menu & Settings</h3>
+                  <p className="text-[11px] text-neutral-textSecondary">Members, activity, rules & sync</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-[#1E1E1E] leading-tight">Menu & Settings</h3>
-                <p className="text-[11px] text-neutral-textSecondary">Rotation, members & Excel sync</p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-full text-neutral-500 hover:text-[#1E1E1E] hover:bg-[#ECEEF0] transition-colors"
-              title="Close menu"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-full text-neutral-500 hover:text-[#1E1E1E] hover:bg-[#ECEEF0] transition-colors cursor-pointer"
+                title="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-border/60 bg-white shrink-0">
+              <button
+                type="button"
+                onClick={() => setCurrentView(null)}
+                className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 hover:text-[#1E1E1E] px-2.5 py-1.5 -ml-1 rounded-full hover:bg-neutral-100 transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+
+              <h3 className="text-sm font-bold text-[#1E1E1E]">
+                {currentView === 'members' && 'Application Members'}
+                {currentView === 'activity' && 'Activity Logs'}
+                {currentView === 'rules' && 'Rotation Rules'}
+                {currentView === 'excel' && 'Excel Sync'}
+              </h3>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-full text-neutral-500 hover:text-[#1E1E1E] hover:bg-[#ECEEF0] transition-colors cursor-pointer"
+                title="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
 
           {/* Drawer Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-neutral-textSecondary">
-            {/* Active User Account Banner in Drawer */}
-            <div className="p-3 rounded-2xl bg-white border border-neutral-border/80 shadow-2xs flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                    isAdmin ? 'bg-[#A28EF9] text-[#1E1E1E]' : 'bg-[#1E1E1E] text-white'
-                  }`}
-                >
-                  {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-[#1E1E1E] truncate">{userName}</span>
-                    {isAdmin ? (
-                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-violet-100 text-violet-800">
-                        Admin
+            {/* When at root: Show Account card + WhatsApp-style list */}
+            {currentView === null && (
+              <>
+                {/* Active User Account Banner in Drawer */}
+                <div className="p-3.5 rounded-2xl bg-white border border-neutral-border/80 shadow-2xs flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                        isAdmin
+                          ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
+                          : 'bg-[#1E1E1E] text-white'
+                      }`}
+                    >
+                      {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-bold text-[#1E1E1E] truncate">{userName}</span>
+                        {isAdmin ? (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 text-amber-950 border border-amber-400/80 inline-flex items-center gap-1 shadow-2xs">
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-neutral-100 text-neutral-600">
+                            Member
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-neutral-textSecondary block truncate">
+                        {userEmail || 'Active session'}
                       </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-neutral-100 text-neutral-600">
-                        Member
-                      </span>
-                    )}
+                    </div>
                   </div>
-                  <span className="text-[10px] text-neutral-textSecondary block truncate">
-                    {userEmail || 'Active session'}
-                  </span>
+
+                  {onSignOut && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        onClose();
+                        await onSignOut();
+                      }}
+                      className="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1 active-scale flex-shrink-0 cursor-pointer"
+                      title="Log Out"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      <span>Log Out</span>
+                    </button>
+                  )}
                 </div>
-              </div>
 
-              {onSignOut && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    onClose();
-                    await onSignOut();
-                  }}
-                  className="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1 active-scale flex-shrink-0 cursor-pointer"
-                  title="Log Out"
-                >
-                  <LogOut className="w-3 h-3" />
-                  <span>Log Out</span>
-                </button>
-              )}
-            </div>
-
-            {/* Navigation Tabs in Settings: Admins see all 4 tabs; Members see only Rotation & Rules */}
-            {isAdmin ? (
-              <div className="grid grid-cols-4 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('excel')}
-                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
-                    activeTab === 'excel'
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-                  }`}
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">Excel Sync</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('members')}
-                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
-                    activeTab === 'members'
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">Members</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('rotation')}
-                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
-                    activeTab === 'rotation'
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-                  }`}
-                >
-                  <Repeat className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">Rotation</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('rules')}
-                  className={`py-1.5 px-1.5 rounded-full flex items-center justify-center gap-1 transition-all select-none truncate cursor-pointer ${
-                    activeTab === 'rules'
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-                  }`}
-                >
-                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">Rules</span>
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('rotation')}
-                  className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
-                    activeTab === 'rotation'
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-                  }`}
-                >
-                  <Repeat className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">Rotation Schedule</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('rules')}
-                  className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
-                    activeTab === 'rules'
-                      ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
-                      : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
-                  }`}
-                >
-                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">System Rules</span>
-                </button>
-              </div>
-            )}
-
-        {/* TAB 1: EXCEL SYNC & UPLOAD */}
-        {activeTab === 'excel' && (
-          <div className="space-y-3 animate-fadeIn text-xs">
-            <div className="p-3.5 rounded-[22px] bg-[#A4F5A6]/20 border border-[#A4F5A6]/40 text-[#1E1E1E] space-y-1">
-              <span className="font-bold flex items-center gap-1 text-xs text-[#1E1E1E]">
-                <FileSpreadsheet className="w-4 h-4 text-[#1E1E1E]" />
-                Upload Updated Timetable Excel
-              </span>
-              <p className="text-[11px] text-neutral-textSecondary leading-snug">
-                Upload your updated Excel sheet with all past attendance records. The system will detect the last recorded date and seamlessly continue the rotation rules from today onwards.
-              </p>
-            </div>
-
-            {/* Upload Area */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="p-5 rounded-xl border-2 border-dashed border-neutral-border hover:border-primary bg-neutral-surfaceSecondary/40 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors active-scale text-center"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center shadow-xs">
-                <Upload className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="font-bold text-xs text-neutral-textPrimary block">
-                  Click to Browse or Drop Excel File
-                </span>
-                <span className="text-[10px] text-neutral-textTertiary">
-                  Supports .xlsx, .xls, or .csv (Timetable Format)
-                </span>
-              </div>
-            </div>
-
-            {/* Status: Parsing */}
-            {uploadStatus === 'parsing' && (
-              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex items-center gap-2 text-xs">
-                <Clock className="w-4 h-4 text-blue-600 animate-spin" />
-                <span>Reading and analyzing timetable records...</span>
-              </div>
-            )}
-
-            {/* Status: Error */}
-            {uploadStatus === 'error' && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-1 text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-rose-800">
-                  <AlertTriangle className="w-4 h-4 text-rose-600" />
-                  <span>Import Failed</span>
-                </div>
-                <p className="text-[11px] text-rose-700">{uploadError}</p>
-              </div>
-            )}
-
-            {/* Status: Preview */}
-            {uploadStatus === 'preview' && parsedData && (
-              <div className="p-3.5 rounded-xl bg-white border border-neutral-border shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between border-b border-neutral-border pb-2">
-                  <span className="font-bold text-xs text-neutral-textPrimary flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    File Ready for Sync
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-surfaceSecondary text-neutral-textSecondary border border-neutral-border">
-                    {parsedData.sheetName}
+                {/* Section Title */}
+                <div className="pt-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 px-1">
+                    Settings & Management
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60">
-                    <span className="text-neutral-textTertiary block text-[10px]">Total Days Found</span>
-                    <strong className="text-neutral-textPrimary text-xs">{parsedData.totalRows} days</strong>
-                  </div>
-                  <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60">
-                    <span className="text-neutral-textTertiary block text-[10px]">Last Marked Date</span>
-                    <strong className="text-primary text-xs">{parsedData.lastMarkedDate || 'None'}</strong>
-                  </div>
-                  <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60 col-span-2">
-                    <span className="text-neutral-textTertiary block text-[10px]">Recorded Duties Parsed</span>
-                    <strong className="text-neutral-textPrimary text-xs">{parsedData.attendanceLogs.length} historical wash records</strong>
-                  </div>
-                </div>
-
-                {!isAdmin ? (
-                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                    <span>Applying Excel updates is locked to Admin <strong>Kavipriyan</strong>.</span>
-                  </div>
-                ) : (
+                {/* WhatsApp-Style Vertical List (Strictly ordered: 1. Members, 2. Activity, 3. Rotation rules, 4. Excel sync) */}
+                <div className="bg-white rounded-2xl border border-neutral-200/90 shadow-2xs divide-y divide-neutral-100 overflow-hidden">
+                  {/* 1. Members */}
                   <button
                     type="button"
-                    onClick={handleApplyExcel}
-                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all"
+                    onClick={() => setCurrentView('members')}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-neutral-50/80 active:bg-neutral-100/70 transition-colors text-left cursor-pointer group"
                   >
-                    <Check className="w-4 h-4" />
-                    <span>Apply & Sync Timetable from Excel</span>
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-[#1E1E1E] leading-tight block">
+                          Members
+                        </span>
+                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
+                          Manage member roster, passwords & admin roles
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 shrink-0 ml-2" />
                   </button>
-                )}
-              </div>
-            )}
 
-            {/* Status: Success */}
-            {uploadStatus === 'success' && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2 text-xs font-bold animate-fadeIn">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Timetable applied successfully! Recalculating rotation...</span>
-              </div>
-            )}
-          </div>
-        )}
+                  {/* 2. Activity */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('activity')}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-neutral-50/80 active:bg-neutral-100/70 transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 group-hover:scale-105 transition-transform">
+                        <Activity className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-[#1E1E1E] leading-tight block">
+                          Activity
+                        </span>
+                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
+                          Live audit log of wash assignments, duties & marks
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 shrink-0 ml-2" />
+                  </button>
 
-        {/* TAB 2: MEMBERS MANAGEMENT */}
-        {activeTab === 'members' && (
-          <div className="animate-fadeIn -mx-5 -mb-4">
-            <MembersScreen
-              members={members}
-              queue={queue}
-              attendanceLogs={attendanceLogs}
-              isAdmin={isAdmin}
-              adminUserIds={adminUserIds}
-              onToggleAdminRole={onToggleAdminRole}
-              onAddMember={onAddMember}
-              onEditMember={onEditMember}
-              onToggleMemberStatus={onToggleMemberStatus}
-              onRemoveMember={onRemoveMember}
-              onRefreshMembers={onRefreshMembers}
-            />
-          </div>
-        )}
+                  {/* 3. Rotation rules */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('rules')}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-neutral-50/80 active:bg-neutral-100/70 transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 group-hover:scale-105 transition-transform">
+                        <Repeat className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-[#1E1E1E] leading-tight block">
+                          Rotation rules
+                        </span>
+                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
+                          FIFO queue rules, database sync & engine logic
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 shrink-0 ml-2" />
+                  </button>
 
-        {/* TAB 3: ROTATION SCHEDULE */}
-        {activeTab === 'rotation' && (
-          <div className="animate-fadeIn -mx-5 -mb-4">
-            <RotationScreen
-              computedDays={computedDays}
-              todayDateStr={todayDateStr}
-              attendanceLogs={attendanceLogs}
-            />
-          </div>
-        )}
-
-        {/* TAB 4: SYSTEM RULES & FACTORY RESET */}
-        {activeTab === 'rules' && (
-          <div className="space-y-3.5 animate-fadeIn text-xs text-neutral-textSecondary">
-            <div className="p-3 rounded-xl bg-neutral-surfaceSecondary border border-neutral-border space-y-1.5">
-              <div className="flex items-center gap-1.5 text-neutral-textPrimary font-semibold text-xs">
-                <Info className="w-4 h-4 text-primary" />
-                <span>Rotation System Engine Rules</span>
-              </div>
-              <ul className="list-disc pl-4 space-y-1 text-neutral-textSecondary text-[11px]">
-                <li><strong>Single Shared Queue:</strong> One unified queue for Lunch and Dinner. Lunch is assigned first; dinner continues from the remainder.</li>
-                <li><strong>Washer Selection:</strong> Assigned to whoever is nearest the front of the queue who ate that meal.</li>
-                <li><strong>Absence Defers Turn:</strong> Absent members keep their place at the front; they wash next time they eat.</li>
-                <li><strong>Never-Washed Priority:</strong> Members with fewer washes always sit ahead in the queue.</li>
-                <li><strong>No Make-Up Debt:</strong> Missed duties never create debt.</li>
-              </ul>
-            </div>
-
-            {/* Supabase Cloud Connection Panel */}
-            <div className="p-3.5 rounded-xl bg-white border border-neutral-border space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-semibold text-neutral-textPrimary">
-                  <Database className="w-4 h-4 text-[#7D64F6]" />
-                  <span>Supabase Cloud Database</span>
+                  {/* 4. Excel sync (RBAC restricted to Admin) */}
+                  <button
+                    type="button"
+                    disabled={!isAdmin}
+                    onClick={() => {
+                      if (isAdmin) setCurrentView('excel');
+                    }}
+                    className={`w-full flex items-center justify-between p-3.5 text-left transition-colors group ${
+                      isAdmin
+                        ? 'hover:bg-neutral-50/80 active:bg-neutral-100/70 cursor-pointer'
+                        : 'opacity-65 cursor-not-allowed bg-neutral-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100 group-hover:scale-105 transition-transform">
+                        <FileSpreadsheet className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#1E1E1E] leading-tight">
+                            Excel sync
+                          </span>
+                          {!isAdmin && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-[9px] font-bold">
+                              <Lock className="w-2.5 h-2.5 text-amber-600" />
+                              Admin Only
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-neutral-textSecondary truncate mt-0.5">
+                          Upload timetable file & sync historical attendance
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 ml-2">
+                      {isAdmin ? (
+                        <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-amber-700" />
+                      )}
+                    </div>
+                  </button>
                 </div>
-                {isSupabaseConfigured ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Connected
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
-                    Local Storage Mode
-                  </span>
-                )}
-              </div>
 
-              <p className="text-[11px] text-neutral-textSecondary leading-relaxed">
-                Connect your Supabase project to track attendance and sync assignments across devices in Realtime.
-              </p>
-
-              {isAdmin ? (
-                <div className="space-y-2.5 pt-1">
-                  <div>
-                    <label className="block text-[10px] font-bold text-neutral-textPrimary uppercase tracking-wider mb-1">
-                      Project URL
-                    </label>
-                    <input
-                      type="text"
-                      value={dbUrl}
-                      onChange={(e) => setDbUrl(e.target.value)}
-                      placeholder="https://xyzcompany.supabase.co"
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-border focus:border-[#7D64F6] focus:outline-hidden font-mono bg-[#ECEEF0]/40"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-neutral-textPrimary uppercase tracking-wider mb-1">
-                      Anon / Public API Key
-                    </label>
-                    <input
-                      type="password"
-                      value={dbKey}
-                      onChange={(e) => setDbKey(e.target.value)}
-                      placeholder="eyJhbGciOi..."
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-border focus:border-[#7D64F6] focus:outline-hidden font-mono bg-[#ECEEF0]/40"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleSaveCredentials}
-                      className="flex-1 py-1.5 px-3 rounded-lg bg-[#1E1E1E] text-white text-xs font-bold hover:bg-black transition-colors flex items-center justify-center gap-1"
-                    >
-                      {savedSuccess ? 'Saved! Reloading...' : 'Save & Connect'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCopySql}
-                      className="py-1.5 px-3 rounded-lg bg-[#ECEEF0] hover:bg-neutral-200 text-neutral-textPrimary text-xs font-semibold flex items-center gap-1 transition-colors border border-neutral-border/60"
-                      title="Copy SQL Schema for Supabase SQL Editor"
-                    >
-                      {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedSql ? 'Copied SQL!' : 'Copy SQL'}</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-2 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border text-[11px] text-neutral-textTertiary">
-                  Supabase database configuration is managed by Admin <strong>Kavipriyan</strong>.
-                </div>
-              )}
-            </div>
-
-            <div className="p-3 rounded-xl bg-white border border-neutral-border space-y-2 text-xs">
-              <h4 className="font-semibold text-neutral-textPrimary">Configuration</h4>
-              <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
-                <span>Timeline:</span>
-                <span className="font-semibold text-neutral-textPrimary">Continuous Multi-Year</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
-                <span>Current Date:</span>
-                <span className="font-semibold text-neutral-textPrimary">{todayDateStr}</span>
-              </div>
-              <div className="flex justify-between py-1 text-[11px]">
-                <span>Admin:</span>
-                <span className="font-semibold text-violet-700">👑 Kavipriyan (Primary Admin)</span>
-              </div>
-            </div>
-
-            {/* Factory Reset */}
-            <div className="pt-2 border-t border-neutral-border">
-              {!isAdmin ? (
-                <div className="p-2.5 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border text-[11px] text-neutral-textTertiary flex items-center gap-2">
-                  <Lock className="w-3.5 h-3.5 text-neutral-textSecondary shrink-0" />
-                  <span>System reset is locked to Admin <strong>Kavipriyan</strong> only.</span>
-                </div>
-              ) : !resetConfirm ? (
-                <button
-                  type="button"
-                  onClick={() => setResetConfirm(true)}
-                  className="text-status-error text-xs font-semibold hover:underline flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset to Excel Seed Data (Admin Only)</span>
-                </button>
-              ) : (
-                <div className="p-3 rounded-lg bg-status-errorBg border border-status-errorBorder space-y-2">
-                  <p className="text-xs text-status-error font-medium">
-                    Reset all attendance records and restore initial members and continuous rotation?
+                {/* App Info Footer */}
+                <div className="pt-4 text-center">
+                  <p className="text-[11px] text-neutral-400 font-medium">
+                    Vessel Washer App • Continuous Multi-Year Engine
                   </p>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="destructive" onClick={handleReset}>
-                      Yes, Reset Everything
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setResetConfirm(false)}>
-                      Cancel
-                    </Button>
+                  <p className="text-[10px] text-neutral-300 mt-0.5">
+                    Supabase Cloud Sync • {todayDateStr}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* VIEW 1: MEMBERS */}
+            {currentView === 'members' && (
+              <div className="animate-fadeIn -mx-4 -mb-4">
+                <MembersScreen
+                  members={members}
+                  queue={queue}
+                  attendanceLogs={attendanceLogs}
+                  isAdmin={isAdmin}
+                  adminUserIds={adminUserIds}
+                  onToggleAdminRole={onToggleAdminRole}
+                  onAddMember={onAddMember}
+                  onEditMember={onEditMember}
+                  onToggleMemberStatus={onToggleMemberStatus}
+                  onRemoveMember={onRemoveMember}
+                  onRefreshMembers={onRefreshMembers}
+                />
+              </div>
+            )}
+
+            {/* VIEW 2: ACTIVITY LOGS */}
+            {currentView === 'activity' && (
+              <div className="animate-fadeIn -mx-4 -mb-4">
+                <ActivityScreen
+                  activityLogs={activityLogs}
+                  members={members}
+                  isAdmin={isAdmin}
+                  onClearLogs={onClearLogs}
+                />
+              </div>
+            )}
+
+            {/* VIEW 3: ROTATION RULES */}
+            {currentView === 'rules' && (
+              <div className="space-y-3.5 animate-fadeIn text-xs text-neutral-textSecondary">
+                {/* Sub-tab pills */}
+                <div className="grid grid-cols-2 p-1 bg-[#ECEEF0] rounded-full border border-neutral-border/60 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setRulesSubTab('rules')}
+                    className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
+                      rulesSubTab === 'rules'
+                        ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                        : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                    }`}
+                  >
+                    <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Engine Rules & DB</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRulesSubTab('schedule')}
+                    className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
+                      rulesSubTab === 'schedule'
+                        ? 'bg-[#1E1E1E] text-white shadow-xs font-bold'
+                        : 'text-neutral-textSecondary hover:text-neutral-textPrimary font-semibold'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Schedule Preview</span>
+                  </button>
+                </div>
+
+                {rulesSubTab === 'rules' ? (
+                  <div className="space-y-3.5">
+                    <div className="p-3.5 rounded-2xl bg-neutral-surfaceSecondary border border-neutral-border space-y-2">
+                      <div className="flex items-center gap-1.5 text-neutral-textPrimary font-bold text-xs">
+                        <Info className="w-4 h-4 text-primary" />
+                        <span>Rotation System Engine Rules</span>
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1.5 text-neutral-textSecondary text-[11px]">
+                        <li><strong>Single Shared Queue:</strong> One unified queue for Lunch and Dinner. Lunch is assigned first; dinner continues from the remainder.</li>
+                        <li><strong>Washer Selection:</strong> Assigned to whoever is nearest the front of the queue who ate that meal.</li>
+                        <li><strong>Absence Defers Turn:</strong> Absent members keep their place at the front; they wash next time they eat.</li>
+                        <li><strong>Never-Washed Priority:</strong> Members with fewer washes always sit ahead in the queue.</li>
+                        <li><strong>No Make-Up Debt:</strong> Missed duties never create debt.</li>
+                      </ul>
+                    </div>
+
+                    {/* Supabase Cloud Connection Panel */}
+                    <div className="p-3.5 rounded-2xl bg-white border border-neutral-border space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-bold text-neutral-textPrimary">
+                          <Database className="w-4 h-4 text-[#7D64F6]" />
+                          <span>Supabase Cloud Database</span>
+                        </div>
+                        {isSupabaseConfigured ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Connected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                            Local Storage Mode
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-neutral-textSecondary leading-relaxed">
+                        Connect your Supabase project to track attendance and sync assignments across devices in Realtime.
+                      </p>
+
+                      {isAdmin ? (
+                        <div className="space-y-2.5 pt-1">
+                          <div>
+                            <label className="block text-[10px] font-bold text-neutral-textPrimary uppercase tracking-wider mb-1">
+                              Project URL
+                            </label>
+                            <input
+                              type="text"
+                              value={dbUrl}
+                              onChange={(e) => setDbUrl(e.target.value)}
+                              placeholder="https://xyzcompany.supabase.co"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-border focus:border-[#7D64F6] focus:outline-hidden font-mono bg-[#ECEEF0]/40"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-neutral-textPrimary uppercase tracking-wider mb-1">
+                              Anon / Public API Key
+                            </label>
+                            <input
+                              type="password"
+                              value={dbKey}
+                              onChange={(e) => setDbKey(e.target.value)}
+                              placeholder="eyJhbGciOi..."
+                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-border focus:border-[#7D64F6] focus:outline-hidden font-mono bg-[#ECEEF0]/40"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleSaveCredentials}
+                              className="flex-1 py-1.5 px-3 rounded-lg bg-[#1E1E1E] text-white text-xs font-bold hover:bg-black transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              {savedSuccess ? 'Saved! Reloading...' : 'Save & Connect'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopySql}
+                              className="py-1.5 px-3 rounded-lg bg-[#ECEEF0] hover:bg-neutral-200 text-neutral-textPrimary text-xs font-semibold flex items-center gap-1 transition-colors border border-neutral-border/60 cursor-pointer"
+                              title="Copy SQL Schema for Supabase SQL Editor"
+                            >
+                              {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copiedSql ? 'Copied SQL!' : 'Copy SQL'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border text-[11px] text-neutral-textTertiary">
+                          Supabase database configuration is managed by Admin <strong>Kavipriyan</strong>.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-neutral-border space-y-2 text-xs">
+                      <h4 className="font-bold text-neutral-textPrimary">Configuration</h4>
+                      <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
+                        <span>Timeline:</span>
+                        <span className="font-semibold text-neutral-textPrimary">Continuous Multi-Year</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-neutral-border text-[11px]">
+                        <span>Current Date:</span>
+                        <span className="font-semibold text-neutral-textPrimary">{todayDateStr}</span>
+                      </div>
+                      <div className="flex justify-between py-1 text-[11px]">
+                        <span>Admin:</span>
+                        <span className="font-semibold text-amber-900">👑 Kavipriyan (Primary Admin)</span>
+                      </div>
+                    </div>
+
+                    {/* Factory Reset */}
+                    <div className="pt-2 border-t border-neutral-border">
+                      {!isAdmin ? (
+                        <div className="p-2.5 rounded-lg bg-neutral-surfaceSecondary border border-neutral-border text-[11px] text-neutral-textTertiary flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-neutral-textSecondary shrink-0" />
+                          <span>System reset is locked to Admin <strong>Kavipriyan</strong> only.</span>
+                        </div>
+                      ) : !resetConfirm ? (
+                        <button
+                          type="button"
+                          onClick={() => setResetConfirm(true)}
+                          className="text-status-error text-xs font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Reset to Excel Seed Data (Admin Only)</span>
+                        </button>
+                      ) : (
+                        <div className="p-3 rounded-lg bg-status-errorBg border border-status-errorBorder space-y-2">
+                          <p className="text-xs text-status-error font-medium">
+                            Reset all attendance records and restore initial members and continuous rotation?
+                          </p>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="destructive" onClick={handleReset}>
+                              Yes, Reset Everything
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => setResetConfirm(false)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="-mx-4 -mb-4">
+                    <RotationScreen
+                      computedDays={computedDays}
+                      todayDateStr={todayDateStr}
+                      attendanceLogs={attendanceLogs}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* VIEW 4: EXCEL SYNC & UPLOAD */}
+            {currentView === 'excel' && (
+              <div className="space-y-3 animate-fadeIn text-xs">
+                <div className="p-3.5 rounded-[22px] bg-[#A4F5A6]/20 border border-[#A4F5A6]/40 text-[#1E1E1E] space-y-1">
+                  <span className="font-bold flex items-center gap-1 text-xs text-[#1E1E1E]">
+                    <FileSpreadsheet className="w-4 h-4 text-[#1E1E1E]" />
+                    Upload Updated Timetable Excel
+                  </span>
+                  <p className="text-[11px] text-neutral-textSecondary leading-snug">
+                    Upload your updated Excel sheet with all past attendance records. The system will detect the last recorded date and seamlessly continue the rotation rules from today onwards.
+                  </p>
+                </div>
+
+                {/* Upload Area */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-5 rounded-xl border-2 border-dashed border-neutral-border hover:border-primary bg-neutral-surfaceSecondary/40 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors active-scale text-center"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center shadow-xs">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-neutral-textPrimary block">
+                      Click to Browse or Drop Excel File
+                    </span>
+                    <span className="text-[10px] text-neutral-textTertiary">
+                      Supports .xlsx, .xls, or .csv (Timetable Format)
+                    </span>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+
+                {/* Status: Parsing */}
+                {uploadStatus === 'parsing' && (
+                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex items-center gap-2 text-xs">
+                    <Clock className="w-4 h-4 text-blue-600 animate-spin" />
+                    <span>Reading and analyzing timetable records...</span>
+                  </div>
+                )}
+
+                {/* Status: Error */}
+                {uploadStatus === 'error' && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-1 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-rose-800">
+                      <AlertTriangle className="w-4 h-4 text-rose-600" />
+                      <span>Import Failed</span>
+                    </div>
+                    <p className="text-[11px] text-rose-700">{uploadError}</p>
+                  </div>
+                )}
+
+                {/* Status: Preview */}
+                {uploadStatus === 'preview' && parsedData && (
+                  <div className="p-3.5 rounded-xl bg-white border border-neutral-border shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-neutral-border pb-2">
+                      <span className="font-bold text-xs text-neutral-textPrimary flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        File Ready for Sync
+                      </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-surfaceSecondary text-neutral-textSecondary border border-neutral-border">
+                        {parsedData.sheetName}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60">
+                        <span className="text-neutral-textTertiary block text-[10px]">Total Days Found</span>
+                        <strong className="text-neutral-textPrimary text-xs">{parsedData.totalRows} days</strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60">
+                        <span className="text-neutral-textTertiary block text-[10px]">Last Marked Date</span>
+                        <strong className="text-primary text-xs">{parsedData.lastMarkedDate || 'None'}</strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-neutral-surfaceSecondary/60 border border-neutral-border/60 col-span-2">
+                        <span className="text-neutral-textTertiary block text-[10px]">Recorded Duties Parsed</span>
+                        <strong className="text-neutral-textPrimary text-xs">{parsedData.attendanceLogs.length} historical wash records</strong>
+                      </div>
+                    </div>
+
+                    {!isAdmin ? (
+                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>Applying Excel updates is locked to Admin <strong>Kavipriyan</strong>.</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleApplyExcel}
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Apply & Sync Timetable from Excel</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Status: Success */}
+                {uploadStatus === 'success' && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2 text-xs font-bold animate-fadeIn">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Timetable applied successfully! Recalculating rotation...</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

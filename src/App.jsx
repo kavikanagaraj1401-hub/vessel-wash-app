@@ -1156,6 +1156,8 @@ export default function App() {
           onRefreshMembers={handleRefreshMembers}
           onImportExcel={handleImportExcel}
           onResetData={handleResetData}
+          activityLogs={activityLogs}
+          onClearLogs={handleClearActivityLogs}
         />
       </div>
     </div>

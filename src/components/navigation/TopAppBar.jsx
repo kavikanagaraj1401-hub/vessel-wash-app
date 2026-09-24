@@ -134,54 +134,33 @@ export function TopAppBar({
             </div>
           </div>
 
-          {/* Right: User Profile Badge, Members Directory Button & Burger Menu */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            {/* Logged-in User Profile Badge */}
+          {/* Right: User Profile Avatar & Burger Menu (Redundant name chip removed) */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* User Profile Avatar Trigger */}
             <button
               type="button"
               onClick={() => setProfileModalOpen(true)}
               aria-label="User profile & account"
               title={`Logged in as ${resolvedName} (${resolvedCode}) - ${userEmail || 'Active session'}`}
-              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] border border-neutral-border/70 active-scale transition-all cursor-pointer"
+              className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs select-none active-scale transition-all cursor-pointer ${
+                isAdmin
+                  ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
+                  : 'bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] border border-neutral-border/70'
+              }`}
             >
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
-                  isAdmin ? 'bg-violet-600 text-white shadow-2xs' : 'bg-[#1E1E1E] text-white'
-                }`}
-              >
-                {isAdmin ? '👑' : (resolvedCode || resolvedName.charAt(0) || 'U')}
-              </div>
-              <span className="text-xs font-bold text-[#1E1E1E] max-w-[65px] sm:max-w-[110px] truncate leading-none">
-                {resolvedName}
-              </span>
-              {resolvedCode && (
-                <span className="text-[10px] font-bold text-violet-700 bg-violet-50 px-1 py-0.5 rounded border border-violet-200/60 leading-none">
-                  {resolvedCode}
-                </span>
-              )}
+              {isAdmin ? '👑' : (resolvedCode || resolvedName.charAt(0) || 'U')}
             </button>
 
-            {/* Application Members Button (Shows directory without switching) */}
-            <button
-              type="button"
-              onClick={() => setMembersModalOpen(true)}
-              aria-label="View application members and admins"
-              title="Members & Admins Directory"
-              className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all cursor-pointer"
-            >
-              <Users className="w-3.5 h-3.5" strokeWidth={2.2} />
-            </button>
-
-            {/* Burger Menu Button (Access Menu, Excel, Settings, and Log Out) */}
+            {/* Burger Menu Button (Access Menu, WhatsApp-style Settings, and Log Out) */}
             {onSettingsClick && (
               <button
                 type="button"
                 onClick={onSettingsClick}
                 aria-label="Open menu and settings"
                 title="Menu & Settings"
-                className="w-8 h-8 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full bg-[#ECEEF0] hover:bg-neutral-200 text-[#1E1E1E] flex items-center justify-center border border-neutral-border/60 active-scale transition-all cursor-pointer"
               >
-                <Menu className="w-3.5 h-3.5" strokeWidth={2.2} />
+                <Menu className="w-4 h-4" strokeWidth={2.2} />
               </button>
             )}
           </div>
@@ -405,7 +384,9 @@ export function TopAppBar({
           <div className="p-4 rounded-2xl bg-white border border-neutral-border/80 shadow-xs flex items-center gap-3">
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-xs flex-shrink-0 ${
-                isAdmin ? 'bg-[#A28EF9] text-[#1E1E1E]' : 'bg-[#1E1E1E] text-white'
+                isAdmin
+                  ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/30'
+                  : 'bg-[#1E1E1E] text-white'
               }`}
             >
               {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
@@ -416,7 +397,7 @@ export function TopAppBar({
                   {userName}
                 </h3>
                 {isAdmin ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-950 border border-amber-300 shadow-2xs">
                     👑 Admin
                   </span>
                 ) : (
