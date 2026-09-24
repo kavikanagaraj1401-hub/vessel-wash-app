@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { supabaseService } from '../../services/supabaseService';
 
-export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
+export function AuthScreen({ onAuthSuccess, members = [] }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -220,18 +220,6 @@ export function AuthScreen({ onAuthSuccess, onContinueOffline, members = [] }) {
           </button>
         </form>
 
-        {/* Offline / Guest Mode Fallback */}
-        {onContinueOffline && (
-          <div className="pt-2 border-t border-neutral-border/60 text-center">
-            <button
-              type="button"
-              onClick={onContinueOffline}
-              className="text-[11px] font-semibold text-neutral-textSecondary hover:text-[#1E1E1E] transition-colors"
-            >
-              Continue without signing in (Local Cache) &rarr;
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Footer Info */}

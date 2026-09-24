@@ -39,7 +39,6 @@ export default function App() {
   // Supabase Authentication Session State
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [guestBypass, setGuestBypass] = useState(false);
 
   // Admin Mode override state
   const [isAdminMode, setIsAdminMode] = useState(() => {
@@ -365,7 +364,6 @@ export default function App() {
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         syncRealtimeAndData(newSession);
       } else if (event === 'SIGNED_OUT') {
-        setGuestBypass(false);
         syncRealtimeAndData(null);
       }
     });
@@ -439,15 +437,15 @@ export default function App() {
   // Role Access Control: Fetch role from members table. If role === 'admin', unlock admin settings.
   // If role === 'member', show only daily roster and attendance tools.
   const isAdmin = useMemo(() => {
-    if (!session && guestBypass) return isAdminMode;
+    if (!isAdminMode) return false;
     if (isUserKavipriyan) return true;
     if (dbUserRole === 'admin') return true;
     if (loggedInMember?.role === 'admin') return true;
     if (loggedInMember?.id && adminUserIds.includes(loggedInMember.id)) return true;
     return false;
-  }, [session, guestBypass, isAdminMode, isUserKavipriyan, dbUserRole, loggedInMember, adminUserIds]);
+  }, [isAdminMode, isUserKavipriyan, dbUserRole, loggedInMember, adminUserIds]);
 
-  const isPrimaryAdmin = isUserKavipriyan || (!session && guestBypass && isAdminMode);
+  const isPrimaryAdmin = isUserKavipriyan;
 
   // Current logged in member representation for activity attribution
   const currentMember = useMemo(() => {
@@ -470,7 +468,6 @@ export default function App() {
   const handleSignOut = async () => {
     await supabaseService.signOut();
     setSession(null);
-    setGuestBypass(false);
   };
 
   // Request notification permissions silently on app initialization
@@ -1023,12 +1020,11 @@ export default function App() {
     );
   }
 
-  // 2. Unauthenticated Screen (Supabase Auth Login & Sign Up)
-  if (!session && !guestBypass) {
+  // 2. Unauthenticated Screen (Strict Supabase Auth Login)
+  if (!session) {
     return (
       <AuthScreen
         onAuthSuccess={(newSession) => setSession(newSession)}
-        onContinueOffline={() => setGuestBypass(true)}
         members={members}
       />
     );
