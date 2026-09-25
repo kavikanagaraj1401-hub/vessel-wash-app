@@ -71,6 +71,7 @@ export default function App() {
   const [initialQueue, setInitialQueue] = useState(() => storage.getInitialQueue());
   const [activityLogs, setActivityLogs] = useState(() => storage.getActivityLogs());
   const [adminUserIds, setAdminUserIds] = useState(() => storage.getAdminUserIds());
+  const [bills, setBills] = useState(() => storage.getReimbursementBills());
 
   const unsubscribeRealtimeRef = useRef(null);
 
@@ -210,6 +211,9 @@ export default function App() {
       } else if (key === 'attendance_logs' && Array.isArray(val)) {
         setAttendanceLogs(val);
         storage.saveAttendanceLogs(val);
+      } else if (key === 'reimbursement_bills' && Array.isArray(val)) {
+        setBills(val);
+        storage.saveReimbursementBills(val);
       }
     }
   }, []);
@@ -285,6 +289,11 @@ export default function App() {
         if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs) && remote.attendanceLogs.length > 0) {
           setAttendanceLogs(remote.attendanceLogs);
           storage.saveAttendanceLogs(remote.attendanceLogs);
+        }
+
+        if (remote.reimbursementBills && Array.isArray(remote.reimbursementBills)) {
+          setBills(remote.reimbursementBills);
+          storage.saveReimbursementBills(remote.reimbursementBills);
         }
 
         // Auto-seed if database is empty on first connection
@@ -1000,6 +1009,55 @@ export default function App() {
     });
   };
 
+  // Handle Create Reimbursement Bill
+  const handleCreateBill = useCallback(async (billData) => {
+    const nextReceiptId = storage.generateNextReceiptId(bills);
+    const newBill = {
+      id: `bill-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      receiptId: nextReceiptId,
+      billDateTime: billData.billDateTime || new Date().toISOString(),
+      paidByMemberId: billData.paidByMemberId || currentMember.id,
+      paidByMemberName: billData.paidByMemberName || currentMember.name,
+      paidByMemberCode: billData.paidByMemberCode || currentMember.code,
+      expenseType: billData.expenseType || 'General Expense',
+      lineItems: Array.isArray(billData.lineItems) ? billData.lineItems : [],
+      totalAmount: Number(billData.totalAmount) || 0,
+      footerText: 'Thank you for using this app',
+      createdBy: currentMember.id,
+      creatorName: currentMember.name,
+      creatorEmail: userEmail || '',
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newBill, ...bills];
+    setBills(updated);
+    storage.saveReimbursementBills(updated);
+    await supabaseService.saveReimbursementBills(updated);
+
+    await logActivityAction(
+      'Bill Created',
+      `Reimbursement receipt ${nextReceiptId} for ₹${newBill.totalAmount.toLocaleString('en-IN')} (${newBill.expenseType}) recorded by ${currentMember.name}.`,
+      'bill'
+    );
+    return newBill;
+  }, [bills, currentMember, userEmail, logActivityAction]);
+
+  // Handle Delete Reimbursement Bill
+  const handleDeleteBill = useCallback(async (billId) => {
+    const target = bills.find(b => b.id === billId);
+    const updated = bills.filter(b => b.id !== billId);
+    setBills(updated);
+    storage.saveReimbursementBills(updated);
+    await supabaseService.saveReimbursementBills(updated);
+
+    if (target) {
+      await logActivityAction(
+        'Bill Deleted',
+        `Receipt ${target.receiptId} (₹${target.totalAmount.toLocaleString('en-IN')}) was removed by ${currentMember.name}.`,
+        'bill'
+      );
+    }
+  }, [bills, currentMember, logActivityAction]);
+
   const activeMembers = members.filter(m => m.status === 'active');
 
   // 1. Initial Session Loading Indicator
@@ -1094,13 +1152,14 @@ export default function App() {
 
           {activeTab === 'bill' && (
             <BillScreen
+              bills={bills}
               members={members}
-              daysConfig={daysConfig}
-              computedDays={computedDays}
-              attendanceLogs={attendanceLogs}
-              isAdmin={isAdmin}
-              todayDateStr={actualTodayDateStr}
               currentMember={currentMember}
+              isAdmin={isAdmin}
+              userEmail={userEmail}
+              onSaveBill={handleCreateBill}
+              onDeleteBill={handleDeleteBill}
+              todayDateStr={actualTodayDateStr}
             />
           )}
 

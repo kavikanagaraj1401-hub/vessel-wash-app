@@ -200,6 +200,7 @@ export const supabaseService = {
         attendanceHistory: dbAttendance || [],
         washerActivity: dbWasherActivity || [],
         attendanceLogs: settingsMap.get('attendance_logs') || null,
+        reimbursementBills: settingsMap.get('reimbursement_bills') || null,
       };
     } catch (err) {
       console.warn('⚠️ Supabase fetchInitialData error:', err.message || err);
@@ -467,6 +468,40 @@ export const supabaseService = {
       return true;
     } catch (err) {
       console.warn('Failed to save admin_user_ids to Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Save reimbursement bills array to Supabase application_settings.
+   */
+  async saveReimbursementBills(bills) {
+    if (!isSupabaseConfigured || !supabase) return false;
+    try {
+      const { data: existing } = await supabase
+        .from('application_settings')
+        .select('*')
+        .or('key.eq.reimbursement_bills,setting_key.eq.reimbursement_bills');
+
+      if (existing && existing.length > 0) {
+        const idCol = existing[0].key ? 'key' : 'setting_key';
+        const valCol = existing[0].value !== undefined ? 'value' : 'setting_value';
+        await supabase
+          .from('application_settings')
+          .update({ [valCol]: bills, updated_at: new Date().toISOString() })
+          .eq(idCol, 'reimbursement_bills');
+      } else {
+        await supabase.from('application_settings').insert([
+          {
+            setting_key: 'reimbursement_bills',
+            setting_value: bills,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+      }
+      return true;
+    } catch (err) {
+      console.warn('Failed to save reimbursement_bills to Supabase:', err);
       return false;
     }
   },

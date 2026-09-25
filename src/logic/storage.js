@@ -331,6 +331,7 @@ const STORAGE_KEYS = {
   INITIAL_QUEUE: 'vw_app_initial_queue_v4',
   ACTIVITY_LOGS: 'vw_app_activity_logs_v4',
   ADMIN_IDS: 'vw_app_admin_ids_v1',
+  BILLS: 'vw_app_reimbursement_bills_v1',
 };
 
 export const storage = {
@@ -404,6 +405,34 @@ export const storage = {
   },
   saveActivityLogs(logs) {
     localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(logs));
+  },
+
+  getReimbursementBills() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.BILLS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+  saveReimbursementBills(bills) {
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(bills));
+  },
+  generateNextReceiptId(bills = []) {
+    let maxNum = 0;
+    if (Array.isArray(bills)) {
+      for (const bill of bills) {
+        if (bill && bill.receiptId) {
+          const cleanStr = String(bill.receiptId).replace('#', '').trim();
+          const num = parseInt(cleanStr, 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    return `#${String(nextNum).padStart(5, '0')}`;
   },
 
   resetToDefault() {

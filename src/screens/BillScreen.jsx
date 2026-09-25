@@ -1,715 +1,1014 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Receipt,
-  Utensils,
-  Share2,
-  CheckCircle2,
+  Plus,
+  Trash2,
+  Calendar,
   Clock,
-  Settings,
+  User,
+  Tag,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Printer,
+  X,
   Search,
-  Crown,
-  Check,
+  Sparkles,
+  AlertCircle,
+  FileText,
+  CheckCircle2,
+  Wallet,
+  ArrowUpDown,
+  Filter,
 } from 'lucide-react';
+import { Modal } from '../components/common/Modal';
+import { Button } from '../components/common/Button';
+import { Badge } from '../components/common/Badge';
+import { Card } from '../components/common/Card';
+
+/**
+ * Format date-time for datetime-local input (YYYY-MM-DDTHH:mm)
+ */
+function getLocalDateTimeString(dateObj = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const y = dateObj.getFullYear();
+  const m = pad(dateObj.getMonth() + 1);
+  const d = pad(dateObj.getDate());
+  const h = pad(dateObj.getHours());
+  const min = pad(dateObj.getMinutes());
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
+/**
+ * Format date for display (e.g., "25 Sep 2026, 02:30 PM")
+ */
+function formatBillDisplayDate(dateTimeStr) {
+  if (!dateTimeStr) return 'N/A';
+  try {
+    const d = new Date(dateTimeStr);
+    if (isNaN(d.getTime())) return dateTimeStr;
+    return d.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return dateTimeStr;
+  }
+}
+
+/**
+ * Extract Year-Month string (e.g. "2026-09")
+ */
+function getYearMonthKey(dateTimeStr) {
+  if (!dateTimeStr) return 'Unknown';
+  try {
+    const d = new Date(dateTimeStr);
+    if (isNaN(d.getTime())) return 'Unknown';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  } catch {
+    return 'Unknown';
+  }
+}
+
+/**
+ * Format Year-Month to readable title (e.g. "September 2026")
+ */
+function formatMonthTitle(ymKey) {
+  if (!ymKey || ymKey === 'all') return 'All Months';
+  try {
+    const [y, m] = ymKey.split('-');
+    const date = new Date(Number(y), Number(m) - 1, 1);
+    return date.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  } catch {
+    return ymKey;
+  }
+}
+
+const COMMON_EXPENSE_CATEGORIES = [
+  'Groceries',
+  'Vegetables & Fruits',
+  'Mess Gas / Cylinder',
+  'Cleaning Supplies',
+  'Milk & Dairy',
+  'Kitchen Utensils',
+  'Maintenance',
+  'Miscellaneous',
+];
 
 export function BillScreen({
+  bills = [],
   members = [],
-  daysConfig = [],
-  computedDays = [],
-  attendanceLogs = [],
-  isAdmin = false,
-  todayDateStr = '',
   currentMember = null,
+  isAdmin = false,
+  userEmail = '',
+  onSaveBill,
+  onDeleteBill,
+  todayDateStr = '',
 }) {
-  // Billing Configuration State
-  const [billingMode, setBillingMode] = useState(() => {
-    try {
-      return localStorage.getItem('vw_bill_mode') || 'per_meal'; // 'per_meal' | 'shared_total'
-    } catch {
-      return 'per_meal';
-    }
-  });
+  // 1. Creator Scoping & Verification
+  const isCreator = (bill) => {
+    if (!bill || !currentMember) return false;
+    if (bill.createdBy && currentMember.id && bill.createdBy === currentMember.id) return true;
+    if (bill.creatorEmail && userEmail && bill.creatorEmail.toLowerCase() === userEmail.toLowerCase()) return true;
+    if (bill.creatorName && currentMember.name && bill.creatorName.trim().toLowerCase() === currentMember.name.trim().toLowerCase()) return true;
+    return false;
+  };
 
-  const [mealRate, setMealRate] = useState(() => {
-    try {
-      const saved = localStorage.getItem('vw_bill_meal_rate');
-      return saved ? Number(saved) : 50; // Default ₹50 per meal
-    } catch {
-      return 50;
-    }
-  });
+  // Strictly filter bills created by the logged-in user
+  const userBills = useMemo(() => {
+    return bills.filter(isCreator);
+  }, [bills, currentMember, userEmail]);
 
-  const [totalMessExpense, setTotalMessExpense] = useState(() => {
-    try {
-      const saved = localStorage.getItem('vw_bill_total_expense');
-      return saved ? Number(saved) : 6000; // Default ₹6,000 shared pool
-    } catch {
-      return 6000;
-    }
-  });
+  // 2. Strict LIFO Sorting (newest at top)
+  const lifoBills = useMemo(() => {
+    return [...userBills].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.billDateTime).getTime();
+      const timeB = new Date(b.createdAt || b.billDateTime).getTime();
+      return timeB - timeA;
+    });
+  }, [userBills]);
 
-  const [washDiscountRate, setWashDiscountRate] = useState(() => {
-    try {
-      const saved = localStorage.getItem('vw_bill_wash_discount');
-      return saved ? Number(saved) : 0; // Default ₹0 deduction per wash
-    } catch {
-      return 0;
-    }
-  });
+  // 3. Month Filter & Analytics
+  const distinctMonths = useMemo(() => {
+    const set = new Set();
+    userBills.forEach(b => {
+      const ym = getYearMonthKey(b.billDateTime || b.createdAt);
+      if (ym && ym !== 'Unknown') set.add(ym);
+    });
+    // Add current month if empty
+    const currentYm = getYearMonthKey(todayDateStr || new Date().toISOString());
+    if (currentYm && currentYm !== 'Unknown') set.add(currentYm);
+    return Array.from(set).sort().reverse();
+  }, [userBills, todayDateStr]);
 
-  // Payments map: { [memberId]: boolean (true = paid, false = pending) }
-  const [payments, setPayments] = useState(() => {
-    try {
-      const saved = localStorage.getItem('vw_bill_payments');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return getYearMonthKey(todayDateStr || new Date().toISOString()) || 'all';
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'pending'
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [copiedShare, setCopiedShare] = useState(false);
+  const [expandedBillIds, setExpandedBillIds] = useState(() => new Set());
 
-  // Sync settings to localStorage
-  const handleSaveSettings = (newMode, newRate, newTotal, newDiscount) => {
-    setBillingMode(newMode);
-    setMealRate(newRate);
-    setTotalMessExpense(newTotal);
-    setWashDiscountRate(newDiscount);
-    try {
-      localStorage.setItem('vw_bill_mode', newMode);
-      localStorage.setItem('vw_bill_meal_rate', String(newRate));
-      localStorage.setItem('vw_bill_total_expense', String(newTotal));
-      localStorage.setItem('vw_bill_wash_discount', String(newDiscount));
-    } catch {
-      // ignore
-    }
-    setSettingsOpen(false);
-  };
-
-  // Toggle paid status for a member
-  const handleTogglePayment = (memberId) => {
-    if (!isAdmin) return;
-    setPayments((prev) => {
-      const next = { ...prev, [memberId]: !prev[memberId] };
-      try {
-        localStorage.setItem('vw_bill_payments', JSON.stringify(next));
-      } catch {
-        // ignore
+  // Filter by selected month & search query
+  const displayedBills = useMemo(() => {
+    return lifoBills.filter(bill => {
+      // Month match
+      if (selectedMonth !== 'all') {
+        const ym = getYearMonthKey(bill.billDateTime || bill.createdAt);
+        if (ym !== selectedMonth) return false;
       }
+      // Search match
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchReceipt = bill.receiptId?.toLowerCase().includes(q);
+        const matchType = bill.expenseType?.toLowerCase().includes(q);
+        const matchPaidBy = bill.paidByMemberName?.toLowerCase().includes(q);
+        const matchItem = bill.lineItems?.some(it => it.particular?.toLowerCase().includes(q));
+        if (!matchReceipt && !matchType && !matchPaidBy && !matchItem) return false;
+      }
+      return true;
+    });
+  }, [lifoBills, selectedMonth, searchQuery]);
+
+  // Calculate Monthly Metrics for current creator
+  const monthlyMetrics = useMemo(() => {
+    const monthBills = lifoBills.filter(bill => {
+      if (selectedMonth === 'all') return true;
+      return getYearMonthKey(bill.billDateTime || bill.createdAt) === selectedMonth;
+    });
+    const totalAmount = monthBills.reduce((acc, b) => acc + (Number(b.totalAmount) || 0), 0);
+    const count = monthBills.length;
+    const avg = count > 0 ? Math.round(totalAmount / count) : 0;
+    return { totalAmount, count, avg };
+  }, [lifoBills, selectedMonth]);
+
+  // Toggle item breakdown expander
+  const toggleExpand = (id) => {
+    setExpandedBillIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  // Calculate meal consumption & wash duties per member
-  const memberBillData = useMemo(() => {
-    const list = Array.isArray(members) ? members : [];
-    const days = Array.isArray(daysConfig) && daysConfig.length > 0 ? daysConfig : (computedDays || []);
+  // ----------------------------------------------------
+  // "NEW BILL" FORM MODAL STATE
+  // ----------------------------------------------------
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [billDateTime, setBillDateTime] = useState('');
+  const [paidByMemberId, setPaidByMemberId] = useState('');
+  const [expenseType, setExpenseType] = useState('');
+  const [lineItems, setLineItems] = useState([
+    { id: 'item-1', sNo: 1, particular: '', amount: '' },
+  ]);
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-    return list.map((m) => {
-      let lunchCount = 0;
-      let dinnerCount = 0;
-
-      days.forEach((day) => {
-        if (day.lunchProvided && Array.isArray(day.lunchEaters) && day.lunchEaters.includes(m.id)) {
-          lunchCount++;
-        }
-        if (day.dinnerProvided && Array.isArray(day.dinnerEaters) && day.dinnerEaters.includes(m.id)) {
-          dinnerCount++;
-        }
-      });
-
-      // Verified washes from attendance logs
-      const washes = (attendanceLogs || []).filter(
-        (log) => log.memberId === m.id && log.status === 'present'
-      ).length;
-
-      const totalMeals = lunchCount + dinnerCount;
-      const isPaid = Boolean(payments[m.id]);
-
-      return {
-        member: m,
-        id: m.id,
-        name: m.name,
-        code: m.code,
-        role: m.role,
-        lunchCount,
-        dinnerCount,
-        totalMeals,
-        washes,
-        isPaid,
-      };
-    });
-  }, [members, daysConfig, computedDays, attendanceLogs, payments]);
-
-  // Aggregate totals
-  const totalGroupMeals = useMemo(() => {
-    return memberBillData.reduce((acc, curr) => acc + curr.totalMeals, 0);
-  }, [memberBillData]);
-
-  const totalGroupWashes = useMemo(() => {
-    return memberBillData.reduce((acc, curr) => acc + curr.washes, 0);
-  }, [memberBillData]);
-
-  // Effective rate per meal
-  const effectivePerMealRate = useMemo(() => {
-    if (billingMode === 'shared_total') {
-      return totalGroupMeals > 0 ? totalMessExpense / totalGroupMeals : 0;
-    }
-    return mealRate;
-  }, [billingMode, totalGroupMeals, totalMessExpense, mealRate]);
-
-  // Calculated overall bill
-  const totalCalculatedBill = useMemo(() => {
-    if (billingMode === 'shared_total') {
-      return totalMessExpense;
-    }
-    return Math.round(totalGroupMeals * effectivePerMealRate);
-  }, [billingMode, totalMessExpense, totalGroupMeals, effectivePerMealRate]);
-
-  // Enriched member list with calculated billing amounts
-  const enrichedMembers = useMemo(() => {
-    return memberBillData.map((item) => {
-      const gross = Math.round(item.totalMeals * effectivePerMealRate);
-      const discount = Math.round(item.washes * washDiscountRate);
-      const net = Math.max(0, gross - discount);
-      return {
-        ...item,
-        grossAmount: gross,
-        washDiscount: discount,
-        netAmount: net,
-      };
-    });
-  }, [memberBillData, effectivePerMealRate, washDiscountRate]);
-
-  // Current logged in user's personal item
-  const myItem = useMemo(() => {
-    if (!currentMember) return enrichedMembers[0] || null;
-    return (
-      enrichedMembers.find(
-        (item) =>
-          item.id === currentMember.id ||
-          (item.name && currentMember.name && item.name.toLowerCase() === currentMember.name.toLowerCase())
-      ) || enrichedMembers[0]
-    );
-  }, [enrichedMembers, currentMember]);
-
-  // Filtered members list for display
-  const filteredList = useMemo(() => {
-    return enrichedMembers.filter((item) => {
-      if (statusFilter === 'paid' && !item.isPaid) return false;
-      if (statusFilter === 'pending' && item.isPaid) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesName = item.name.toLowerCase().includes(q);
-        const matchesCode = item.code.toLowerCase().includes(q);
-        return matchesName || matchesCode;
-      }
-      return true;
-    });
-  }, [enrichedMembers, statusFilter, searchQuery]);
-
-  // Current month string formatted (e.g. September 2026)
-  const currentMonthStr = useMemo(() => {
-    if (todayDateStr) {
-      const parts = todayDateStr.split('-');
-      if (parts.length === 3) {
-        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      }
-    }
-    return 'September 2026';
-  }, [todayDateStr]);
-
-  // Generate WhatsApp / Clipboard share text
-  const generateShareSummary = () => {
-    let text = `🍽️ *Vessel Wash & Mess Bill - ${currentMonthStr}*\n`;
-    text += `📊 Total Meals: ${totalGroupMeals} | Effective Rate: ₹${effectivePerMealRate.toFixed(1)}/meal\n`;
-    text += `💰 Total Mess Bill: ₹${totalCalculatedBill.toLocaleString('en-IN')}\n`;
-    text += `-----------------------------------------\n`;
-
-    enrichedMembers.forEach((item) => {
-      const statusIcon = item.isPaid ? '✅ Paid' : '⏳ Pending';
-      text += `👤 *${item.code} ${item.name}*: ${item.totalMeals} meals (${item.lunchCount}L + ${item.dinnerCount}D) • ${item.washes} washes → *₹${item.netAmount.toLocaleString('en-IN')}* [${statusIcon}]\n`;
-    });
-
-    text += `-----------------------------------------\n`;
-    text += `Generated automatically via Vessel Wash App`;
-    return text;
+  // Open modal & initialize
+  const handleOpenNewBill = () => {
+    setBillDateTime(getLocalDateTimeString(new Date()));
+    setPaidByMemberId(currentMember?.id || (members[0]?.id || 'm1'));
+    setExpenseType('Groceries');
+    setLineItems([{ id: `item-${Date.now()}`, sNo: 1, particular: '', amount: '' }]);
+    setFormError('');
+    setIsModalOpen(true);
   };
 
-  const handleCopyShare = async () => {
-    try {
-      const text = generateShareSummary();
-      await navigator.clipboard.writeText(text);
-      setCopiedShare(true);
-      setTimeout(() => setCopiedShare(false), 2500);
-    } catch {
-      // ignore
+  // Dynamic Line Item Actions
+  const handleAddLineItem = () => {
+    setLineItems(prev => [
+      ...prev,
+      {
+        id: `item-${Date.now()}-${prev.length + 1}`,
+        sNo: prev.length + 1,
+        particular: '',
+        amount: '',
+      },
+    ]);
+  };
+
+  const handleRemoveLineItem = (index) => {
+    if (lineItems.length <= 1) return;
+    setLineItems(prev => {
+      const updated = prev.filter((_, idx) => idx !== index);
+      // Re-index sNo
+      return updated.map((item, idx) => ({ ...item, sNo: idx + 1 }));
+    });
+  };
+
+  const handleLineItemChange = (index, field, value) => {
+    setLineItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+    if (formError) setFormError('');
+  };
+
+  // Real-time sum calculation
+  const calculatedGrandTotal = useMemo(() => {
+    return lineItems.reduce((acc, row) => {
+      const parsed = parseFloat(row.amount);
+      return acc + (isNaN(parsed) || parsed < 0 ? 0 : parsed);
+    }, 0);
+  }, [lineItems]);
+
+  // Form Submit Handler
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    if (!billDateTime) {
+      setFormError('Please select a valid bill date and time.');
+      return;
     }
+
+    if (!expenseType.trim()) {
+      setFormError('Please specify the expense type or purpose.');
+      return;
+    }
+
+    // Validate line items
+    const validItems = lineItems.filter(
+      item => item.particular.trim() && !isNaN(parseFloat(item.amount)) && parseFloat(item.amount) > 0
+    );
+
+    if (validItems.length === 0) {
+      setFormError('Please provide at least one valid item with a description and positive amount.');
+      return;
+    }
+
+    const selectedMember = members.find(m => m.id === paidByMemberId) || currentMember;
+
+    setSubmitting(true);
+    try {
+      const formattedItems = validItems.map((item, idx) => ({
+        id: item.id || `item-${idx + 1}`,
+        sNo: idx + 1,
+        particular: item.particular.trim(),
+        amount: parseFloat(item.amount),
+      }));
+
+      const totalAmount = formattedItems.reduce((acc, item) => acc + item.amount, 0);
+
+      if (onSaveBill) {
+        await onSaveBill({
+          billDateTime,
+          paidByMemberId: selectedMember?.id || currentMember?.id || 'm1',
+          paidByMemberName: selectedMember?.name || currentMember?.name || 'Member',
+          paidByMemberCode: selectedMember?.code || currentMember?.code || 'M1',
+          expenseType: expenseType.trim(),
+          lineItems: formattedItems,
+          totalAmount,
+        });
+      }
+
+      setIsModalOpen(false);
+    } catch (err) {
+      setFormError(err.message || 'Failed to save bill. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ----------------------------------------------------
+  // CREATOR-ONLY PRINT / PDF RECEIPT MODAL
+  // ----------------------------------------------------
+  const [printBill, setPrintBill] = useState(null);
+  const printAreaRef = useRef(null);
+
+  const handleOpenPrintReceipt = (bill) => {
+    if (!isCreator(bill)) return;
+    setPrintBill(bill);
+  };
+
+  const handleExecutePrint = () => {
+    window.print();
+  };
+
+  // Delete Handler with prompt
+  const [billToDelete, setBillToDelete] = useState(null);
+  const handleConfirmDelete = async () => {
+    if (!billToDelete || !onDeleteBill) return;
+    await onDeleteBill(billToDelete.id);
+    setBillToDelete(null);
   };
 
   return (
-    <div className="space-y-4 pb-28 px-4 pt-2 max-w-4xl mx-auto">
-      {/* 1. Header & Summary Hero Banner */}
-      <div className="bg-white dark:bg-[#171F2C] p-4 sm:p-5 rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+    <div className="relative min-h-[calc(100vh-140px)] pb-28 px-4 pt-3 space-y-4">
+      {/* 1. Header Banner & Scoped Info */}
+      <div className="p-4 sm:p-5 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#ECBD56]/15 dark:bg-[#ECBD56]/20 text-[#111216] dark:text-[#ECBD56] border border-[#ECBD56]/40 inline-flex items-center gap-1">
-                <Receipt className="w-3 h-3 text-[#ECBD56]" />
-                Mess &amp; Meal Billing
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#ECBD56]">
+                Reimbursement Register
               </span>
-              <span className="text-xs text-[#111216]/40 dark:text-[#F7F6F3]/40">&bull;</span>
-              <span className="text-xs font-semibold text-[#111216]/70 dark:text-[#F7F6F3]/70">
-                {currentMonthStr}
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#ECBD56] border border-[#ECBD56]/40">
+                LIFO History
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3] mt-1">
-              Monthly Bill &amp; Expenses
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3] mt-0.5">
+              Out-of-Pocket Bills
             </h2>
+            <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">
+              Digital receipt book for mess purchases &bull; Creator-scoped history
+            </p>
           </div>
 
-          {/* Action Toolbar: Share & Admin Configuration */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCopyShare}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#DDD9D0] dark:hover:bg-[#2A364B] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center gap-1.5 active-scale transition-colors shadow-2xs cursor-pointer"
-              title="Copy bill summary to clipboard for WhatsApp"
-            >
-              {copiedShare ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-[#22AC77] dark:text-[#4ADE80]" />
-                  <span className="text-[#22AC77] dark:text-[#4ADE80]">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5 text-[#ECBD56]" />
-                  <span>Share Bill</span>
-                </>
-              )}
-            </button>
-
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#DDD9D0] dark:hover:bg-[#2A364B] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center gap-1.5 active-scale transition-colors cursor-pointer"
-                title="Configure rates and expense pool"
-              >
-                <Settings className="w-3.5 h-3.5 text-[#ECBD56]" />
-                <span>Configure Rates</span>
-              </button>
-            )}
+          {/* Logged in Creator Badge */}
+          <div className="flex items-center gap-2 self-start sm:self-auto px-3 py-1.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+            <div className="w-6 h-6 rounded-full bg-[#ECBD56] text-[#111216] flex items-center justify-center font-black text-[11px] shadow-2xs">
+              {currentMember?.code || 'U'}
+            </div>
+            <div className="text-left">
+              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] block leading-none">
+                Logged in as
+              </span>
+              <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                {currentMember?.name || 'Member'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 2. Key Metrics Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3.5">
-          <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] transition-colors">
-            <span className="text-[10px] font-bold text-[#111216]/60 dark:text-[#F7F6F3]/60 uppercase tracking-wider block">
-              Total Mess Bill
+        {/* Month Selector Tabs */}
+        <div className="flex items-center gap-2 pt-3 overflow-x-auto pb-1 scrollbar-none">
+          <span className="text-xs font-semibold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1 shrink-0">
+            <Filter className="w-3.5 h-3.5 text-[#ECBD56]" />
+            Month:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth('all')}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              selectedMonth === 'all'
+                ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs'
+                : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
+            }`}
+          >
+            All History
+          </button>
+          {distinctMonths.map(ym => (
+            <button
+              key={ym}
+              type="button"
+              onClick={() => setSelectedMonth(ym)}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                selectedMonth === ym
+                  ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs'
+                  : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
+              }`}
+            >
+              {formatMonthTitle(ym)}
+            </button>
+          ))}
+        </div>
+
+        {/* Monthly Summary Metric Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3.5">
+          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+            <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
+              {formatMonthTitle(selectedMonth)} Out-of-Pocket Total
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-black text-[#111216] dark:text-[#F7F6F3]">
-                ₹{totalCalculatedBill.toLocaleString('en-IN')}
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-[#ECBD56] tracking-tight">
+                ₹{monthlyMetrics.totalAmount.toLocaleString('en-IN')}
               </span>
+              <span className="text-[10px] font-bold text-[#4E525D] dark:text-[#9BA5B7]">INR</span>
             </div>
-            <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 font-medium">
-              {billingMode === 'shared_total' ? 'Shared expense pool' : 'Calculated by rate'}
-            </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] transition-colors">
-            <span className="text-[10px] font-bold text-[#111216]/60 dark:text-[#F7F6F3]/60 uppercase tracking-wider block">
-              Total Meals Eaten
+          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+            <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
+              Submitted Receipts
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-black text-[#ECBD56]">
-                {totalGroupMeals}
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-[#111216] dark:text-[#F7F6F3] tracking-tight">
+                {monthlyMetrics.count}
               </span>
-              <span className="text-xs text-[#111216]/60 dark:text-[#F7F6F3]/60 font-medium">meals</span>
+              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7]">receipts recorded</span>
             </div>
-            <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 font-medium">
-              Lunch &amp; dinner records
-            </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] transition-colors">
-            <span className="text-[10px] font-bold text-[#111216]/60 dark:text-[#F7F6F3]/60 uppercase tracking-wider block">
-              Cost Per Meal
+          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+            <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
+              Average Expense per Receipt
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-black text-[#22AC77] dark:text-[#4ADE80]">
-                ₹{effectivePerMealRate.toFixed(1)}
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-black text-[#111216] dark:text-[#F7F6F3] tracking-tight">
+                ₹{monthlyMetrics.avg.toLocaleString('en-IN')}
               </span>
+              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7]">avg / bill</span>
             </div>
-            <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 font-medium">
-              {billingMode === 'shared_total' ? 'Pro-rated evenly' : 'Fixed per meal'}
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] transition-colors">
-            <span className="text-[10px] font-bold text-[#111216]/60 dark:text-[#F7F6F3]/60 uppercase tracking-wider block">
-              Verified Washes
-            </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-black text-[#111216] dark:text-[#F7F6F3]">
-                {totalGroupWashes}
-              </span>
-              <span className="text-xs text-[#111216]/60 dark:text-[#F7F6F3]/60 font-medium">completed</span>
-            </div>
-            <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 font-medium">
-              Clean duty records
-            </span>
           </div>
         </div>
       </div>
 
-      {/* 3. Logged-in User's Personal Bill Highlight Card */}
-      {myItem && (
-        <div className="p-4 rounded-2xl bg-[#111216] dark:bg-[#171F2C] text-[#F7F6F3] border border-[#ECBD56]/40 shadow-md">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-[#ECBD56] text-[#111216] flex items-center justify-center font-extrabold text-sm border border-[#ECBD56]/80 shadow-2xs">
-                {myItem.code}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-extrabold text-[#F7F6F3]">
-                    Your Share ({myItem.name})
-                  </h3>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
-                      myItem.isPaid
-                        ? 'bg-[#22AC77]/20 text-[#4ADE80] border border-[#4ADE80]/40'
-                        : 'bg-[#E0851A]/20 text-[#FF9F45] border border-[#FF9F45]/40'
-                    }`}
-                  >
-                    {myItem.isPaid ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3 text-[#4ADE80]" />
-                        <span>Paid</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-3 h-3 text-[#FF9F45]" />
-                        <span>Pending</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-                <div className="text-xs text-[#F7F6F3]/70 mt-0.5 flex items-center gap-2 flex-wrap">
-                  <span>{myItem.totalMeals} meals eaten ({myItem.lunchCount} lunch &bull; {myItem.dinnerCount} dinner)</span>
-                  <span>&bull;</span>
-                  <span>{myItem.washes} vessel washes done</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-right flex items-center sm:flex-col sm:items-end justify-between border-t border-white/10 pt-2 sm:border-t-0 sm:pt-0">
-              <span className="text-[10px] text-[#F7F6F3]/70 font-semibold uppercase tracking-wider block">
-                Net Payable
-              </span>
-              <span className="text-2xl font-black text-[#ECBD56]">
-                ₹{myItem.netAmount.toLocaleString('en-IN')}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Controls: Search & Paid / Pending Filter */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 absolute left-3 top-3 pointer-events-none" />
+      {/* 2. Quick Search & LIFO Count Indicator */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search member by name or code (e.g. M1)..."
-            className="w-full h-10 pl-9 pr-4 text-xs bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#111216]/40 dark:placeholder-[#F7F6F3]/40 focus:outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 shadow-2xs transition-all"
+            placeholder="Search receipt ID, item, category..."
+            className="w-full h-10 px-4 pl-9 text-xs bg-white dark:bg-[#171F2C] rounded-full border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 shadow-2xs transition-colors"
           />
+          <Search className="w-4 h-4 text-[#848A96] dark:text-[#64748B] absolute left-3.5 top-3 pointer-events-none" />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2.5 text-[#848A96] hover:text-[#111216] dark:hover:text-[#F7F6F3]"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] p-1 rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'all'
-                ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-2xs'
-                : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3]'
-            }`}
-          >
-            All ({enrichedMembers.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('pending')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'pending'
-                ? 'bg-[#E0851A] dark:bg-[#FF9F45] text-white shadow-2xs'
-                : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3]'
-            }`}
-          >
-            Pending ({enrichedMembers.filter((m) => !m.isPaid).length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('paid')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'paid'
-                ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216] shadow-2xs'
-                : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3]'
-            }`}
-          >
-            Paid ({enrichedMembers.filter((m) => m.isPaid).length})
-          </button>
+        <div className="flex items-center gap-2 self-end sm:self-auto text-xs font-semibold text-[#4E525D] dark:text-[#9BA5B7]">
+          <ArrowUpDown className="w-3.5 h-3.5 text-[#ECBD56]" />
+          <span>Showing {displayedBills.length} receipt(s) &bull; Newest First (LIFO)</span>
         </div>
       </div>
 
-      {/* 5. Member Breakdown List */}
-      <div className="space-y-2.5">
-        {filteredList.map((item) => (
-          <div
-            key={item.id}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all bg-white dark:bg-[#171F2C] shadow-xs ${
-              item.isPaid
-                ? 'border-[#DDD9D0] dark:border-[#2A364B]'
-                : 'border-[#E0851A]/40 dark:border-[#FF9F45]/40'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0">
-                {/* Avatar */}
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
-                    item.role === 'admin'
-                      ? 'admin-gradient text-white border border-[#ECBD56]/80'
-                      : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
-                  }`}
-                >
-                  {item.role === 'admin' ? <Crown className="w-5 h-5 text-[#ECBD56]" /> : item.code}
-                </div>
+      {/* 3. LIFO Bills Feed */}
+      {displayedBills.length === 0 ? (
+        <div className="p-8 sm:p-12 text-center rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-[#ECBD56]/15 text-[#ECBD56] flex items-center justify-center mx-auto border border-[#ECBD56]/30 shadow-xs">
+            <Receipt className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3]">
+              No Reimbursement Bills Found
+            </h3>
+            <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] max-w-sm mx-auto mt-1 leading-relaxed">
+              {searchQuery
+                ? `No bills matched "${searchQuery}". Clear your search or change the month filter.`
+                : 'You have not recorded any out-of-pocket expenses for this period. Tap the "New Bill" button below to log your first receipt!'}
+            </p>
+          </div>
+          {!searchQuery && (
+            <button
+              type="button"
+              onClick={handleOpenNewBill}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold shadow-xs active-scale transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Record First Bill</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {displayedBills.map((bill) => {
+            const isExpanded = expandedBillIds.has(bill.id);
+            const userIsCreator = isCreator(bill);
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate">
-                      {item.name}
-                    </h3>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216]/70 dark:text-[#F7F6F3]/70 border border-[#DDD9D0] dark:border-[#2A364B]">
-                      {item.code}
+            return (
+              <div
+                key={bill.id}
+                className="rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs transition-all p-4 sm:p-5 space-y-3.5"
+              >
+                {/* Header: Receipt ID & Meta */}
+                <div className="flex items-start justify-between gap-2.5 pb-3 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* Auto-incrementing Receipt ID Badge */}
+                    <span className="px-3 py-1 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/70 text-xs font-black tracking-wide shadow-2xs inline-flex items-center gap-1">
+                      <Receipt className="w-3.5 h-3.5 text-[#ECBD56]" />
+                      <span>{bill.receiptId || '#00001'}</span>
                     </span>
 
-                    {/* Paid / Pending Badge */}
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
-                        item.isPaid
-                          ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/30 dark:border-[#4ADE80]/40'
-                          : 'bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40'
-                      }`}
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] text-[11px] font-semibold border border-[#DDD9D0] dark:border-[#2A364B]">
+                      {bill.expenseType || 'General'}
+                    </span>
+
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/30">
+                      Logged by You
+                    </span>
+                  </div>
+
+                  {/* Date & Time */}
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1 justify-end">
+                      <Calendar className="w-3.5 h-3.5 text-[#ECBD56]" />
+                      {formatBillDisplayDate(bill.billDateTime)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body: Paid By & Amount */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-center font-bold text-xs text-[#111216] dark:text-[#F7F6F3] shrink-0 shadow-2xs">
+                      {bill.paidByMemberCode || 'M'}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block leading-none">
+                        Paid out-of-pocket by
+                      </span>
+                      <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate block mt-0.5">
+                        {bill.paidByMemberName}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] uppercase font-bold text-[#4E525D] dark:text-[#9BA5B7] block">
+                      Total Reimbursement
+                    </span>
+                    <span className="text-2xl font-black text-[#ECBD56] tracking-tight">
+                      ₹{Number(bill.totalAmount || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Line Items Overview */}
+                <div className="rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] p-3 border border-[#DDD9D0] dark:border-[#2A364B]">
+                  <div
+                    onClick={() => toggleExpand(bill.id)}
+                    className="flex items-center justify-between cursor-pointer select-none"
+                  >
+                    <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-[#ECBD56]" />
+                      <span>{bill.lineItems?.length || 0} Line Item(s)</span>
+                    </span>
+
+                    <button
+                      type="button"
+                      className="text-xs font-bold text-[#ECBD56] hover:underline flex items-center gap-0.5"
                     >
-                      {item.isPaid ? (
-                        <>
-                          <CheckCircle2 className="w-3 h-3 text-[#22AC77] dark:text-[#4ADE80]" />
-                          <span>Paid</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="w-3 h-3 text-[#E0851A] dark:text-[#FF9F45]" />
-                          <span>Pending</span>
-                        </>
-                      )}
-                    </span>
+                      <span>{isExpanded ? 'Hide Details' : 'View Particulars'}</span>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
 
-                  {/* Meals & Wash Breakdown */}
-                  <div className="flex items-center gap-2 text-xs text-[#111216]/60 dark:text-[#F7F6F3]/60 mt-1 flex-wrap">
-                    <span className="font-semibold text-[#111216]/80 dark:text-[#F7F6F3]/80 inline-flex items-center gap-1">
-                      <Utensils className="w-3 h-3 text-[#ECBD56]" />
-                      {item.totalMeals} meals ({item.lunchCount} lunch &bull; {item.dinnerCount} dinner)
+                  {/* Expanded Line Items Table */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70 animate-fadeIn">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                            <th className="text-left font-bold py-1.5 w-12">S.No</th>
+                            <th className="text-left font-bold py-1.5">Particular</th>
+                            <th className="text-right font-bold py-1.5 w-24">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#DDD9D0]/40 dark:divide-[#2A364B]/40">
+                          {(bill.lineItems || []).map((item, idx) => (
+                            <tr key={item.id || idx} className="text-[#111216] dark:text-[#F7F6F3]">
+                              <td className="py-1.5 font-bold text-[#4E525D] dark:text-[#9BA5B7]">
+                                #{item.sNo || idx + 1}
+                              </td>
+                              <td className="py-1.5 font-medium">{item.particular}</td>
+                              <td className="py-1.5 font-bold text-right text-[#ECBD56]">
+                                ₹{Number(item.amount).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="border-t border-[#DDD9D0] dark:border-[#2A364B] font-bold">
+                            <td colSpan={2} className="pt-2 text-right text-[#4E525D] dark:text-[#9BA5B7]">
+                              Total:
+                            </td>
+                            <td className="pt-2 text-right text-sm text-[#ECBD56] font-black">
+                              ₹{Number(bill.totalAmount).toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      {/* Fixed Footer Note */}
+                      <div className="mt-2.5 pt-2 text-center text-[10px] text-[#4E525D] dark:text-[#9BA5B7] border-t border-dashed border-[#DDD9D0] dark:border-[#2A364B]">
+                        {bill.footerText || 'Thank you for using this app'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions Bar */}
+                <div className="flex items-center justify-between pt-1">
+                  {/* Creator-Only Download / Print Button (Requirement 5) */}
+                  {userIsCreator ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPrintReceipt(bill)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold shadow-2xs active-scale transition-all cursor-pointer"
+                      title="Download or Print Official PDF Receipt"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Receipt</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] italic">
+                      Receipt export restricted to creator
                     </span>
-                    <span className="text-[#DDD9D0] dark:text-[#2A364B]">&bull;</span>
-                    <span className="text-[#111216]/70 dark:text-[#F7F6F3]/70">
-                      {item.washes} washes done
-                    </span>
-                  </div>
+                  )}
+
+                  {/* Delete Button (Creator Only) */}
+                  {userIsCreator && (
+                    <button
+                      type="button"
+                      onClick={() => setBillToDelete(bill)}
+                      className="p-1.5 rounded-lg text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 dark:hover:bg-[#FF5A4E]/15 transition-colors cursor-pointer"
+                      title="Delete bill"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {/* Net Amount & Payment Toggle */}
-              <div className="text-right flex flex-col items-end shrink-0">
-                <span className="text-[10px] font-bold text-[#111216]/40 dark:text-[#F7F6F3]/40 uppercase tracking-wider">
-                  Amount
-                </span>
-                <span className="text-lg font-black text-[#111216] dark:text-[#F7F6F3] leading-tight">
-                  ₹{item.netAmount.toLocaleString('en-IN')}
-                </span>
-
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => handleTogglePayment(item.id)}
-                    className={`mt-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors cursor-pointer shadow-2xs ${
-                      item.isPaid
-                        ? 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#DDD9D0] dark:hover:bg-[#2A364B]'
-                        : 'bg-[#ECBD56] text-[#111216] border-[#ECBD56] hover:bg-[#DEAA3E]'
-                    }`}
-                  >
-                    {item.isPaid ? 'Mark Pending' : 'Mark as Paid'}
-                  </button>
-                ) : (
-                  <span className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 mt-1 italic">
-                    {item.isPaid ? 'Settled' : 'Payment due'}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {filteredList.length === 0 && (
-          <div className="p-8 text-center bg-white dark:bg-[#171F2C] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216]/50 dark:text-[#F7F6F3]/50 text-xs">
-            No member billing records matching current filters.
-          </div>
-        )}
-      </div>
-
-      {/* 6. Admin Configuration Modal */}
-      {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white dark:bg-[#171F2C] rounded-2xl p-5 border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
-              <div className="flex items-center gap-2 text-[#111216] dark:text-[#F7F6F3] font-bold text-sm">
-                <Settings className="w-4 h-4 text-[#ECBD56]" />
-                <span>Configure Billing Model</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-                className="text-[#111216]/40 dark:text-[#F7F6F3]/40 hover:text-[#111216] dark:hover:text-[#F7F6F3] text-sm font-bold p-1 cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Billing Mode Selection */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block mb-1.5">
-                  Billing Calculation Method
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBillingMode('per_meal')}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                      billingMode === 'per_meal'
-                        ? 'bg-[#ECBD56]/15 border-[#ECBD56] ring-2 ring-[#ECBD56]/20 text-[#111216] dark:text-[#ECBD56]'
-                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B] text-[#111216]/70 dark:text-[#F7F6F3]/70'
-                    }`}
-                  >
-                    <span className="text-xs font-bold block">Fixed Per-Meal</span>
-                    <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 block mt-0.5">
-                      Fixed ₹ per meal eaten
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setBillingMode('shared_total')}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                      billingMode === 'shared_total'
-                        ? 'bg-[#ECBD56]/15 border-[#ECBD56] ring-2 ring-[#ECBD56]/20 text-[#111216] dark:text-[#ECBD56]'
-                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B] text-[#111216]/70 dark:text-[#F7F6F3]/70'
-                    }`}
-                  >
-                    <span className="text-xs font-bold block">Shared Expense Pool</span>
-                    <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50 block mt-0.5">
-                      Split total grocery cost
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Mode Specific Inputs */}
-              {billingMode === 'per_meal' ? (
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
-                    Fixed Cost Per Meal (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={mealRate}
-                    onChange={(e) => setMealRate(Number(e.target.value))}
-                    className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#ECBD56]"
-                    placeholder="e.g. 50"
-                  />
-                  <span className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 block">
-                    Every recorded lunch or dinner costs ₹{mealRate}.
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
-                    Total Monthly Mess Expense (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={totalMessExpense}
-                    onChange={(e) => setTotalMessExpense(Number(e.target.value))}
-                    className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#ECBD56]"
-                    placeholder="e.g. 6000"
-                  />
-                  <span className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 block">
-                    Divided across all {totalGroupMeals} recorded meals (₹{(totalGroupMeals > 0 ? totalMessExpense / totalGroupMeals : 0).toFixed(1)}/meal).
-                  </span>
-                </div>
-              )}
-
-              {/* Wash Allowance */}
-              <div className="space-y-1 pt-1 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
-                <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
-                  Vessel Washer Credit / Rebate (₹ per wash)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={washDiscountRate}
-                  onChange={(e) => setWashDiscountRate(Number(e.target.value))}
-                  className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#ECBD56]"
-                  placeholder="e.g. 0 or 20"
-                />
-                <span className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 block">
-                  Optional rebate deducted from members who washed vessels. Set 0 for no deduction.
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-                className="px-3 py-2 text-xs font-bold text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] rounded-xl cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSaveSettings(billingMode, mealRate, totalMessExpense, washDiscountRate)}
-                className="px-4 py-2 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-xl shadow-xs cursor-pointer active-scale"
-              >
-                Save Configuration
-              </button>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
+
+      {/* 4. Floating Action Button (FAB) "New Bill" (Requirement 1) */}
+      <div className="fixed bottom-24 right-5 sm:right-8 z-30">
+        <button
+          type="button"
+          onClick={handleOpenNewBill}
+          className="flex items-center gap-2 px-5 py-3.5 rounded-full bg-[#ECBD56] hover:bg-[#DEAA3E] active:bg-[#C9972E] text-[#111216] font-bold text-sm shadow-xl hover:shadow-2xl border border-[#ECBD56] ring-4 ring-[#ECBD56]/25 active-scale transition-all cursor-pointer select-none"
+          title="Create New Reimbursement Bill"
+        >
+          <Plus className="w-5 h-5 stroke-[2.5]" />
+          <span>New Bill</span>
+        </button>
+      </div>
+
+      {/* 5. "NEW BILL" FORM MODAL (Requirement 1 & 2) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Create Reimbursement Bill"
+        subtitle="Record out-of-pocket expenses for mess reimbursement"
+        className="max-w-lg"
+      >
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-[#D9483B] dark:text-[#FF5A4E] text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{formError}</span>
+            </div>
+          )}
+
+          {/* Bill Date & Time (Permits past dates!) */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#ECBD56]" />
+                <span>Bill Date &amp; Time</span>
+              </span>
+              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-normal">
+                (Past dates permitted)
+              </span>
+            </label>
+            <input
+              type="datetime-local"
+              required
+              value={billDateTime}
+              onChange={(e) => setBillDateTime(e.target.value)}
+              className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+            />
+          </div>
+
+          {/* Paid By (Dropdown from Members) */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-[#ECBD56]" />
+              <span>Paid By (Member)</span>
+            </label>
+            <select
+              value={paidByMemberId}
+              onChange={(e) => setPaidByMemberId(e.target.value)}
+              className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+            >
+              {members.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.code}) {m.status === 'inactive' ? '• Inactive' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Expense Type (Category) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-[#ECBD56]" />
+              <span>Expense Type / Category</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={expenseType}
+              onChange={(e) => setExpenseType(e.target.value)}
+              placeholder="e.g. Groceries, Vegetables, Mess Gas"
+              className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+            />
+            {/* Quick Suggestions */}
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {COMMON_EXPENSE_CATEGORIES.slice(0, 5).map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setExpenseType(cat)}
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                    expenseType === cat
+                      ? 'bg-[#ECBD56] text-[#111216] border-[#ECBD56]'
+                      : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Line Items Table (Requirement 1) */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                Line Items (Particulars &amp; Amounts)
+              </label>
+              <button
+                type="button"
+                onClick={handleAddLineItem}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ECBD56] hover:underline cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Item</span>
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden bg-white dark:bg-[#171F2C]">
+              <div className="grid grid-cols-12 gap-1.5 p-2 bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0] dark:border-[#2A364B]">
+                <div className="col-span-2 text-center">S.No</div>
+                <div className="col-span-6">Particular</div>
+                <div className="col-span-3 text-right">Amount (₹)</div>
+                <div className="col-span-1"></div>
+              </div>
+
+              <div className="divide-y divide-[#DDD9D0]/50 dark:divide-[#2A364B]/50 max-h-48 overflow-y-auto p-1.5 space-y-1">
+                {lineItems.map((item, idx) => (
+                  <div key={item.id} className="grid grid-cols-12 gap-1.5 items-center py-1">
+                    <div className="col-span-2 text-center text-xs font-bold text-[#4E525D] dark:text-[#9BA5B7]">
+                      #{item.sNo}
+                    </div>
+                    <div className="col-span-6">
+                      <input
+                        type="text"
+                        required
+                        value={item.particular}
+                        onChange={(e) => handleLineItemChange(idx, 'particular', e.target.value)}
+                        placeholder="e.g. Rice 25kg"
+                        className="w-full h-8 px-2 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56]"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        required
+                        value={item.amount}
+                        onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)}
+                        placeholder="0.00"
+                        className="w-full h-8 px-2 text-xs text-right bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] font-bold rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56]"
+                      />
+                    </div>
+                    <div className="col-span-1 flex justify-center">
+                      {lineItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLineItem(idx)}
+                          className="p-1 rounded text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 cursor-pointer"
+                          title="Remove item"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Calculation Row */}
+              <div className="flex items-center justify-between p-3 bg-[#F2F1ED] dark:bg-[#1F2A3C] border-t border-[#DDD9D0] dark:border-[#2A364B]">
+                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                  Auto Calculated Sum:
+                </span>
+                <span className="text-base font-black text-[#ECBD56]">
+                  ₹{calculatedGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Fixed Footer Text (Requirement 1) */}
+          <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] text-center text-xs font-semibold text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
+            Thank you for using this app
+          </div>
+
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={submitting}
+            >
+              Save &amp; Generate Receipt
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 6. PRINT / PDF RECEIPT MODAL (Requirement 5) */}
+      <Modal
+        isOpen={Boolean(printBill)}
+        onClose={() => setPrintBill(null)}
+        title="Official Reimbursement Receipt"
+        subtitle={`Receipt ${printBill?.receiptId || ''} • Creator Protected View`}
+        className="max-w-md print:p-0 print:border-none print:shadow-none"
+      >
+        {printBill && (
+          <div className="space-y-4">
+            {/* Printable Receipt Canvas */}
+            <div
+              ref={printAreaRef}
+              className="p-5 rounded-2xl bg-white text-[#111216] border-2 border-dashed border-[#DDD9D0] space-y-4 font-mono text-xs shadow-inner"
+            >
+              {/* Header */}
+              <div className="text-center pb-3 border-b border-dashed border-gray-300">
+                <div className="inline-block p-1.5 rounded-lg bg-[#ECBD56] text-[#111216] font-black text-xs mb-1">
+                  VESSEL WASH
+                </div>
+                <h4 className="text-sm font-black tracking-tight uppercase">
+                  Reimbursement Receipt
+                </h4>
+                <p className="text-[10px] text-gray-500">Official Out-of-Pocket Expense Record</p>
+                <div className="mt-2 text-sm font-black text-[#845D08]">
+                  RECEIPT ID: {printBill.receiptId}
+                </div>
+              </div>
+
+              {/* Meta details */}
+              <div className="grid grid-cols-2 gap-2 text-[11px] pb-3 border-b border-dashed border-gray-300">
+                <div>
+                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Date &amp; Time</span>
+                  <span className="font-bold">{formatBillDisplayDate(printBill.billDateTime)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Expense Type</span>
+                  <span className="font-bold">{printBill.expenseType}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Paid By</span>
+                  <span className="font-bold">{printBill.paidByMemberName} ({printBill.paidByMemberCode})</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Recorded By</span>
+                  <span className="font-bold">{printBill.creatorName}</span>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div>
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="border-b border-gray-300 text-gray-500">
+                      <th className="text-left py-1 w-10">S.No</th>
+                      <th className="text-left py-1">Particular</th>
+                      <th className="text-right py-1 w-20">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(printBill.lineItems || []).map((it, idx) => (
+                      <tr key={it.id || idx}>
+                        <td className="py-1 text-gray-400">#{it.sNo || idx + 1}</td>
+                        <td className="py-1 font-medium">{it.particular}</td>
+                        <td className="py-1 text-right font-bold">
+                          ₹{Number(it.amount).toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Grand Total */}
+              <div className="pt-2 border-t-2 border-gray-900 flex items-center justify-between font-sans">
+                <span className="font-bold text-sm">TOTAL AMOUNT:</span>
+                <span className="text-xl font-black text-[#845D08]">
+                  ₹{Number(printBill.totalAmount).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* Fixed Footer Note (Requirement 1) */}
+              <div className="pt-3 text-center border-t border-dashed border-gray-300 text-[11px] font-sans font-bold text-gray-600">
+                {printBill.footerText || 'Thank you for using this app'}
+              </div>
+            </div>
+
+            {/* Print/Download Button */}
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setPrintBill(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                icon={Printer}
+                onClick={handleExecutePrint}
+              >
+                Print / Save PDF
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(billToDelete)}
+        onClose={() => setBillToDelete(null)}
+        title="Delete Reimbursement Bill"
+        subtitle={`Are you sure you want to delete receipt ${billToDelete?.receiptId}?`}
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
+            This will permanently remove receipt <strong>{billToDelete?.receiptId}</strong> (₹{Number(billToDelete?.totalAmount || 0).toLocaleString('en-IN')}) from your reimbursement history.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="secondary" size="sm" onClick={() => setBillToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleConfirmDelete}>
+              Delete Receipt
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
