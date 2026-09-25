@@ -268,13 +268,13 @@ export function HistoryScreen({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D64F6]">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#ECBD56]">
             Activity & Audit History
           </span>
-          <h2 className="text-xl font-bold tracking-tight text-neutral-textPrimary">
+          <h2 className="text-xl font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3]">
             Timeline Logs
           </h2>
-          <p className="text-xs text-neutral-textSecondary mt-0.5">
+          <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">
             Date-by-date record of present members and vessel washers
           </p>
         </div>
@@ -328,11 +328,11 @@ export function HistoryScreen({
               <span className="text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#F7C68B]/60 dark:border-[#854D0E]/60 text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#E0851A]/40 dark:border-[#FF9F45]/40 text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[#E0851A] dark:text-[#FF9F45] block truncate">Lunch</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#93C5FD]/50 dark:border-[#4338CA]/50 text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#2563EB]/40 dark:border-[#BFB4FF]/40 text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[#2563EB] dark:text-[#BFB4FF] block truncate">Dinner</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
             </div>
@@ -405,33 +405,33 @@ export function HistoryScreen({
                     <Card
                       key={date}
                       padding="sm"
-                      className="bg-[#ECEEF0]/50 border-neutral-200/80 transition-all hover:border-neutral-300 rounded-[22px]"
+                      className="bg-white/60 dark:bg-[#171F2C]/60 border border-[#DDD9D0] dark:border-[#2A364B] transition-all hover:border-[#ECBD56]/50 rounded-[22px]"
                     >
                       <div className="flex items-center justify-between">
                         {/* Date Left Badge */}
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-2xl bg-[#ECEEF0] text-neutral-textTertiary flex flex-col items-center justify-center font-bold">
-                            <span className="text-[9px] uppercase leading-none font-semibold text-neutral-400">
+                          <div className="w-9 h-9 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] flex flex-col items-center justify-center font-bold">
+                            <span className="text-[9px] uppercase leading-none font-semibold text-[#848A96] dark:text-[#64748B]">
                               {weekdayName}
                             </span>
-                            <span className="text-sm leading-none font-bold text-neutral-500 mt-0.5">
+                            <span className="text-sm leading-none font-bold text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">
                               {dayNum}
                             </span>
                           </div>
 
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-neutral-textSecondary">
+                              <span className="text-xs font-bold text-[#4E525D] dark:text-[#9BA5B7]">
                                 {fullDateStr}
                               </span>
                               {isToday && (
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/30">
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40">
                                   Today
                                 </span>
                               )}
                             </div>
-                            <span className="text-[11px] text-neutral-textTertiary flex items-center gap-1 mt-0.5">
-                              <UtensilsCrossed className="w-3 h-3 text-neutral-textTertiary" />
+                            <span className="text-[11px] text-[#848A96] dark:text-[#64748B] flex items-center gap-1 mt-0.5">
+                              <UtensilsCrossed className="w-3 h-3 text-[#848A96] dark:text-[#64748B]" />
                               Lunch & Dinner Not Available
                             </span>
                           </div>
@@ -439,7 +439,7 @@ export function HistoryScreen({
 
                         {/* Unmarked Badge */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                          <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
                             Unmarked
                           </span>
                           {onSelectDate && onTabChange && (
@@ -449,7 +449,7 @@ export function HistoryScreen({
                                 onSelectDate(date);
                                 onTabChange('today');
                               }}
-                              className="p-1.5 text-neutral-textTertiary hover:text-[#7D64F6] rounded-full hover:bg-white transition-colors"
+                              className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#ECBD56] rounded-full hover:bg-white dark:hover:bg-[#1F2A3C] transition-colors"
                               title="Open in Today Screen"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
@@ -468,16 +468,16 @@ export function HistoryScreen({
                   <Card
                     key={date}
                     padding="none"
-                    className={`overflow-hidden border rounded-[22px] transition-all shadow-2xs ${
+                    className={`overflow-hidden border rounded-[22px] transition-all shadow-2xs bg-white dark:bg-[#171F2C] ${
                       isToday
-                        ? 'border-[#A28EF9] ring-2 ring-[#A28EF9]/30'
-                        : 'border-neutral-border hover:border-neutral-300'
+                        ? 'border-[#ECBD56] ring-2 ring-[#ECBD56]/40'
+                        : 'border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56]/50'
                     }`}
                   >
                     {/* Date Card Header */}
-                    <div className="p-3.5 bg-white border-b border-neutral-border/60 flex items-center justify-between">
+                    <div className="p-3.5 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70 flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-2xl bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/30 flex flex-col items-center justify-center font-bold shadow-2xs">
+                        <div className="w-10 h-10 rounded-2xl bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40 flex flex-col items-center justify-center font-bold shadow-2xs">
                           <span className="text-[9px] uppercase leading-none font-semibold">
                             {weekdayName}
                           </span>
@@ -488,21 +488,21 @@ export function HistoryScreen({
 
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="text-xs font-bold text-neutral-textPrimary">
+                            <h4 className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
                               {fullDateStr}
                             </h4>
                             {isToday && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#A28EF9]/25 text-[#2C1885] border border-[#A28EF9]/40">
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40">
                                 Today
                               </span>
                             )}
                             {isPending && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
                                 Unmarked
                               </span>
                             )}
                           </div>
-                          <span className="text-[10px] text-neutral-textTertiary">
+                          <span className="text-[10px] text-[#848A96] dark:text-[#64748B]">
                             {isLunchAvail && isDinnerAvail
                               ? 'Lunch & Dinner held'
                               : isLunchAvail
@@ -520,7 +520,7 @@ export function HistoryScreen({
                             onSelectDate(date);
                             onTabChange('today');
                           }}
-                          className="flex items-center gap-1 text-[11px] font-bold text-[#2C1885] px-3 py-1 rounded-full bg-[#A28EF9]/15 hover:bg-[#A28EF9]/25 transition-colors active-scale"
+                          className="flex items-center gap-1 text-[11px] font-bold text-[#111216] dark:text-[#ECBD56] px-3 py-1 rounded-full bg-[#ECBD56]/15 hover:bg-[#ECBD56]/25 dark:bg-[#ECBD56]/20 dark:hover:bg-[#ECBD56]/30 transition-colors active-scale cursor-pointer"
                         >
                           <span>Manage</span>
                           <ExternalLink className="w-3 h-3" />
@@ -529,20 +529,20 @@ export function HistoryScreen({
                     </div>
 
                     {/* Meal Details Sections */}
-                    <div className="p-3.5 space-y-3 bg-[#ECEEF0]/30">
+                    <div className="p-3.5 space-y-3 bg-[#F2F1ED]/40 dark:bg-[#0B0C0E]/40">
                       {/* 1. LUNCH SECTION */}
                       {isLunchAvail ? (
-                        <div className="p-3 rounded-2xl bg-white border border-[#FFD89D]/70 shadow-2xs space-y-2.5">
+                        <div className="p-3 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#E0851A]/30 dark:border-[#FF9F45]/30 shadow-2xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="p-1 rounded-full bg-[#FFD89D]/30 border border-[#FFD89D] text-amber-700">
+                              <span className="p-1 rounded-full bg-[#E0851A]/15 border border-[#E0851A]/40 text-[#E0851A] dark:text-[#FF9F45]">
                                 <Sun className="w-3.5 h-3.5" />
                               </span>
-                              <span className="text-xs font-bold text-neutral-textPrimary">
+                              <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
                                 Lunch
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#FFD89D]/25 text-amber-800 border border-[#FFD89D]">
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
                               Available ({lunchWashers.length} {lunchWashers.length === 1 ? 'Washer' : 'Washers'})
                             </span>
                           </div>
@@ -550,20 +550,20 @@ export function HistoryScreen({
                           {/* Washer Row */}
                           <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
                             isLunchVerified
-                              ? 'bg-[#A4F5A6]/20 border-[#A4F5A6]/40'
-                              : 'bg-amber-50/60 border-amber-200/60'
+                              ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
+                              : 'bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 border-[#E0851A]/30 dark:border-[#FF9F45]/40'
                           }`}>
                             <div className="flex items-center gap-2">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                isLunchVerified ? 'bg-[#A4F5A6] text-[#1E1E1E]' : 'bg-amber-100 text-amber-900'
+                                isLunchVerified ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]' : 'bg-[#E0851A]/20 text-[#E0851A] dark:text-[#FF9F45]'
                               }`}>
                                 🧼
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1E1E1E] block leading-none">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#111216] dark:text-[#F7F6F3] block leading-none">
                                   Washed Vessels:
                                 </span>
-                                <span className="text-xs font-bold text-neutral-textPrimary mt-0.5 block">
+                                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] mt-0.5 block">
                                   {lunchWashers.length > 0
                                     ? lunchWashers.map(w => `${w.name}${w.markedBy ? ` (${w.markedBy})` : ''}`).join(' & ')
                                     : 'None recorded'}
@@ -572,8 +572,8 @@ export function HistoryScreen({
                             </div>
                             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                               isLunchVerified
-                                ? 'bg-[#A4F5A6] text-[#1E1E1E]'
-                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                : 'bg-[#E0851A]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40'
                             }`}>
                               {isLunchVerified ? 'Washed' : 'Pending'}
                             </span>
@@ -581,13 +581,13 @@ export function HistoryScreen({
 
                           {/* Present Members / Eaters */}
                           <div>
-                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-neutral-textTertiary mb-1.5">
+                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#848A96] dark:text-[#64748B] mb-1.5">
                               <Users className="w-3 h-3" />
                               <span>Present Members / Ate ({lunchPresentMembers.length}):</span>
                             </div>
 
                             {lunchPresentMembers.length === 0 ? (
-                              <p className="text-xs text-neutral-textTertiary italic">
+                              <p className="text-xs text-[#848A96] dark:text-[#64748B] italic">
                                 No members marked present.
                               </p>
                             ) : (
@@ -599,14 +599,14 @@ export function HistoryScreen({
                                       key={member.id}
                                       className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
                                         isWasher
-                                          ? 'bg-[#A4F5A6]/30 text-[#1E1E1E] border border-[#A4F5A6] font-bold'
-                                          : 'bg-[#ECEEF0] text-neutral-textPrimary border border-neutral-border'
+                                          ? 'bg-[#22AC77]/15 dark:bg-[#4ADE80]/20 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/40 dark:border-[#4ADE80]/40 font-bold'
+                                          : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
                                       }`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                                       <span>{member.name}</span>
                                       {isWasher && (
-                                        <span className="text-[9px] font-bold px-1.5 rounded-full bg-[#A4F5A6] text-[#1E1E1E] ml-0.5">
+                                        <span className="text-[9px] font-bold px-1.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216] ml-0.5">
                                           Washer
                                         </span>
                                       )}
@@ -618,9 +618,9 @@ export function HistoryScreen({
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2.5 rounded-xl bg-[#ECEEF0]/60 border border-neutral-200/70 flex items-center justify-between text-xs text-neutral-textTertiary">
+                        <div className="p-2.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between text-xs text-[#848A96] dark:text-[#64748B]">
                           <div className="flex items-center gap-1.5">
-                            <Sun className="w-3.5 h-3.5 text-neutral-400" />
+                            <Sun className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B]" />
                             <span>Lunch: Not Available</span>
                           </div>
                           <span className="text-[10px] italic">Skipped</span>
@@ -629,17 +629,17 @@ export function HistoryScreen({
 
                       {/* 2. DINNER SECTION */}
                       {isDinnerAvail ? (
-                        <div className="p-3 rounded-2xl bg-white border border-[#A28EF9]/40 shadow-2xs space-y-2.5">
+                        <div className="p-3 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#2563EB]/30 dark:border-[#BFB4FF]/30 shadow-2xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="p-1 rounded-full bg-[#A28EF9]/20 border border-[#A28EF9]/30 text-[#42299C]">
+                              <span className="p-1 rounded-full bg-[#2563EB]/15 dark:bg-[#BFB4FF]/15 border border-[#2563EB]/30 dark:border-[#BFB4FF]/30 text-[#2563EB] dark:text-[#BFB4FF]">
                                 <Moon className="w-3.5 h-3.5" />
                               </span>
-                              <span className="text-xs font-bold text-neutral-textPrimary">
+                              <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
                                 Dinner
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#A28EF9]/20 text-[#2C1885] border border-[#A28EF9]/40">
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#2563EB]/10 dark:bg-[#BFB4FF]/15 text-[#2563EB] dark:text-[#BFB4FF] border border-[#2563EB]/30 dark:border-[#BFB4FF]/40">
                               Available (1 Washer)
                             </span>
                           </div>
@@ -647,20 +647,20 @@ export function HistoryScreen({
                           {/* Washer Row */}
                           <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
                             isDinnerVerified
-                              ? 'bg-[#A4F5A6]/20 border-[#A4F5A6]/40'
-                              : 'bg-amber-50/60 border-amber-200/60'
+                              ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
+                              : 'bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 border-[#E0851A]/30 dark:border-[#FF9F45]/40'
                           }`}>
                             <div className="flex items-center gap-2">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                isDinnerVerified ? 'bg-[#A4F5A6] text-[#1E1E1E]' : 'bg-amber-100 text-amber-900'
+                                isDinnerVerified ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]' : 'bg-[#E0851A]/20 text-[#E0851A] dark:text-[#FF9F45]'
                               }`}>
                                 🧼
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1E1E1E] block leading-none">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#111216] dark:text-[#F7F6F3] block leading-none">
                                   Washed Vessels:
                                 </span>
-                                <span className="text-xs font-bold text-neutral-textPrimary mt-0.5 block">
+                                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] mt-0.5 block">
                                   {dinnerWashers.length > 0
                                     ? dinnerWashers.map(w => `${w.name}${w.markedBy ? ` (${w.markedBy})` : ''}`).join(', ')
                                     : 'None recorded'}
@@ -669,8 +669,8 @@ export function HistoryScreen({
                             </div>
                             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                               isDinnerVerified
-                                ? 'bg-[#A4F5A6] text-[#1E1E1E]'
-                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                : 'bg-[#E0851A]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40'
                             }`}>
                               {isDinnerVerified ? 'Washed' : 'Pending'}
                             </span>
@@ -678,13 +678,13 @@ export function HistoryScreen({
 
                           {/* Present Members / Eaters */}
                           <div>
-                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-neutral-textTertiary mb-1.5">
+                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#848A96] dark:text-[#64748B] mb-1.5">
                               <Users className="w-3 h-3" />
                               <span>Present Members / Ate ({dinnerPresentMembers.length}):</span>
                             </div>
 
                             {dinnerPresentMembers.length === 0 ? (
-                              <p className="text-xs text-neutral-textTertiary italic">
+                              <p className="text-xs text-[#848A96] dark:text-[#64748B] italic">
                                 No members marked present.
                               </p>
                             ) : (
@@ -696,14 +696,14 @@ export function HistoryScreen({
                                       key={member.id}
                                       className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
                                         isWasher
-                                          ? 'bg-[#A4F5A6]/30 text-[#1E1E1E] border border-[#A4F5A6] font-bold'
-                                          : 'bg-[#ECEEF0] text-neutral-textPrimary border border-neutral-border'
+                                          ? 'bg-[#22AC77]/15 dark:bg-[#4ADE80]/20 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/40 dark:border-[#4ADE80]/40 font-bold'
+                                          : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
                                       }`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                                       <span>{member.name}</span>
                                       {isWasher && (
-                                        <span className="text-[9px] font-bold px-1.5 rounded-full bg-[#A4F5A6] text-[#1E1E1E] ml-0.5">
+                                        <span className="text-[9px] font-bold px-1.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216] ml-0.5">
                                           Washer
                                         </span>
                                       )}
@@ -715,9 +715,9 @@ export function HistoryScreen({
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2.5 rounded-xl bg-[#ECEEF0]/60 border border-neutral-200/70 flex items-center justify-between text-xs text-neutral-textTertiary">
+                        <div className="p-2.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between text-xs text-[#848A96] dark:text-[#64748B]">
                           <div className="flex items-center gap-1.5">
-                            <Moon className="w-3.5 h-3.5 text-neutral-400" />
+                            <Moon className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B]" />
                             <span>Dinner: Not Available</span>
                           </div>
                           <span className="text-[10px] italic">Skipped</span>
@@ -737,17 +737,17 @@ export function HistoryScreen({
         <div className="space-y-3">
           {/* Quick Metrics Header */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white border border-neutral-border/70 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-neutral-textTertiary block truncate">Total Washes</span>
-              <span className="text-lg font-bold text-neutral-textPrimary">{totalWashes}</span>
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
+              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white border border-[#FFD89D]/60 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-amber-700 block truncate">Lunch</span>
-              <span className="text-lg font-bold text-neutral-textPrimary">{totalLunchWashes}</span>
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#E0851A]/40 dark:border-[#FF9F45]/40 text-center shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-[#E0851A] dark:text-[#FF9F45] block truncate">Lunch</span>
+              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white border border-[#A28EF9]/50 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-[#42299C] block truncate">Dinner</span>
-              <span className="text-lg font-bold text-neutral-textPrimary">{totalDinnerWashes}</span>
+            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#2563EB]/40 dark:border-[#BFB4FF]/40 text-center shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-[#2563EB] dark:text-[#BFB4FF] block truncate">Dinner</span>
+              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
             </div>
           </div>
 
@@ -757,21 +757,21 @@ export function HistoryScreen({
               const isExpanded = expandedMembers.has(member.id);
 
               return (
-                <Card key={member.id} padding="none" className="overflow-hidden rounded-[22px] border border-neutral-border shadow-2xs">
+                <Card key={member.id} padding="none" className="overflow-hidden rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
                   {/* Member Summary Header Row */}
                   <div
                     onClick={() => toggleMemberExpand(member.id)}
-                    className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#ECEEF0]/40 transition-colors select-none"
+                    className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#F2F1ED]/50 dark:hover:bg-[#1F2A3C]/50 transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#A28EF9]/25 text-[#1E1E1E] border border-[#A28EF9]/40 flex items-center justify-center font-bold text-xs shadow-2xs">
+                      <div className="w-9 h-9 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40 flex items-center justify-center font-bold text-xs shadow-2xs">
                         {member.code}
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-neutral-textPrimary leading-tight">
+                        <h4 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">
                           {member.name}
                         </h4>
-                        <span className="text-[11px] text-neutral-textTertiary">
+                        <span className="text-[11px] text-[#848A96] dark:text-[#64748B]">
                           {lunchCount} Lunch &middot; {dinnerCount} Dinner
                         </span>
                       </div>
@@ -779,28 +779,28 @@ export function HistoryScreen({
 
                     <div className="flex items-center gap-2">
                       <div className="text-right">
-                        <span className="text-sm font-bold text-[#1E1E1E] block leading-none">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] block leading-none">
                           {totalCount} {totalCount === 1 ? 'day' : 'days'}
                         </span>
-                        <span className="text-[10px] text-neutral-textTertiary">washed</span>
+                        <span className="text-[10px] text-[#848A96] dark:text-[#64748B]">washed</span>
                       </div>
                       {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-neutral-textTertiary" />
+                        <ChevronUp className="w-4 h-4 text-[#848A96] dark:text-[#64748B]" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-neutral-textTertiary" />
+                        <ChevronDown className="w-4 h-4 text-[#848A96] dark:text-[#64748B]" />
                       )}
                     </div>
                   </div>
 
                   {/* Expandable List of Exact Dates Washed */}
                   {isExpanded && (
-                    <div className="px-3.5 pb-3.5 pt-1.5 border-t border-neutral-border/60 bg-[#ECEEF0]/30 space-y-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-textTertiary block">
+                    <div className="px-3.5 pb-3.5 pt-1.5 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 bg-[#F2F1ED]/40 dark:bg-[#0B0C0E]/40 space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#848A96] dark:text-[#64748B] block">
                         Dates & Meals Washed:
                       </span>
 
                       {logs.length === 0 ? (
-                        <p className="text-xs text-neutral-textTertiary italic py-1">
+                        <p className="text-xs text-[#848A96] dark:text-[#64748B] italic py-1">
                           No washing records completed yet this month.
                         </p>
                       ) : (
@@ -812,19 +812,19 @@ export function HistoryScreen({
                             return (
                               <div
                                 key={log.id}
-                                className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-neutral-border text-xs"
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs"
                               >
                                 <div className="flex items-center gap-2">
-                                  <Calendar className="w-3.5 h-3.5 text-neutral-textTertiary flex-shrink-0" />
-                                  <span className="font-semibold text-neutral-textPrimary">
+                                  <Calendar className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B] flex-shrink-0" />
+                                  <span className="font-semibold text-[#111216] dark:text-[#F7F6F3]">
                                     {log.date}
                                   </span>
-                                  <span className="text-neutral-border">&middot;</span>
-                                  <span className="flex items-center gap-1 text-neutral-textSecondary">
+                                  <span className="text-[#DDD9D0] dark:text-[#2A364B]">&middot;</span>
+                                  <span className="flex items-center gap-1 text-[#4E525D] dark:text-[#9BA5B7]">
                                     {isLunch ? (
-                                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                                      <Sun className="w-3.5 h-3.5 text-[#E0851A] dark:text-[#FF9F45]" />
                                     ) : (
-                                      <Moon className="w-3.5 h-3.5 text-[#7D64F6]" />
+                                      <Moon className="w-3.5 h-3.5 text-[#2563EB] dark:text-[#BFB4FF]" />
                                     )}
                                     <span className="capitalize">
                                       {log.meal} {log.slotIndex === 2 ? '#2' : ''}
@@ -833,10 +833,10 @@ export function HistoryScreen({
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#A4F5A6] text-[#1E1E1E]">
+                                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]">
                                     Washed
                                   </span>
-                                  <span className="text-[10px] text-neutral-textTertiary">
+                                  <span className="text-[10px] text-[#848A96] dark:text-[#64748B]">
                                     {logTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 </div>

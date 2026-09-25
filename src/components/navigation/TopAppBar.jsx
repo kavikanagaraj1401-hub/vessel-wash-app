@@ -338,15 +338,15 @@ export function TopAppBar({
         subtitle="Enter the administrator passcode to unlock edit controls."
       >
         <div className="space-y-3 p-1">
-          <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 flex items-start gap-2">
-            <KeyRound className="w-4 h-4 text-violet-700 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-violet-900 leading-snug">
+          <div className="p-3 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] border border-[#ECBD56]/40 flex items-start gap-2">
+            <KeyRound className="w-4 h-4 text-[#ECBD56] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#845D08] dark:text-[#FBE6AB] leading-snug">
               Administrative permissions allow modifying meal availability, washer requirements, Excel sync, and member additions. Default PIN is <strong>1401</strong>.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#1E1E1E] block">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
               Admin Passcode
             </label>
             <input
@@ -361,11 +361,11 @@ export function TopAppBar({
                 if (e.key === 'Enter') handleVerifyPin();
               }}
               placeholder="Enter passcode (1401)"
-              className="w-full h-11 px-4 text-sm font-bold tracking-widest text-center bg-white rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:border-[#A28EF9] focus:ring-2 focus:ring-[#A28EF9]/20"
+              className="w-full h-11 px-4 text-sm font-bold tracking-widest text-center bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20"
               autoFocus
             />
             {pinError && (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600 mt-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#D9483B] dark:text-[#FF5A4E] mt-1">
                 <AlertCircle className="w-3.5 h-3.5" />
                 <span>{pinError}</span>
               </div>
@@ -376,14 +376,14 @@ export function TopAppBar({
             <button
               type="button"
               onClick={() => setPinPromptOpen(false)}
-              className="px-3 py-2 text-xs font-bold rounded-xl border border-neutral-border text-neutral-textSecondary hover:bg-neutral-100"
+              className="px-3 py-2 text-xs font-bold rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleVerifyPin}
-              className="px-4 py-2 text-xs font-bold rounded-xl bg-[#1E1E1E] text-white hover:bg-black shadow-xs active-scale"
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] hover:opacity-90 shadow-xs active-scale cursor-pointer"
             >
               Unlock Controls
             </button>
@@ -400,44 +400,44 @@ export function TopAppBar({
       >
         <div className="space-y-4 p-1">
           {/* User Info Card */}
-          <div className="p-4 rounded-2xl bg-white border border-neutral-border/80 shadow-xs flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs flex items-center gap-3">
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-xs flex-shrink-0 ${
                 isAdmin
-                  ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-amber-950 border border-amber-400 ring-2 ring-amber-400/30'
-                  : 'bg-[#1E1E1E] text-white'
+                  ? 'admin-gradient text-white border border-[#ECBD56] ring-2 ring-[#ECBD56]/30'
+                  : 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216]'
               }`}
             >
               {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="text-sm font-extrabold text-[#1E1E1E] truncate">
+                <h3 className="text-sm font-extrabold text-[#111216] dark:text-[#F7F6F3] truncate">
                   {userName}
                 </h3>
                 {isAdmin ? (
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-950 border border-amber-300 shadow-2xs">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 shadow-2xs">
                     👑 Admin
                   </span>
                 ) : (
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
                     Member
                   </span>
                 )}
               </div>
-              <span className="text-[11px] text-neutral-textSecondary block truncate mt-0.5">
+              <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block truncate mt-0.5">
                 {userEmail || 'Authenticated Session'}
               </span>
             </div>
           </div>
 
           {/* Role Description Card */}
-          <div className="p-3 rounded-xl bg-[#ECEEF0]/60 border border-neutral-border text-xs space-y-1">
-            <span className="font-bold text-[#1E1E1E] flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-violet-700" />
+          <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs space-y-1">
+            <span className="font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#ECBD56]" />
               Role &amp; Permissions
             </span>
-            <p className="text-[11px] text-neutral-textSecondary leading-snug">
+            <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] leading-snug">
               {isAdmin
                 ? 'You have full administrative privileges: modifying meal availability, washer requirements, Excel sync, and managing roster members.'
                 : 'You have member privileges: marking meal availability and selecting attending eaters in the roster.'}
@@ -445,10 +445,10 @@ export function TopAppBar({
           </div>
 
           {/* Account Security / Change Password Card */}
-          <div className="p-3.5 rounded-2xl bg-white border border-neutral-border space-y-3">
+          <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-[#1E1E1E] flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-violet-600" />
+              <span className="font-bold text-xs text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-[#ECBD56]" />
                 Account Security
               </span>
               <button
@@ -458,7 +458,7 @@ export function TopAppBar({
                   setPassError('');
                   setPassSuccess('');
                 }}
-                className="text-[11px] font-bold text-[#7D64F6] hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-[#ECBD56] hover:underline cursor-pointer"
               >
                 {changePassOpen ? 'Close' : 'Change Password'}
               </button>
@@ -528,12 +528,12 @@ export function TopAppBar({
                         if (passError) setPassError('');
                       }}
                       placeholder="Enter new password"
-                      className="w-full h-9 px-3 pr-9 text-xs bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:bg-white focus:border-[#7D64F6] focus:ring-1 focus:ring-[#7D64F6]"
+                      className="w-full h-9 px-3 pr-9 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:bg-white dark:focus:bg-[#171F2C] focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-2.5 top-2 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                      className="absolute right-2.5 top-2 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] cursor-pointer"
                       tabIndex={-1}
                     >
                       {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -542,7 +542,7 @@ export function TopAppBar({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-neutral-textSecondary block">
+                  <label className="text-[10px] font-bold text-[#4E525D] dark:text-[#9BA5B7] block">
                     Confirm New Password
                   </label>
                   <input
@@ -556,7 +556,7 @@ export function TopAppBar({
                       if (passError) setPassError('');
                     }}
                     placeholder="Re-enter new password"
-                    className="w-full h-9 px-3 text-xs bg-[#ECEEF0]/60 rounded-xl border border-neutral-border text-[#1E1E1E] focus:outline-none focus:bg-white focus:border-[#7D64F6] focus:ring-1 focus:ring-[#7D64F6]"
+                    className="w-full h-9 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:bg-white dark:focus:bg-[#171F2C] focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
                   />
                 </div>
 
@@ -564,7 +564,7 @@ export function TopAppBar({
                   <button
                     type="submit"
                     disabled={passLoading}
-                    className="flex-1 h-9 rounded-xl bg-[#1E1E1E] hover:bg-black text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 active-scale cursor-pointer disabled:opacity-60"
+                    className="flex-1 h-9 rounded-xl bg-[#111216] dark:bg-[#ECBD56] hover:bg-black dark:hover:bg-[#DEAA3E] text-white dark:text-[#111216] text-xs font-bold transition-all flex items-center justify-center gap-1.5 active-scale cursor-pointer disabled:opacity-60"
                   >
                     {passLoading ? (
                       <>
@@ -587,7 +587,7 @@ export function TopAppBar({
                       setConfirmPassword('');
                       setPassError('');
                     }}
-                    className="h-9 px-3 rounded-xl border border-neutral-border text-neutral-600 hover:bg-neutral-100 text-xs font-bold cursor-pointer"
+                    className="h-9 px-3 rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] text-xs font-bold cursor-pointer"
                   >
                     Cancel
                   </button>

@@ -1005,15 +1005,15 @@ export default function App() {
   // 1. Initial Session Loading Indicator
   if (authLoading) {
     return (
-      <div className="min-h-screen w-full bg-[#ECEEF0] flex flex-col items-center justify-center p-4 selection:bg-[#A28EF9]/30">
+      <div className="min-h-screen w-full bg-[#F2F1ED] dark:bg-[#0B0C0E] flex flex-col items-center justify-center p-4 selection:bg-[#ECBD56]/30">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#A28EF9] text-[#1E1E1E] flex items-center justify-center font-black text-2xl shadow-xl animate-pulse">
+          <div className="w-16 h-16 rounded-2xl bg-[#ECBD56] text-[#111216] flex items-center justify-center font-black text-2xl shadow-xl animate-pulse">
             VW
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-base font-extrabold text-[#1E1E1E]">Vessel Wash System</h2>
-            <div className="flex items-center justify-center gap-2 text-xs text-neutral-textSecondary font-semibold">
-              <span className="w-3.5 h-3.5 border-2 border-[#1E1E1E] border-t-transparent rounded-full animate-spin" />
+            <h2 className="text-base font-extrabold text-[#111216] dark:text-[#F7F6F3]">Vessel Wash System</h2>
+            <div className="flex items-center justify-center gap-2 text-xs text-[#4E525D] dark:text-[#9BA5B7] font-semibold">
+              <span className="w-3.5 h-3.5 border-2 border-[#ECBD56] border-t-transparent rounded-full animate-spin" />
               <span>Verifying authentication session...</span>
             </div>
           </div>

@@ -86,7 +86,7 @@ export function ActivityScreen({
       return <Users className="w-4 h-4 text-blue-600" />;
     }
     if (log.category === 'member') {
-      return <UserCheck className="w-4 h-4 text-violet-600" />;
+      return <UserCheck className="w-4 h-4 text-[#ECBD56]" />;
     }
     return <Activity className="w-4 h-4 text-cyan-600" />;
   };
@@ -112,20 +112,20 @@ export function ActivityScreen({
       {/* 1. Header Banner */}
       <div className="flex items-center justify-between pb-1">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#7D64F6] flex items-center gap-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#ECBD56] flex items-center gap-1">
             <Activity className="w-3.5 h-3.5" />
             Audit Trail
           </span>
-          <h2 className="text-xl font-bold tracking-tight text-neutral-textPrimary">
+          <h2 className="text-xl font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3]">
             User Activity History
           </h2>
-          <p className="text-xs text-neutral-textSecondary mt-0.5">
+          <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">
             Chronological audit of duty marks, meal toggles, and member changes
           </p>
         </div>
 
         <div className="flex flex-col items-end gap-1">
-          <span className="text-xs font-bold text-neutral-textPrimary px-2.5 py-1 rounded-full bg-neutral-surfaceSecondary border border-neutral-border">
+          <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] px-2.5 py-1 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
             {filteredLogs.length} Events
           </span>
           {isAdmin && onClearLogs && (
