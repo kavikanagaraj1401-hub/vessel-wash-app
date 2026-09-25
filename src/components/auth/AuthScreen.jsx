@@ -91,9 +91,11 @@ export function AuthScreen({ onAuthSuccess, members = [] }) {
       <div className="w-full max-w-[420px] bg-white dark:bg-[#171F2C] rounded-[28px] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xl p-6 sm:p-7 space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#ECBD56] text-[#111216] shadow-md mx-auto">
-            <span className="text-xl font-black tracking-tight">VW</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Vessel Wash Logo"
+            className="w-16 h-16 rounded-2xl shadow-lg mx-auto object-cover border border-[#ECBD56]/40"
+          />
           <div>
             <h1 className="text-xl font-extrabold tracking-tight text-[#111216] dark:text-[#F7F6F3]">
               Vessel Wash Roster

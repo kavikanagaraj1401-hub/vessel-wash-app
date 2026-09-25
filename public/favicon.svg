@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Deep Obsidian Canvas Gradient (#0B0C0E) -->
+    <radialGradient id="obsidianBg" cx="50%" cy="38%" r="62%" fx="50%" fy="30%">
+      <stop offset="0%" stop-color="#181D26" />
+      <stop offset="45%" stop-color="#0F1217" />
+      <stop offset="100%" stop-color="#0B0C0E" />
+    </radialGradient>
+
+    <!-- Outer Luxury Border Glow (#ECBD56 to #2A364B) -->
+    <linearGradient id="borderGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ECBD56" stop-opacity="0.75" />
+      <stop offset="40%" stop-color="#4E525D" stop-opacity="0.3" />
+      <stop offset="70%" stop-color="#2A364B" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#ECBD56" stop-opacity="0.65" />
+    </linearGradient>
+
+    <!-- Metallic Gold Left Facet (Direct Specular Light) -->
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF9DB" />
+      <stop offset="25%" stop-color="#FCE18B" />
+      <stop offset="60%" stop-color="#ECBD56" />
+      <stop offset="100%" stop-color="#C29022" />
+    </linearGradient>
+
+    <!-- Metallic Gold Right Facet (Lustrous Ambient Metal) -->
+    <linearGradient id="goldMedium" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FCE18B" />
+      <stop offset="35%" stop-color="#ECBD56" />
+      <stop offset="75%" stop-color="#BC8A1E" />
+      <stop offset="100%" stop-color="#7A550B" />
+    </linearGradient>
+
+    <!-- Bevel Center Highlight -->
+    <linearGradient id="goldSpine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#FCE18B" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#ECBD56" stop-opacity="0.2" />
+    </linearGradient>
+
+    <!-- Clean Water Ripple Gradient -->
+    <linearGradient id="waterRipple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ECBD56" stop-opacity="0" />
+      <stop offset="20%" stop-color="#ECBD56" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#FFF3C4" stop-opacity="0.9" />
+      <stop offset="80%" stop-color="#ECBD56" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#ECBD56" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Soft Ambient Light Behind V -->
+    <radialGradient id="ambientAura" cx="50%" cy="40%" r="45%">
+      <stop offset="0%" stop-color="#ECBD56" stop-opacity="0.22" />
+      <stop offset="60%" stop-color="#ECBD56" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#0B0C0E" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#ECBD56" flood-opacity="0.28" />
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+  </defs>
+
+  <!-- Base Obsidian Rounded Canvas -->
+  <rect
+    x="12"
+    y="12"
+    width="488"
+    height="488"
+    rx="116"
+    fill="url(#obsidianBg)"
+    stroke="url(#borderGlow)"
+    stroke-width="5"
+  />
+
+  <!-- Subtle Inner Inset Bevel -->
+  <rect
+    x="22"
+    y="22"
+    width="468"
+    height="468"
+    rx="106"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="1.2"
+    stroke-opacity="0.07"
+  />
+
+  <!-- Ambient Gold Core Aura -->
+  <circle cx="256" cy="235" r="180" fill="url(#ambientAura)" />
+
+  <!-- Clean Water Ripple Lines (Concentric arcs at base of V) -->
+  <g opacity="0.95">
+    <!-- Ripple 1 (Wide Outer Wave) -->
+    <path
+      d="M 96 385 C 145 422, 205 440, 256 440 C 307 440, 367 422, 416 385"
+      fill="none"
+      stroke="url(#waterRipple)"
+      stroke-width="3"
+      stroke-linecap="round"
+      opacity="0.45"
+    />
+
+    <!-- Ripple 2 (Mid Fluid Wave) -->
+    <path
+      d="M 128 350 C 170 382, 215 398, 256 398 C 297 398, 342 382, 384 350"
+      fill="none"
+      stroke="url(#waterRipple)"
+      stroke-width="4"
+      stroke-linecap="round"
+      opacity="0.75"
+    />
+
+    <!-- Ripple 3 (Inner Crisp Wave cradling vertex) -->
+    <path
+      d="M 166 316 C 196 342, 228 355, 256 355 C 284 355, 316 342, 346 316"
+      fill="none"
+      stroke="url(#waterRipple)"
+      stroke-width="4.5"
+      stroke-linecap="round"
+      opacity="0.95"
+    />
+
+    <!-- Water Ripple Droplet at Apex of Ripple -->
+    <path
+      d="M 256 332 C 248 344 243 353 243 360 C 243 368 249 373 256 373 C 263 373 269 368 269 360 C 269 353 264 344 256 332 Z"
+      fill="url(#goldLight)"
+      opacity="0.85"
+    />
+  </g>
+
+  <!-- Chiseled Metallic Gold V Logo (Vessel Wash Monogram) -->
+  <g filter="url(#goldGlow)">
+    <!-- Left Wing (Illuminated Facet) -->
+    <path
+      d="M 104 116 L 192 116 L 256 280 L 256 316 L 244 316 L 104 116 Z"
+      fill="url(#goldLight)"
+    />
+
+    <!-- Left Wing Chamfer / Top Edge -->
+    <path
+      d="M 104 116 L 192 116 L 178 132 L 126 132 Z"
+      fill="#FFFFFF"
+      opacity="0.35"
+    />
+
+    <!-- Right Wing (Lustrous Shaded Facet) -->
+    <path
+      d="M 408 116 L 320 116 L 256 280 L 256 316 L 268 316 L 408 116 Z"
+      fill="url(#goldMedium)"
+    />
+
+    <!-- Right Wing Chamfer / Top Edge -->
+    <path
+      d="M 320 116 L 408 116 L 386 132 L 334 132 Z"
+      fill="#FFFFFF"
+      opacity="0.15"
+    />
+
+    <!-- Central Ridge Spine Highlight Line -->
+    <path
+      d="M 256 280 L 256 316"
+      stroke="url(#goldSpine)"
+      stroke-width="3"
+      stroke-linecap="round"
+    />
+
+    <!-- Vessel Rim Elliptical Arc -->
+    <path
+      d="M 104 116 C 148 140, 202 152, 256 152 C 310 152, 364 140, 408 116"
+      fill="none"
+      stroke="url(#goldLight)"
+      stroke-width="3.5"
+      stroke-linecap="round"
+      opacity="0.6"
+    />
+  </g>
+
+  <!-- Sparkle Highlights on Gold Vessel Tips -->
+  <circle cx="104" cy="116" r="4" fill="#FFFFFF" opacity="0.9" />
+  <circle cx="408" cy="116" r="4" fill="#FFFFFF" opacity="0.8" />
+  <circle cx="256" cy="316" r="3.5" fill="#FFF9DB" opacity="0.95" />
+</svg>
