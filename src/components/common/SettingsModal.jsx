@@ -439,9 +439,11 @@ $$;`;
           {currentView === null ? (
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#DDD9D0]/80 dark:border-[#2A364B]/80 bg-white dark:bg-[#171F2C] shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] flex items-center justify-center font-bold text-xs shadow-2xs">
-                  <Menu className="w-4 h-4" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Vessel Wash Logo"
+                  className="w-8 h-8 rounded-xl object-cover border border-[#ECBD56]/50 shadow-2xs flex-shrink-0"
+                />
                 <div>
                   <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">Menu &amp; Settings</h3>
                   <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60">Members, activity, rules &amp; sync</p>
@@ -682,7 +684,12 @@ $$;`;
 
                 {/* App Info Footer */}
                 <div className="pt-4 text-center">
-                  <p className="text-[11px] text-[#111216]/50 dark:text-[#F7F6F3]/50 font-medium">
+                  <img
+                    src="/logo.png"
+                    alt="Vessel Wash Logo"
+                    className="w-9 h-9 rounded-xl mx-auto mb-2 object-cover border border-[#ECBD56]/40 shadow-2xs opacity-90"
+                  />
+                  <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 font-semibold">
                     Vessel Washer App &bull; Continuous Multi-Year Engine
                   </p>
                   <p className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 mt-0.5">
