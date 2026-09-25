@@ -140,9 +140,9 @@ export function RotationScreen({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-xs text-neutral-textTertiary">
+                  <div className="flex items-center justify-between text-xs text-[#111216]/40 dark:text-[#F7F6F3]/40">
                     <div className="flex items-center gap-1.5">
-                      <Sun className="w-3.5 h-3.5 text-neutral-textTertiary flex-shrink-0" />
+                      <Sun className="w-3.5 h-3.5 text-[#111216]/40 dark:text-[#F7F6F3]/40 flex-shrink-0" />
                       <span>Lunch:</span>
                     </div>
                     <span>No meal</span>

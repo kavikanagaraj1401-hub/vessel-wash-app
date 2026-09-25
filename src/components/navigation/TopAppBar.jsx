@@ -237,7 +237,7 @@ export function TopAppBar({
               <button
                 type="button"
                 onClick={() => onToggleAdminMode && onToggleAdminMode(false)}
-                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-white text-[#111216] hover:bg-neutral-100 flex-shrink-0 shadow-2xs active-scale cursor-pointer"
+                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-white text-[#111216] hover:bg-[#F2F1ED] flex-shrink-0 shadow-2xs active-scale cursor-pointer"
               >
                 Member View
               </button>
@@ -496,24 +496,24 @@ export function TopAppBar({
                     setPassLoading(false);
                   }
                 }}
-                className="space-y-2.5 pt-2 border-t border-neutral-border/60 animate-fadeIn"
+                className="space-y-2.5 pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 animate-fadeIn"
               >
                 {passError && (
-                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] flex items-start gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="p-2.5 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-[#D9483B] dark:text-[#FF5A4E] text-[11px] flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>{passError}</span>
                   </div>
                 )}
 
                 {passSuccess && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-start gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="p-2.5 rounded-xl bg-[#EAF8F1] dark:bg-[#0E2E1D] border border-[#97E2C0] dark:border-[#166534] text-[#22AC77] dark:text-[#4ADE80] text-[11px] flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>{passSuccess}</span>
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-neutral-textSecondary block">
+                  <label className="text-[10px] font-bold text-[#4E525D] dark:text-[#9BA5B7] block">
                     New Password (min 6 characters)
                   </label>
                   <div className="relative">
@@ -594,7 +594,7 @@ export function TopAppBar({
                 </div>
               </form>
             ) : (
-              <p className="text-[11px] text-neutral-textTertiary">
+              <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7]">
                 Update your login password anytime using Supabase Auth.
               </p>
             )}

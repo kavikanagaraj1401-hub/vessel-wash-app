@@ -321,7 +321,7 @@ export function TodayScreen({
                     className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
                       washersCount === 1
                         ? 'bg-[#ECBD56] text-[#111216] border-[#ECBD56] shadow-xs'
-                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-neutral-200 dark:hover:bg-[#253248]'
+                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
                     }`}
                   >
                     <span>Single</span>
@@ -333,7 +333,7 @@ export function TodayScreen({
                     className={`py-2 px-3 rounded-full text-xs font-bold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
                       washersCount === 2
                         ? 'bg-[#ECBD56] text-[#111216] border-[#ECBD56] shadow-xs'
-                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-neutral-200 dark:hover:bg-[#253248]'
+                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
                     }`}
                   >
                     <span>Multiple</span>
@@ -346,9 +346,9 @@ export function TodayScreen({
             {isMealProvided && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#1E1E1E] flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
                     <span>Who ate today?</span>
-                    <span className="text-[11px] font-medium text-neutral-textTertiary">
+                    <span className="text-[11px] font-medium text-[#4E525D] dark:text-[#9BA5B7]">
                       ({currentEaters.length} attending)
                     </span>
                   </span>
