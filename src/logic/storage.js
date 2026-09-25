@@ -447,3 +447,30 @@ export const storage = {
     localStorage.removeItem('vw_app_initial_queue_v2');
   },
 };
+
+export const generateNextReceiptId = storage.generateNextReceiptId;
+
+export function logActivityAction(title, details = '', category = 'general', actionType = 'USER_ACTION', options = {}) {
+  try {
+    const logs = storage.getActivityLogs() || [];
+    const newLog = {
+      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      actorId: options.actorId || 'system',
+      actorName: options.actorName || 'User',
+      actorCode: options.actorCode || '',
+      isAdmin: Boolean(options.isAdmin),
+      actionType: actionType || (category ? `${String(category).toUpperCase()}_ACTION` : 'USER_ACTION'),
+      category: category || 'general',
+      title: title || 'Activity Logged',
+      details: String(details || ''),
+      targetDate: options.targetDate || new Date().toISOString().split('T')[0],
+    };
+    storage.saveActivityLogs([newLog, ...logs]);
+    return newLog;
+  } catch (err) {
+    console.warn('[ActivityLogger] Safe activity log failed:', err);
+    return null;
+  }
+}
+

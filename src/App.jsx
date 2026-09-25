@@ -12,6 +12,7 @@ import { AuthScreen } from './components/auth/AuthScreen';
 import { extractNameFromEmail, extractUsername, isKavipriyanEmail } from './logic/authUtils';
 
 import { storage, INITIAL_MEMBERS } from './logic/storage';
+import { logActivityAction as defaultLogActivityAction, safeLogActivity } from './logic/activityLogger';
 import {
   computeMonthRotation,
   insertNewMemberIntoQueue,
@@ -511,22 +512,43 @@ export default function App() {
 
 
   // Activity Audit Logger Helper
-  const logUserActivity = (actionType, category, title, details, targetDate = selectedDateStr) => {
-    const newLog = {
-      id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      timestamp: new Date().toISOString(),
-      actorId: currentMember.id,
-      actorName: currentMember.name,
-      actorCode: currentMember.code,
-      isAdmin,
-      actionType,
-      category,
-      title,
-      details,
-      targetDate,
-    };
-    setActivityLogs(prev => [newLog, ...prev]);
-  };
+  const logUserActivity = useCallback((actionType, category, title, details, targetDate = selectedDateStr) => {
+    try {
+      const newLog = {
+        id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        actorId: currentMember?.id || 'unknown',
+        actorName: currentMember?.name || 'User',
+        actorCode: currentMember?.code || '',
+        isAdmin: Boolean(isAdmin),
+        actionType: actionType || 'USER_ACTION',
+        category: category || 'general',
+        title: title || 'Activity Logged',
+        details: String(details || ''),
+        targetDate: targetDate || selectedDateStr,
+      };
+      setActivityLogs(prev => [newLog, ...(Array.isArray(prev) ? prev : [])]);
+      return newLog;
+    } catch (err) {
+      console.warn('[ActivityLogger] logUserActivity caught error:', err);
+      return null;
+    }
+  }, [currentMember, isAdmin, selectedDateStr]);
+
+  // Safe Action-level activity logger helper
+  const logActivityAction = useCallback(async (titleOrConfig, details = '', category = 'general', actionType = 'USER_ACTION', targetDate = selectedDateStr) => {
+    try {
+      if (typeof titleOrConfig === 'object' && titleOrConfig !== null) {
+        return defaultLogActivityAction(titleOrConfig);
+      }
+      const title = titleOrConfig || 'Activity Logged';
+      const safeActionType = actionType || (category ? `${String(category).toUpperCase()}_ACTION` : 'USER_ACTION');
+      return logUserActivity(safeActionType, category, title, details, targetDate);
+    } catch (err) {
+      console.warn('[ActivityLogger] Safe logActivityAction fallback caught error:', err);
+      return null;
+    }
+  }, [logUserActivity, selectedDateStr]);
 
   // Date selection handler ensuring target day is covered in configuration
   const handleSelectDate = (dateStr) => {
@@ -1016,28 +1038,40 @@ export default function App() {
       id: `bill-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       receiptId: nextReceiptId,
       billDateTime: billData.billDateTime || new Date().toISOString(),
-      paidByMemberId: billData.paidByMemberId || currentMember.id,
-      paidByMemberName: billData.paidByMemberName || currentMember.name,
-      paidByMemberCode: billData.paidByMemberCode || currentMember.code,
+      paidByMemberId: billData.paidByMemberId || currentMember?.id || 'm1',
+      paidByMemberName: billData.paidByMemberName || currentMember?.name || 'Member',
+      paidByMemberCode: billData.paidByMemberCode || currentMember?.code || 'M1',
       expenseType: billData.expenseType || 'General Expense',
       lineItems: Array.isArray(billData.lineItems) ? billData.lineItems : [],
       totalAmount: Number(billData.totalAmount) || 0,
       footerText: 'Thank you for using this app',
-      createdBy: currentMember.id,
-      creatorName: currentMember.name,
+      createdBy: currentMember?.id || 'unknown',
+      creatorName: currentMember?.name || 'Member',
       creatorEmail: userEmail || '',
       createdAt: new Date().toISOString(),
     };
     const updated = [newBill, ...bills];
     setBills(updated);
     storage.saveReimbursementBills(updated);
-    await supabaseService.saveReimbursementBills(updated);
 
-    await logActivityAction(
-      'Bill Created',
-      `Reimbursement receipt ${nextReceiptId} for ₹${newBill.totalAmount.toLocaleString('en-IN')} (${newBill.expenseType}) recorded by ${currentMember.name}.`,
-      'bill'
-    );
+    try {
+      await supabaseService.saveReimbursementBills(updated);
+    } catch (dbErr) {
+      console.warn('[BillScreen] Non-fatal: Supabase sync error for new bill:', dbErr);
+    }
+
+    try {
+      if (typeof logActivityAction === 'function') {
+        await logActivityAction(
+          'Bill Created',
+          `Reimbursement receipt ${nextReceiptId} for ₹${newBill.totalAmount.toLocaleString('en-IN')} (${newBill.expenseType}) recorded by ${currentMember?.name || 'User'}.`,
+          'bill'
+        );
+      }
+    } catch (actErr) {
+      console.warn('[BillScreen] Non-fatal: Activity log error on bill create:', actErr);
+    }
+
     return newBill;
   }, [bills, currentMember, userEmail, logActivityAction]);
 
@@ -1047,14 +1081,25 @@ export default function App() {
     const updated = bills.filter(b => b.id !== billId);
     setBills(updated);
     storage.saveReimbursementBills(updated);
-    await supabaseService.saveReimbursementBills(updated);
+
+    try {
+      await supabaseService.saveReimbursementBills(updated);
+    } catch (dbErr) {
+      console.warn('[BillScreen] Non-fatal: Supabase sync error on bill delete:', dbErr);
+    }
 
     if (target) {
-      await logActivityAction(
-        'Bill Deleted',
-        `Receipt ${target.receiptId} (₹${target.totalAmount.toLocaleString('en-IN')}) was removed by ${currentMember.name}.`,
-        'bill'
-      );
+      try {
+        if (typeof logActivityAction === 'function') {
+          await logActivityAction(
+            'Bill Deleted',
+            `Receipt ${target.receiptId} (₹${target.totalAmount.toLocaleString('en-IN')}) was removed by ${currentMember?.name || 'User'}.`,
+            'bill'
+          );
+        }
+      } catch (actErr) {
+        console.warn('[BillScreen] Non-fatal: Activity log error on bill delete:', actErr);
+      }
     }
   }, [bills, currentMember, logActivityAction]);
 

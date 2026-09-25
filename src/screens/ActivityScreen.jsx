@@ -14,6 +14,7 @@ import {
   Calendar,
   Clock,
   Trash2,
+  Receipt,
 } from 'lucide-react';
 
 export function ActivityScreen({
@@ -23,11 +24,12 @@ export function ActivityScreen({
   onClearLogs,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all'); // 'all' | 'attendance' | 'meal_status' | 'eaters' | 'member' | 'system'
+  const [selectedCategory, setSelectedCategory] = useState('all'); // 'all' | 'attendance' | 'meal_status' | 'eaters' | 'member' | 'bill' | 'system'
   const [selectedActor, setSelectedActor] = useState('all');
 
   const categories = [
     { id: 'all', label: 'All Activity' },
+    { id: 'bill', label: 'Bills & Expenses' },
     { id: 'attendance', label: 'Duty Marks' },
     { id: 'meal_status', label: 'Meal Availability' },
     { id: 'eaters', label: 'Eaters' },
@@ -88,11 +90,14 @@ export function ActivityScreen({
     if (log.category === 'member') {
       return <UserCheck className="w-4 h-4 text-[#ECBD56]" />;
     }
+    if (log.category === 'bill') {
+      return <Receipt className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />;
+    }
     return <Activity className="w-4 h-4 text-cyan-600" />;
   };
 
   const getActionBadgeVariant = (log) => {
-    if (log.actionType === 'MARK_WASHED' || log.actionType === 'MARK_ATTENDANCE_PRESENT') {
+    if (log.actionType === 'MARK_WASHED' || log.actionType === 'MARK_ATTENDANCE_PRESENT' || log.category === 'bill') {
       return 'completed';
     }
     if (log.actionType === 'MARK_NOT_WASHED' || log.actionType === 'MARK_ATTENDANCE_ABSENT') {
