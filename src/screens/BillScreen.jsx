@@ -906,7 +906,9 @@ export function BillScreen({
       const canvas = await html2canvas(element, {
         scale: 3,
         useCORS: true,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: null,
+        scrollX: 0,
+        scrollY: 0,
         logging: false,
       });
 
@@ -1015,8 +1017,8 @@ export function BillScreen({
       <div
         style={{
           position: 'fixed',
-          left: '-9999px',
-          top: '-9999px',
+          top: 0,
+          left: 0,
           width: '380px',
           zIndex: -9999,
           pointerEvents: 'none',
@@ -1026,7 +1028,7 @@ export function BillScreen({
         {exportingBill && (
           <div
             ref={offscreenReceiptRef}
-            style={{ width: '380px', backgroundColor: '#FFFFFF', padding: '12px 6px' }}
+            style={{ width: '380px', padding: '12px 6px' }}
           >
             <ThermalReceipt bill={exportingBill} />
           </div>
