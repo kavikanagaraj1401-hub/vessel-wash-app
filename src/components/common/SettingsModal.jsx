@@ -531,10 +531,10 @@ $$;`;
                         onClose();
                         await onSignOut();
                       }}
-                      className="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-[#D9483B] dark:text-[#FF5A4E] bg-[#D9483B]/10 dark:bg-[#FF5A4E]/10 hover:bg-[#D9483B]/20 dark:hover:bg-[#FF5A4E]/20 border border-[#D9483B]/20 dark:border-[#FF5A4E]/30 transition-colors flex items-center gap-1 active-scale flex-shrink-0 cursor-pointer"
+                      className="px-3 py-1.5 rounded-full text-[11px] font-bold text-[#D9483B] dark:text-[#FF5A4E] bg-white dark:bg-[#171F2C] hover:bg-[#FDF1F0] dark:hover:bg-[#331310] border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#F5A9A2] dark:hover:border-[#991B1B] shadow-2xs transition-colors flex items-center gap-1.5 active-scale flex-shrink-0 cursor-pointer"
                       title="Log Out"
                     >
-                      <LogOut className="w-3 h-3" />
+                      <LogOut className="w-3.5 h-3.5" />
                       <span>Log Out</span>
                     </button>
                   )}
@@ -680,6 +680,32 @@ $$;`;
                       {isDark ? 'Switch to Light' : 'Switch to Dark'}
                     </span>
                   </div>
+
+                  {/* 6. Sign Out / Logout */}
+                  {onSignOut && (
+                    <div
+                      onClick={async () => {
+                        onClose();
+                        await onSignOut();
+                      }}
+                      className="w-full flex items-center justify-between p-3.5 hover:bg-[#FDF1F0] dark:hover:bg-[#331310] active:bg-[#F5A9A2]/30 transition-colors text-left cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#171F2C] text-[#D9483B] dark:text-[#FF5A4E] flex items-center justify-center shrink-0 border border-[#DDD9D0] dark:border-[#2A364B] group-hover:scale-105 transition-transform shadow-2xs">
+                          <LogOut className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-sm font-bold text-[#D9483B] dark:text-[#FF5A4E] leading-tight block">
+                            Log Out
+                          </span>
+                          <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] truncate mt-0.5">
+                            End your current session safely
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-[#D9483B]/60 dark:text-[#FF5A4E]/60 group-hover:text-[#D9483B] dark:group-hover:text-[#FF5A4E]" />
+                    </div>
+                  )}
                 </div>
 
                 {/* App Info Footer */}

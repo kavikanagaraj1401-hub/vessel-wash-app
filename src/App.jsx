@@ -293,8 +293,17 @@ export default function App() {
         }
 
         if (remote.reimbursementBills && Array.isArray(remote.reimbursementBills)) {
-          setBills(remote.reimbursementBills);
-          storage.saveReimbursementBills(remote.reimbursementBills);
+          const localBills = storage.getReimbursementBills() || [];
+          const billMap = new Map();
+          remote.reimbursementBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
+          localBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
+          const mergedBills = Array.from(billMap.values()).sort((a, b) => {
+            const timeA = new Date(a.createdAt || a.billDateTime).getTime();
+            const timeB = new Date(b.createdAt || b.billDateTime).getTime();
+            return timeB - timeA;
+          });
+          setBills(mergedBills);
+          storage.saveReimbursementBills(mergedBills);
         }
 
         // Auto-seed if database is empty on first connection
@@ -508,6 +517,10 @@ export default function App() {
   useEffect(() => {
     storage.saveActivityLogs(activityLogs);
   }, [activityLogs]);
+
+  useEffect(() => {
+    storage.saveReimbursementBills(bills);
+  }, [bills]);
 
 
 
@@ -1033,7 +1046,8 @@ export default function App() {
 
   // Handle Create Reimbursement Bill
   const handleCreateBill = useCallback(async (billData) => {
-    const nextReceiptId = storage.generateNextReceiptId(bills);
+    const existing = storage.getReimbursementBills() || [];
+    const nextReceiptId = storage.generateNextReceiptId(existing);
     const newBill = {
       id: `bill-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       receiptId: nextReceiptId,
@@ -1044,18 +1058,21 @@ export default function App() {
       expenseType: billData.expenseType || 'General Expense',
       lineItems: Array.isArray(billData.lineItems) ? billData.lineItems : [],
       totalAmount: Number(billData.totalAmount) || 0,
-      footerText: 'Thank you for using this app',
       createdBy: currentMember?.id || 'unknown',
       creatorName: currentMember?.name || 'Member',
       creatorEmail: userEmail || '',
       createdAt: new Date().toISOString(),
     };
-    const updated = [newBill, ...bills];
-    setBills(updated);
-    storage.saveReimbursementBills(updated);
+
+    setBills(prev => {
+      const updated = [newBill, ...(prev || []).filter(b => b.id !== newBill.id)];
+      storage.saveReimbursementBills(updated);
+      return updated;
+    });
 
     try {
-      await supabaseService.saveReimbursementBills(updated);
+      const currentAll = storage.getReimbursementBills() || [];
+      await supabaseService.saveReimbursementBills(currentAll);
     } catch (dbErr) {
       console.warn('[BillScreen] Non-fatal: Supabase sync error for new bill:', dbErr);
     }
@@ -1064,7 +1081,7 @@ export default function App() {
       if (typeof logActivityAction === 'function') {
         await logActivityAction(
           'Bill Created',
-          `Reimbursement receipt ${nextReceiptId} for ₹${newBill.totalAmount.toLocaleString('en-IN')} (${newBill.expenseType}) recorded by ${currentMember?.name || 'User'}.`,
+          `Expense receipt ${nextReceiptId} for ₹${newBill.totalAmount.toLocaleString('en-IN')} (${newBill.expenseType}) recorded by ${currentMember?.name || 'User'}.`,
           'bill'
         );
       }
@@ -1073,17 +1090,21 @@ export default function App() {
     }
 
     return newBill;
-  }, [bills, currentMember, userEmail, logActivityAction]);
+  }, [currentMember, userEmail, logActivityAction]);
 
   // Handle Delete Reimbursement Bill
   const handleDeleteBill = useCallback(async (billId) => {
-    const target = bills.find(b => b.id === billId);
-    const updated = bills.filter(b => b.id !== billId);
-    setBills(updated);
-    storage.saveReimbursementBills(updated);
+    let target = null;
+    setBills(prev => {
+      target = (prev || []).find(b => b.id === billId);
+      const updated = (prev || []).filter(b => b.id !== billId);
+      storage.saveReimbursementBills(updated);
+      return updated;
+    });
 
     try {
-      await supabaseService.saveReimbursementBills(updated);
+      const currentAll = storage.getReimbursementBills() || [];
+      await supabaseService.saveReimbursementBills(currentAll);
     } catch (dbErr) {
       console.warn('[BillScreen] Non-fatal: Supabase sync error on bill delete:', dbErr);
     }
@@ -1101,7 +1122,7 @@ export default function App() {
         console.warn('[BillScreen] Non-fatal: Activity log error on bill delete:', actErr);
       }
     }
-  }, [bills, currentMember, logActivityAction]);
+  }, [currentMember, logActivityAction]);
 
   const activeMembers = members.filter(m => m.status === 'active');
 

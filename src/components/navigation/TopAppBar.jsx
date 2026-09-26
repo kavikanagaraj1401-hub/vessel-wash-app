@@ -608,7 +608,7 @@ export function TopAppBar({
                 setProfileModalOpen(false);
                 if (onSignOut) await onSignOut();
               }}
-              className="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors flex items-center justify-center gap-2 active-scale cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-white dark:bg-[#171F2C] hover:bg-[#FDF1F0] dark:hover:bg-[#331310] text-[#D9483B] dark:text-[#FF5A4E] font-bold text-xs border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#F5A9A2] dark:hover:border-[#991B1B] shadow-2xs transition-colors flex items-center justify-center gap-2 active-scale cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               <span>Log Out</span>

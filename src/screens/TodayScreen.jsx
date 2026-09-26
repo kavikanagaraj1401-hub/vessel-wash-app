@@ -194,11 +194,13 @@ export function TodayScreen({
     <div className="w-full max-w-full pb-28 px-4 pt-3 space-y-4">
       {/* Member Info Banner if not Admin */}
       {!isAdmin && (
-        <div className="p-3 rounded-[20px] bg-sky-50 border border-sky-200 text-sky-900 flex items-center justify-between gap-2 shadow-2xs">
-          <div className="flex items-center gap-2 text-xs">
-            <UtensilsCrossed className="w-4 h-4 text-sky-700 flex-shrink-0" />
-            <span className="font-medium text-[11px] leading-tight">
-              <strong>Member Access:</strong> You can mark meal availability, washer requirements, and attendance below. Advanced settings (Excel roster &amp; members) are managed by Admin.
+        <div className="p-3.5 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] flex items-center justify-between gap-2.5 shadow-2xs">
+          <div className="flex items-center gap-2.5 text-xs">
+            <div className="w-7 h-7 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/30">
+              <UtensilsCrossed className="w-3.5 h-3.5" />
+            </div>
+            <span className="font-medium text-[11px] leading-tight text-[#4E525D] dark:text-[#9BA5B7]">
+              <strong className="text-[#111216] dark:text-[#F7F6F3]">Member Access:</strong> You can mark meal availability, washer requirements, and attendance below. Advanced settings (Excel roster &amp; members) are managed by Admin.
             </span>
           </div>
         </div>
@@ -478,7 +480,7 @@ export function TodayScreen({
                     return (
                       <div
                         key={slot.id}
-                        className="p-4 rounded-[22px] bg-white dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between gap-3 shadow-2xs"
+                        className="p-4 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between gap-3 shadow-2xs"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {/* Gold Accent Avatar */}

@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   Share2,
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Modal } from '../components/common/Modal';
@@ -424,6 +425,209 @@ function generateConsolidatedReportPdf({
   return doc;
 }
 
+/**
+ * Scalloped / saw-tooth perforated paper cut edge SVG
+ */
+export function ThermalSawtoothEdge({ position = 'top' }) {
+  return (
+    <div className={`w-full overflow-hidden leading-none select-none ${position === 'top' ? '-mb-0.5' : '-mt-0.5'}`}>
+      <svg
+        viewBox="0 0 100 8"
+        preserveAspectRatio="none"
+        className="w-full h-2.5 text-white fill-current block"
+      >
+        {position === 'top' ? (
+          <polygon points="0,8 2.5,0 5,8 7.5,0 10,8 12.5,0 15,8 17.5,0 20,8 22.5,0 25,8 27.5,0 30,8 32.5,0 35,8 37.5,0 40,8 42.5,0 45,8 47.5,0 50,8 52.5,0 55,8 57.5,0 60,8 62.5,0 65,8 67.5,0 70,8 72.5,0 75,8 77.5,0 80,8 82.5,0 85,8 87.5,0 90,8 92.5,0 95,8 97.5,0 100,8" />
+        ) : (
+          <polygon points="0,0 2.5,8 5,0 7.5,8 10,0 12.5,8 15,0 17.5,8 20,0 22.5,8 25,0 27.5,8 30,0 32.5,8 35,0 37.5,8 40,0 42.5,8 45,0 47.5,8 50,0 52.5,8 55,0 57.5,8 60,0 62.5,8 65,0 67.5,8 70,0 72.5,8 75,0 77.5,8 80,0 82.5,8 85,0 87.5,8 90,0 92.5,8 95,0 97.5,8 100,0" />
+        )}
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Realistic thermal cash barcode graphic with code below
+ */
+export function ThermalBarcode({ code = '00001' }) {
+  const cleanCode = String(code || '00001').replace('#', '').trim();
+  const bars = useMemo(() => [2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 1, 3, 1, 2, 3, 1, 2, 4, 1, 2, 1, 3, 2], []);
+  return (
+    <div className="flex flex-col items-center justify-center py-2 select-none">
+      <div className="flex items-stretch h-11 gap-[2px]">
+        {bars.map((width, idx) => (
+          <div
+            key={idx}
+            className={`bg-[#111216] ${idx % 2 === 0 ? 'opacity-100' : 'opacity-0'}`}
+            style={{ width: `${width * 1.5}px` }}
+          />
+        ))}
+      </div>
+      <span className="font-mono text-[10px] tracking-[0.25em] text-[#111216] mt-1.5 font-bold">
+        * {cleanCode} - 2026 *
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Exact Thermal Cash Receipt UI Component
+ * Features:
+ *   - Jagged / saw-tooth perforated paper edges (top & bottom)
+ *   - Centered shop / store header (* EXPENSE RECEIPT *, OUT-OF-POCKET CASH VOUCHER, RECEIPT NO)
+ *   - Asterisk divider lines (* * * * * * * * * *)
+ *   - Swapped metadata columns (Left: Expense Type & Paid By, Right: Date & Time & Recorded By)
+ *   - Monospace QTY, DESCRIPTION, PRICE(INR) table
+ *   - Total section with double borders
+ *   - Thermal barcode graphic at bottom
+ *   - Zero "Vessel Wash" branding and zero "Thank you" footer
+ */
+export function ThermalReceipt({ bill }) {
+  if (!bill) return null;
+  return (
+    <div className="w-full max-w-[380px] mx-auto filter drop-shadow-md select-none font-mono">
+      {/* Jagged Top Perforation */}
+      <ThermalSawtoothEdge position="top" />
+
+      {/* Thermal Paper Body */}
+      <div className="bg-white text-[#111216] px-5 py-4 space-y-3">
+        {/* Centered Store / Cash Header */}
+        <div className="text-center space-y-1">
+          <div className="text-[10px] tracking-widest text-[#666] select-none font-bold">
+            * * * * * * * * * * * * * * * * * * * *
+          </div>
+          <h3 className="text-base font-black tracking-wider uppercase text-[#111216]">
+            * EXPENSE RECEIPT *
+          </h3>
+          <p className="text-[10px] font-bold tracking-widest uppercase text-[#555]">
+            OUT-OF-POCKET CASH VOUCHER
+          </p>
+          <div className="text-xs font-black tracking-wide text-[#111216] pt-0.5">
+            RECEIPT NO: {bill.receiptId || '#00001'}
+          </div>
+          <div className="text-[10px] tracking-widest text-[#666] select-none font-bold">
+            * * * * * * * * * * * * * * * * * * * *
+          </div>
+        </div>
+
+        {/* Metadata Section - Swapped Columns:
+            Left Side: Expense Type & Paid By
+            Right Side: Date & Time & Recorded By */}
+        <div className="grid grid-cols-2 gap-3 text-[11px] pb-2 text-left leading-tight border-b border-dashed border-gray-300">
+          <div className="space-y-1.5">
+            <div>
+              <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
+                EXPENSE TYPE
+              </span>
+              <span className="font-black text-[#111216] block break-words">
+                {bill.expenseType || 'General Expense'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
+                PAID BY
+              </span>
+              <span className="font-black text-[#111216] block break-words">
+                {bill.paidByMemberName || 'Member'} {bill.paidByMemberCode ? `(${bill.paidByMemberCode})` : ''}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 text-right">
+            <div>
+              <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
+                DATE &amp; TIME
+              </span>
+              <span className="font-bold text-[#111216] block">
+                {formatBillDisplayDate(bill.billDateTime)}
+              </span>
+            </div>
+            <div>
+              <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
+                RECORDED BY
+              </span>
+              <span className="font-bold text-[#111216] block break-words">
+                {bill.creatorName || bill.paidByMemberName || 'User'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="text-center text-[10px] tracking-widest text-gray-400 select-none">
+          - - - - - - - - - - - - - - - - - - - -
+        </div>
+
+        {/* Line Items Table */}
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-12 gap-1 text-[10px] font-black uppercase text-gray-600 pb-1 border-b border-gray-300">
+            <span className="col-span-2">QTY</span>
+            <span className="col-span-7">DESCRIPTION</span>
+            <span className="col-span-3 text-right">PRICE(INR)</span>
+          </div>
+
+          <div className="space-y-1 divide-y divide-dashed divide-gray-100 text-[11px]">
+            {(bill.lineItems || []).map((item, idx) => (
+              <div key={item.id || idx} className="grid grid-cols-12 gap-1 pt-1 items-baseline">
+                <span className="col-span-2 font-bold text-gray-500">#{item.sNo || idx + 1}</span>
+                <span className="col-span-7 font-bold text-[#111216] break-words">{item.particular}</span>
+                <span className="col-span-3 text-right font-black text-[#111216]">
+                  {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="text-center text-[10px] tracking-widest text-gray-400 select-none">
+          = = = = = = = = = = = = = = = = = = = =
+        </div>
+
+        {/* Total Section with Double Border Style */}
+        <div className="py-1 space-y-1">
+          <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+            <span>ITEMS COUNT:</span>
+            <span>{bill.lineItems?.length || 0}</span>
+          </div>
+          <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+            <span>SUBTOTAL:</span>
+            <span>
+              INR {Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+            <span>TAX / DEDUCTION (0%):</span>
+            <span>INR 0.00</span>
+          </div>
+          <div className="pt-2 border-t-2 border-b-2 border-black py-1.5 flex justify-between items-center">
+            <span className="font-black text-sm tracking-wide text-black">TOTAL AMOUNT:</span>
+            <span className="font-black text-base text-black tracking-tight">
+              INR {Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+
+        {/* Thermal Barcode Graphic */}
+        <ThermalBarcode code={bill.receiptId || '00001'} />
+
+        {/* Bottom Notice */}
+        <div className="text-center pt-1 border-t border-dashed border-gray-200">
+          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
+            OFFICIAL CASH EXPENSE RECORD
+          </span>
+          <span className="text-[8px] text-gray-400 block mt-0.5">
+            AUTHENTIC THERMAL VOUCHER &bull; LIFO AUDIT
+          </span>
+        </div>
+      </div>
+
+      {/* Jagged Bottom Perforation */}
+      <ThermalSawtoothEdge position="bottom" />
+    </div>
+  );
+}
+
 export function BillScreen({
   bills = [],
   members = [],
@@ -436,10 +640,13 @@ export function BillScreen({
 }) {
   // 1. Creator Scoping & Verification
   const isCreator = (bill) => {
-    if (!bill || !currentMember) return false;
-    if (bill.createdBy && currentMember.id && bill.createdBy === currentMember.id) return true;
+    if (!bill) return false;
+    if (!currentMember) return true;
+    if (bill.createdBy && currentMember.id && String(bill.createdBy) === String(currentMember.id)) return true;
     if (bill.creatorEmail && userEmail && bill.creatorEmail.toLowerCase() === userEmail.toLowerCase()) return true;
     if (bill.creatorName && currentMember.name && bill.creatorName.trim().toLowerCase() === currentMember.name.trim().toLowerCase()) return true;
+    if (bill.paidByMemberId && currentMember.id && String(bill.paidByMemberId) === String(currentMember.id)) return true;
+    if (bill.paidByMemberName && currentMember.name && bill.paidByMemberName.trim().toLowerCase() === currentMember.name.trim().toLowerCase()) return true;
     return false;
   };
 
@@ -647,6 +854,15 @@ export function BillScreen({
           lineItems: formattedItems,
           totalAmount,
         });
+
+        // Ensure newly created bill is instantly visible in LIFO view
+        const billMonth = getYearMonthKey(billDateTime);
+        if (billMonth && billMonth !== 'Unknown') {
+          setSelectedMonth(billMonth);
+        } else {
+          setSelectedMonth('all');
+        }
+        setSearchQuery('');
       }
 
       setIsModalOpen(false);
@@ -658,48 +874,84 @@ export function BillScreen({
   };
 
   // ----------------------------------------------------
-  // DOWNLOAD & EXPORT ACTIONS (Requirement 1, 2, 3)
+  // DOWNLOAD & EXPORT ACTIONS (Thermal PNG & Consolidated Report)
   // ----------------------------------------------------
   const [previewBill, setPreviewBill] = useState(null);
   const [exportingReport, setExportingReport] = useState(false);
+  const [exportingBill, setExportingBill] = useState(null);
+  const [exportingPng, setExportingPng] = useState(false);
+  const offscreenReceiptRef = useRef(null);
+  const modalReceiptRef = useRef(null);
 
-  // Individual Receipt Download & Share
-  const handleDownloadAndShareReceipt = async (bill) => {
-    if (!bill || !isCreator(bill)) return;
+  // Individual Thermal Receipt Download as PNG & Native Share (Requirement 1)
+  const downloadReceiptAsPng = async (bill, targetElement = null) => {
+    if (!bill) return;
+    setExportingPng(true);
+    const cleanId = String(bill.receiptId || '00001').replace('#', '').trim();
+    const filename = `Expense_Receipt_${cleanId}.png`;
+
     try {
-      const cleanId = String(bill.receiptId || '00001').replace('#', '').trim();
-      const filename = `Expense_Receipt_${cleanId}.pdf`;
-      const doc = generateExpenseReceiptPdf(bill);
-
-      // 1. Direct Download
-      doc.save(filename);
-
-      // 2. Direct Share (Simultaneous)
-      try {
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
-        const shareData = {
-          title: `Expense Receipt ${bill.receiptId}`,
-          text: `Expense Receipt ${bill.receiptId} • Total: ₹${Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${bill.expenseType}) - Paid by ${bill.paidByMemberName}`,
-        };
-
-        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-          await navigator.share({
-            ...shareData,
-            files: [pdfFile],
-          });
-        } else if (navigator.share) {
-          await navigator.share(shareData);
-        }
-      } catch (shareErr) {
-        if (shareErr.name !== 'AbortError') {
-          console.warn('[Receipt] Share sheet dismissed or unavailable:', shareErr);
-        }
+      let element = targetElement;
+      if (!element) {
+        setExportingBill(bill);
+        await new Promise(r => setTimeout(r, 120));
+        element = offscreenReceiptRef.current;
       }
+
+      if (!element) {
+        console.warn('[Receipt] Could not find thermal receipt element to capture');
+        return;
+      }
+
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+      });
+
+      const pngUrl = canvas.toDataURL('image/png');
+
+      // 1. Direct File Download as PNG
+      const link = document.createElement('a');
+      link.href = pngUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // 2. Direct Share (Simultaneous) if supported
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          const file = new File([blob], filename, { type: 'image/png' });
+          const shareData = {
+            title: `Expense Receipt ${bill.receiptId}`,
+            text: `Expense Receipt ${bill.receiptId} • Total: ₹${Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${bill.expenseType}) - Paid by ${bill.paidByMemberName}`,
+          };
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              ...shareData,
+              files: [file],
+            });
+          } else if (navigator.share) {
+            await navigator.share(shareData);
+          }
+        } catch (shareErr) {
+          if (shareErr.name !== 'AbortError') {
+            console.warn('[Receipt] Share sheet dismissed:', shareErr);
+          }
+        }
+      }, 'image/png');
     } catch (err) {
-      console.error('[Receipt] Failed to download and share receipt:', err);
+      console.error('[Receipt] Failed to export thermal PNG:', err);
+    } finally {
+      setExportingBill(null);
+      setExportingPng(false);
     }
   };
+
+  const handleDownloadAndShareReceipt = downloadReceiptAsPng;
 
   // Consolidated Multi-Bill Export with Cover Page (Requirement 1 & 3)
   const handleExportConsolidatedReport = async () => {
@@ -759,6 +1011,28 @@ export function BillScreen({
 
   return (
     <div className="relative min-h-[calc(100vh-140px)] pb-28 px-4 pt-3 space-y-4">
+      {/* Hidden Offscreen Thermal Receipt for High-Resolution PNG Capture */}
+      <div
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: '-9999px',
+          width: '380px',
+          zIndex: -9999,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
+      >
+        {exportingBill && (
+          <div
+            ref={offscreenReceiptRef}
+            style={{ width: '380px', backgroundColor: '#FFFFFF', padding: '12px 6px' }}
+          >
+            <ThermalReceipt bill={exportingBill} />
+          </div>
+        )}
+      </div>
+
       {/* 1. Monthly Expense Section Header & Metric Cards */}
       <div className="p-4 sm:p-5 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
@@ -1068,9 +1342,10 @@ export function BillScreen({
                   {userIsCreator && (
                     <button
                       type="button"
-                      onClick={() => handleDownloadAndShareReceipt(bill)}
+                      onClick={() => downloadReceiptAsPng(bill)}
+                      disabled={exportingPng}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold shadow-2xs active-scale transition-all cursor-pointer"
-                      title="Download and Share PDF Receipt"
+                      title="Download Thermal Cash Receipt PNG"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download Receipt</span>
@@ -1266,101 +1541,20 @@ export function BillScreen({
         </form>
       </Modal>
 
-      {/* 7. EXPENSE RECEIPT MODAL VIEW (100% UI-to-PDF Template Parity - Requirement 2) */}
+      {/* 7. EXPENSE RECEIPT MODAL VIEW (Exact Thermal Cash Receipt UI & PNG Download - Requirement 1) */}
       <Modal
         isOpen={Boolean(previewBill)}
         onClose={() => setPreviewBill(null)}
         title="Expense Receipt"
-        subtitle={`Receipt ${previewBill?.receiptId || ''} • Creator Protected View`}
+        subtitle={`Receipt ${previewBill?.receiptId || ''} • Thermal Cash Voucher`}
         className="max-w-md"
       >
         {previewBill && (
           <div className="space-y-4">
-            {/* Clean Receipt Canvas: 100% Visually Identical to PDF Template */}
-            <div className="p-6 rounded-2xl bg-white text-[#111216] border-2 border-dashed border-[#DDD9D0] space-y-4 font-mono text-xs shadow-inner">
-              {/* Header: Centered Title & Receipt No */}
-              <div className="text-center pb-3 border-b border-dashed border-gray-300">
-                <h4 className="text-base font-black tracking-tight uppercase text-[#111216]">
-                  Expense Receipt
-                </h4>
-                <div className="mt-1 text-xs font-bold text-[#845D08]">
-                  RECEIPT NO: {previewBill.receiptId}
-                </div>
-              </div>
-
-              {/* Swapped Columns (Requirement 2):
-                  Left side: Expense Type and Paid By
-                  Right side: Date & Time and Recorded By */}
-              <div className="grid grid-cols-2 gap-4 text-[11px] pb-3 border-b border-dashed border-gray-300 text-left font-sans">
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">
-                      EXPENSE TYPE
-                    </span>
-                    <span className="font-bold text-[#111216] block mt-0.5">
-                      {previewBill.expenseType || 'General Expense'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">
-                      PAID BY
-                    </span>
-                    <span className="font-bold text-[#111216] block mt-0.5">
-                      {previewBill.paidByMemberName} {previewBill.paidByMemberCode ? `(${previewBill.paidByMemberCode})` : ''}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-right">
-                  <div>
-                    <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">
-                      DATE &amp; TIME
-                    </span>
-                    <span className="font-bold text-[#111216] block mt-0.5">
-                      {formatBillDisplayDate(previewBill.billDateTime)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">
-                      RECORDED BY
-                    </span>
-                    <span className="font-bold text-[#111216] block mt-0.5">
-                      {previewBill.creatorName || previewBill.paidByMemberName}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Particulars Items Table */}
-              <div>
-                <table className="w-full text-[11px]">
-                  <thead>
-                    <tr className="border-b border-gray-300 text-gray-500 font-sans">
-                      <th className="text-left py-1.5 w-12">S.No</th>
-                      <th className="text-left py-1.5">Particular</th>
-                      <th className="text-right py-1.5 w-24">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {(previewBill.lineItems || []).map((it, idx) => (
-                      <tr key={it.id || idx}>
-                        <td className="py-1.5 text-gray-400 font-medium">#{it.sNo || idx + 1}</td>
-                        <td className="py-1.5 font-medium">{it.particular}</td>
-                        <td className="py-1.5 text-right font-bold text-[#111216]">
-                          INR {Number(it.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Grand Total */}
-              <div className="pt-3 border-t-2 border-gray-900 flex items-center justify-between font-sans">
-                <span className="font-bold text-xs uppercase tracking-wider">TOTAL AMOUNT:</span>
-                <span className="text-lg font-black text-[#845D08]">
-                  INR {Number(previewBill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
+            {/* Authentic Thermal Receipt Paper Layout */}
+            <div className="flex justify-center p-2.5 sm:p-4 bg-[#ECEAE3] dark:bg-[#0B0C0E] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
+              <div ref={modalReceiptRef} className="w-full flex justify-center">
+                <ThermalReceipt bill={previewBill} />
               </div>
             </div>
 
@@ -1379,27 +1573,33 @@ export function BillScreen({
                 variant="primary"
                 size="sm"
                 icon={Download}
-                onClick={() => handleDownloadAndShareReceipt(previewBill)}
+                loading={exportingPng}
+                onClick={() => downloadReceiptAsPng(previewBill, modalReceiptRef.current)}
               >
-                Download &amp; Share
+                Download PNG
               </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* 8. Delete Confirmation Modal */}
+      {/* 8. Delete Confirmation Modal (Requirement 2) */}
       <Modal
         isOpen={Boolean(billToDelete)}
         onClose={() => setBillToDelete(null)}
         title="Delete Expense Receipt"
-        subtitle={`Are you sure you want to delete receipt ${billToDelete?.receiptId}?`}
+        subtitle="Are you sure you want to delete this receipt?"
       >
-        <div className="space-y-3">
-          <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
-            This will permanently remove receipt <strong>{billToDelete?.receiptId}</strong> (₹{Number(billToDelete?.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}) from your expense history.
-          </p>
-          <div className="flex items-center justify-end gap-2 pt-2">
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-xs space-y-1.5">
+            <p className="font-bold text-[#D9483B] dark:text-[#FF5A4E]">
+              Are you sure you want to delete this receipt?
+            </p>
+            <p className="text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
+              This will permanently delete receipt <strong className="text-[#111216] dark:text-[#F7F6F3]">{billToDelete?.receiptId}</strong> (₹{Number(billToDelete?.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) for <em>{billToDelete?.expenseType}</em> from your expense history. This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
             <Button variant="secondary" size="sm" onClick={() => setBillToDelete(null)}>
               Cancel
             </Button>
