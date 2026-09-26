@@ -236,109 +236,139 @@ function renderSingleReceiptPage(doc, bill, startY = 42) {
 }
 
 /**
- * Generates an official standalone A5 Expense Receipt PDF
+ * Convert Date to YYYY-MM-DD for date input
  */
-function generateExpenseReceiptPdf(bill) {
-  const doc = new jsPDF({
-    unit: 'pt',
-    format: 'a5',
-  });
-  renderSingleReceiptPage(doc, bill, 42);
-  return doc;
+function toDateInputString(dateObj = new Date()) {
+  try {
+    const d = new Date(dateObj);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch {
+    return '';
+  }
 }
 
 /**
- * Generates a Consolidated Multi-Bill PDF with a professional Cover Page (Requirement 1)
- * Followed by all individual expense receipts in LIFO order (newest first).
+ * Generates the official Cover Page for Consolidated Expense Report
+ * Features:
+ *   - Title: CONSOLIDATED EXPENSE REPORT
+ *   - Paid By (User) and Code
+ *   - Date Range / Period
+ *   - Total Receipts Count and Consolidated Grand Total
+ *   - Consolidated Calculation Breakdown Box (e.g. Bill 1 Amount + Bill 2 Amount = Total Sum)
+ *   - Receipts Index Table in LIFO order
  */
-function generateConsolidatedReportPdf({
+function renderReportCoverPage(doc, {
   bills = [],
   currentMember = null,
-  userEmail = '',
-  selectedMonth = 'all',
   dateRangeStr = '',
+  totalAmount = 0,
+  formulaStr = '',
+  detailedFormulaStr = '',
 }) {
-  const doc = new jsPDF({
-    unit: 'pt',
-    format: 'a5',
-  });
-
-  const totalAmount = bills.reduce((acc, b) => acc + (Number(b.totalAmount) || 0), 0);
   const totalCount = bills.length;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-  // ----------------------------------------------------
-  // COVER PAGE (PAGE 1)
-  // ----------------------------------------------------
   // Document Title
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(17);
+  doc.setFontSize(16);
   doc.setTextColor(17, 18, 22);
-  doc.text('MONTHLY EXPENSE REPORT', 210, 48, { align: 'center' });
+  doc.text('CONSOLIDATED EXPENSE REPORT', pageWidth / 2, 42, { align: 'center' });
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text('Consolidated Out-of-Pocket Expense Summary', 210, 64, { align: 'center' });
+  doc.text('Official Out-of-Pocket Expense Summary • Multi-Receipt Audit', pageWidth / 2, 56, { align: 'center' });
 
   // Accent Gold Bar
   doc.setFillColor(236, 189, 86);
-  doc.rect(170, 72, 80, 2.5, 'F');
+  doc.rect((pageWidth - 70) / 2, 63, 70, 2, 'F');
 
-  // Summary Metadata Card Box (Light Paper Surface)
+  // Summary Metadata Card Box
   doc.setFillColor(242, 241, 237);
   doc.setDrawColor(221, 217, 208);
-  doc.roundedRect(30, 88, 360, 96, 6, 6, 'FD');
+  doc.roundedRect(26, 72, pageWidth - 52, 66, 5, 5, 'FD');
 
-  // Box Content: Paid By, Date Range, Total Consolidated Amount
-  doc.setFontSize(8.5);
+  // Box Content: Paid By, Date Range, Total Receipts, Total Consolidated Amount
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(132, 93, 8);
-  doc.text('PAID BY (USER):', 44, 108);
+  doc.text('PAID BY (USER):', 38, 86);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(17, 18, 22);
   doc.text(
     `${currentMember?.name || 'Member'} ${currentMember?.code ? `(${currentMember.code})` : ''}`,
-    44,
-    122
+    38,
+    98
   );
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(132, 93, 8);
-  doc.text('DATE RANGE / PERIOD:', 220, 108);
+  doc.text('DATE RANGE / PERIOD:', 220, 86);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(17, 18, 22);
-  doc.text(dateRangeStr || formatMonthTitle(selectedMonth), 220, 122);
+  doc.text(dateRangeStr || 'All History', 220, 98);
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(132, 93, 8);
-  doc.text('TOTAL RECEIPTS:', 44, 148);
+  doc.text('TOTAL RECEIPTS:', 38, 116);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(17, 18, 22);
-  doc.text(`${totalCount} Receipts`, 44, 162);
+  doc.text(`${totalCount} Receipts`, 38, 128);
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(132, 93, 8);
-  doc.text('TOTAL CONSOLIDATED AMOUNT:', 220, 148);
+  doc.text('CONSOLIDATED GRAND TOTAL:', 220, 116);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
+  doc.setFontSize(10.5);
   doc.setTextColor(132, 93, 8);
   doc.text(
     `INR ${Number(totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
     220,
-    163
+    128
   );
 
+  // Consolidated Sum Formula Box (Requirements 2: Total amount paid by user breakdown e.g. Bill 1 Amount + Bill 2 Amount = Total Sum)
+  let nextY = 144;
+  if (formulaStr) {
+    doc.setFillColor(254, 252, 243);
+    doc.setDrawColor(236, 189, 86);
+
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7.5);
+    const formulaLines = doc.splitTextToSize(formulaStr, pageWidth - 76);
+    const boxHeight = Math.max(30, 14 + formulaLines.length * 9);
+
+    doc.roundedRect(26, nextY, pageWidth - 52, boxHeight, 4, 4, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(132, 93, 8);
+    doc.text('CONSOLIDATED SUM CALCULATION (USER EXPENSE BREAKDOWN):', 36, nextY + 10);
+
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(17, 18, 22);
+    doc.text(formulaLines, 36, nextY + 20);
+
+    nextY += boxHeight + 8;
+  }
+
   // Summary Index Table Header
-  doc.setFontSize(9.5);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(17, 18, 22);
-  doc.text('RECEIPTS INDEX (LIFO ORDER):', 30, 204);
+  doc.text('RECEIPTS INDEX (LIFO ORDER):', 26, nextY + 4);
 
   // Index Table Body
   const indexRows = bills.map((b) => [
@@ -350,7 +380,7 @@ function generateConsolidatedReportPdf({
   ]);
 
   autoTable(doc, {
-    startY: 212,
+    startY: nextY + 10,
     head: [['Receipt No.', 'Date', 'Expense Type', 'Items', 'Amount']],
     body: indexRows,
     theme: 'plain',
@@ -358,71 +388,50 @@ function generateConsolidatedReportPdf({
       fillColor: [236, 189, 86],
       textColor: [17, 18, 22],
       fontStyle: 'bold',
-      fontSize: 8.5,
+      fontSize: 8,
     },
     bodyStyles: {
-      fontSize: 8,
+      fontSize: 7.5,
       textColor: [17, 18, 22],
     },
     columnStyles: {
-      0: { cellWidth: 65 },
-      1: { cellWidth: 70 },
+      0: { cellWidth: 60 },
+      1: { cellWidth: 65 },
       2: { cellWidth: 'auto' },
       3: { cellWidth: 35, halign: 'center' },
-      4: { cellWidth: 85, halign: 'right' },
+      4: { cellWidth: 80, halign: 'right' },
     },
-    margin: { left: 30, right: 30 },
+    margin: { left: 26, right: 26 },
   });
 
-  const finalCoverY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 320;
+  const finalCoverY = doc.lastAutoTable ? doc.lastAutoTable.finalY : nextY + 90;
 
   // Cover Page Total Row
   doc.setDrawColor(17, 18, 22);
   doc.setLineWidth(1.2);
-  doc.line(30, finalCoverY + 8, 390, finalCoverY + 8);
+  doc.line(26, finalCoverY + 6, pageWidth - 26, finalCoverY + 6);
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(17, 18, 22);
-  doc.text('CONSOLIDATED GRAND TOTAL:', 30, finalCoverY + 22);
+  doc.text('CONSOLIDATED GRAND TOTAL:', 26, finalCoverY + 16);
   doc.text(
     `INR ${Number(totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-    390,
-    finalCoverY + 22,
+    pageWidth - 26,
+    finalCoverY + 16,
     { align: 'right' }
   );
 
   // Cover Page Footer Notice
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(120, 120, 120);
   doc.text(
     `Generated on ${formatBillDisplayDate(new Date().toISOString())} • Page 1 of ${totalCount + 1}`,
-    210,
-    570,
+    pageWidth / 2,
+    pageHeight - 12,
     { align: 'center' }
   );
-
-  // ----------------------------------------------------
-  // SUBSEQUENT PAGES: ALL INDIVIDUAL RECEIPTS IN LIFO ORDER
-  // ----------------------------------------------------
-  bills.forEach((bill, idx) => {
-    doc.addPage('a5', 'portrait');
-    renderSingleReceiptPage(doc, bill, 42);
-
-    // Page numbering footer
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(130, 130, 130);
-    doc.text(
-      `Consolidated Report • Receipt ${idx + 1} of ${totalCount} • Page ${idx + 2} of ${totalCount + 1}`,
-      210,
-      570,
-      { align: 'center' }
-    );
-  });
-
-  return doc;
 }
 
 /**
@@ -430,11 +439,12 @@ function generateConsolidatedReportPdf({
  */
 export function ThermalSawtoothEdge({ position = 'top' }) {
   return (
-    <div className={`w-full overflow-hidden leading-none select-none ${position === 'top' ? '-mb-0.5' : '-mt-0.5'}`}>
+    <div className="w-full overflow-hidden leading-none select-none block" style={{ height: '8px', lineHeight: 0 }}>
       <svg
         viewBox="0 0 100 8"
         preserveAspectRatio="none"
-        className="w-full h-2.5 text-white fill-current block"
+        className="w-full h-full text-white fill-current block"
+        style={{ display: 'block', width: '100%', height: '8px' }}
       >
         {position === 'top' ? (
           <polygon points="0,8 2.5,0 5,8 7.5,0 10,8 12.5,0 15,8 17.5,0 20,8 22.5,0 25,8 27.5,0 30,8 32.5,0 35,8 37.5,0 40,8 42.5,0 45,8 47.5,0 50,8 52.5,0 55,8 57.5,0 60,8 62.5,0 65,8 67.5,0 70,8 72.5,0 75,8 77.5,0 80,8 82.5,0 85,8 87.5,0 90,8 92.5,0 95,8 97.5,0 100,8" />
@@ -447,65 +457,63 @@ export function ThermalSawtoothEdge({ position = 'top' }) {
 }
 
 /**
- * Realistic thermal cash barcode graphic with code below
- */
-export function ThermalBarcode({ code = '00001' }) {
-  const cleanCode = String(code || '00001').replace('#', '').trim();
-  const bars = useMemo(() => [2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 1, 3, 1, 2, 3, 1, 2, 4, 1, 2, 1, 3, 2], []);
-  return (
-    <div className="flex flex-col items-center justify-center py-2 select-none">
-      <div className="flex items-stretch h-11 gap-[2px]">
-        {bars.map((width, idx) => (
-          <div
-            key={idx}
-            className={`bg-[#111216] ${idx % 2 === 0 ? 'opacity-100' : 'opacity-0'}`}
-            style={{ width: `${width * 1.5}px` }}
-          />
-        ))}
-      </div>
-      <span className="font-mono text-[10px] tracking-[0.25em] text-[#111216] mt-1.5 font-bold">
-        * {cleanCode} - 2026 *
-      </span>
-    </div>
-  );
-}
-
-/**
  * Exact Thermal Cash Receipt UI Component
  * Features:
  *   - Jagged / saw-tooth perforated paper edges (top & bottom)
- *   - Centered shop / store header (* EXPENSE RECEIPT *, OUT-OF-POCKET CASH VOUCHER, RECEIPT NO)
+ *   - Centered shop / store header (* EXPENSE RECEIPT *, RECEIPT NO)
  *   - Asterisk divider lines (* * * * * * * * * *)
  *   - Swapped metadata columns (Left: Expense Type & Paid By, Right: Date & Time & Recorded By)
- *   - Monospace QTY, DESCRIPTION, PRICE(INR) table
+ *   - HTML table with fixed layout and S.No, DESCRIPTION, PRICE(INR) columns
  *   - Total section with double borders
- *   - Thermal barcode graphic at bottom
- *   - Zero "Vessel Wash" branding and zero "Thank you" footer
+ *   - Zero barcode, zero footer text, zero "Cash Voucher" label
  */
 export function ThermalReceipt({ bill }) {
   if (!bill) return null;
   return (
-    <div className="w-full max-w-[380px] mx-auto filter drop-shadow-md select-none font-mono">
+    <div
+      className="mx-auto select-none"
+      style={{
+        width: '360px',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        fontFamily: "'Courier New', Courier, monospace",
+      }}
+    >
       {/* Jagged Top Perforation */}
       <ThermalSawtoothEdge position="top" />
 
       {/* Thermal Paper Body */}
-      <div className="bg-white text-[#111216] px-5 py-4 space-y-3">
-        {/* Centered Store / Cash Header */}
-        <div className="text-center space-y-1">
-          <div className="text-[10px] tracking-widest text-[#666] select-none font-bold">
+      <div
+        className="bg-white text-[#111216]"
+        style={{
+          padding: '16px 18px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Centered Store Header */}
+        <div className="text-center" style={{ marginBottom: '10px' }}>
+          <div
+            className="text-[10px] tracking-widest text-[#666] font-bold select-none overflow-hidden"
+            style={{ whiteSpace: 'nowrap', marginBottom: '3px' }}
+          >
             * * * * * * * * * * * * * * * * * * * *
           </div>
-          <h3 className="text-base font-black tracking-wider uppercase text-[#111216]">
+          <h3
+            className="text-base font-black tracking-wider uppercase text-[#111216]"
+            style={{ margin: '2px 0' }}
+          >
             * EXPENSE RECEIPT *
           </h3>
-          <p className="text-[10px] font-bold tracking-widest uppercase text-[#555]">
-            OUT-OF-POCKET CASH VOUCHER
-          </p>
-          <div className="text-xs font-black tracking-wide text-[#111216] pt-0.5">
+          <div
+            className="text-xs font-black tracking-wide text-[#111216]"
+            style={{ margin: '3px 0' }}
+          >
             RECEIPT NO: {bill.receiptId || '#00001'}
           </div>
-          <div className="text-[10px] tracking-widest text-[#666] select-none font-bold">
+          <div
+            className="text-[10px] tracking-widest text-[#666] font-bold select-none overflow-hidden"
+            style={{ whiteSpace: 'nowrap', marginTop: '3px' }}
+          >
             * * * * * * * * * * * * * * * * * * * *
           </div>
         </div>
@@ -513,13 +521,24 @@ export function ThermalReceipt({ bill }) {
         {/* Metadata Section - Swapped Columns:
             Left Side: Expense Type & Paid By
             Right Side: Date & Time & Recorded By */}
-        <div className="grid grid-cols-2 gap-3 text-[11px] pb-2 text-left leading-tight border-b border-dashed border-gray-300">
-          <div className="space-y-1.5">
-            <div>
+        <div
+          className="pb-2.5 text-left border-b border-dashed border-gray-300"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: '12px',
+            fontSize: '11px',
+            lineHeight: '1.35',
+            marginBottom: '8px',
+          }}
+        >
+          <div style={{ flex: '1 1 50%', minWidth: 0 }}>
+            <div style={{ marginBottom: '6px' }}>
               <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
                 EXPENSE TYPE
               </span>
-              <span className="font-black text-[#111216] block break-words">
+              <span className="font-black text-[#111216] block break-words" style={{ fontSize: '11px' }}>
                 {bill.expenseType || 'General Expense'}
               </span>
             </div>
@@ -527,18 +546,18 @@ export function ThermalReceipt({ bill }) {
               <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
                 PAID BY
               </span>
-              <span className="font-black text-[#111216] block break-words">
+              <span className="font-black text-[#111216] block break-words" style={{ fontSize: '11px' }}>
                 {bill.paidByMemberName || 'Member'} {bill.paidByMemberCode ? `(${bill.paidByMemberCode})` : ''}
               </span>
             </div>
           </div>
 
-          <div className="space-y-1.5 text-right">
-            <div>
+          <div style={{ flex: '1 1 50%', textAlign: 'right', minWidth: 0 }}>
+            <div style={{ marginBottom: '6px' }}>
               <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
                 DATE &amp; TIME
               </span>
-              <span className="font-bold text-[#111216] block">
+              <span className="font-bold text-[#111216] block whitespace-nowrap" style={{ fontSize: '10.5px' }}>
                 {formatBillDisplayDate(bill.billDateTime)}
               </span>
             </div>
@@ -546,7 +565,7 @@ export function ThermalReceipt({ bill }) {
               <span className="text-[9px] uppercase font-bold text-gray-500 block tracking-wider">
                 RECORDED BY
               </span>
-              <span className="font-bold text-[#111216] block break-words">
+              <span className="font-bold text-[#111216] block break-words" style={{ fontSize: '11px' }}>
                 {bill.creatorName || bill.paidByMemberName || 'User'}
               </span>
             </div>
@@ -554,71 +573,123 @@ export function ThermalReceipt({ bill }) {
         </div>
 
         {/* Divider */}
-        <div className="text-center text-[10px] tracking-widest text-gray-400 select-none">
+        <div
+          className="text-center text-[10px] tracking-widest text-gray-400 select-none overflow-hidden"
+          style={{ whiteSpace: 'nowrap', margin: '6px 0' }}
+        >
           - - - - - - - - - - - - - - - - - - - -
         </div>
 
-        {/* Line Items Table */}
-        <div className="space-y-1.5">
-          <div className="grid grid-cols-12 gap-1 text-[10px] font-black uppercase text-gray-600 pb-1 border-b border-gray-300">
-            <span className="col-span-2">QTY</span>
-            <span className="col-span-7">DESCRIPTION</span>
-            <span className="col-span-3 text-right">PRICE(INR)</span>
-          </div>
-
-          <div className="space-y-1 divide-y divide-dashed divide-gray-100 text-[11px]">
-            {(bill.lineItems || []).map((item, idx) => (
-              <div key={item.id || idx} className="grid grid-cols-12 gap-1 pt-1 items-baseline">
-                <span className="col-span-2 font-bold text-gray-500">#{item.sNo || idx + 1}</span>
-                <span className="col-span-7 font-bold text-[#111216] break-words">{item.particular}</span>
-                <span className="col-span-3 text-right font-black text-[#111216]">
-                  {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            ))}
-          </div>
+        {/* Line Items Table with S.No Column Header */}
+        <div style={{ margin: '6px 0' }}>
+          <table
+            style={{
+              width: '100%',
+              tableLayout: 'fixed',
+              borderCollapse: 'collapse',
+              fontSize: '11px',
+            }}
+          >
+            <thead>
+              <tr
+                className="text-[10px] font-black uppercase text-gray-600 border-b border-gray-300"
+                style={{ lineHeight: '1.4' }}
+              >
+                <th style={{ width: '18%', textAlign: 'left', paddingBottom: '4px' }}>S.No</th>
+                <th style={{ width: '52%', textAlign: 'left', paddingBottom: '4px' }}>DESCRIPTION</th>
+                <th style={{ width: '30%', textAlign: 'right', paddingBottom: '4px' }}>PRICE(INR)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-dashed divide-gray-200">
+              {(bill.lineItems || []).map((item, idx) => (
+                <tr key={item.id || idx}>
+                  <td style={{ width: '18%', padding: '4px 0', verticalAlign: 'top', color: '#6b7280', fontWeight: 'bold' }}>
+                    #{item.sNo || idx + 1}
+                  </td>
+                  <td
+                    style={{
+                      width: '52%',
+                      padding: '4px 4px 4px 0',
+                      verticalAlign: 'top',
+                      fontWeight: 'bold',
+                      color: '#111216',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {item.particular}
+                  </td>
+                  <td
+                    style={{
+                      width: '30%',
+                      padding: '4px 0',
+                      verticalAlign: 'top',
+                      textAlign: 'right',
+                      fontWeight: '900',
+                      color: '#111216',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {Number(item.amount).toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Divider */}
-        <div className="text-center text-[10px] tracking-widest text-gray-400 select-none">
+        <div
+          className="text-center text-[10px] tracking-widest text-gray-400 select-none overflow-hidden"
+          style={{ whiteSpace: 'nowrap', margin: '6px 0' }}
+        >
           = = = = = = = = = = = = = = = = = = = =
         </div>
 
         {/* Total Section with Double Border Style */}
-        <div className="py-1 space-y-1">
-          <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+        <div style={{ padding: '4px 0' }}>
+          <div
+            className="flex justify-between items-center text-xs font-bold text-gray-600"
+            style={{ marginBottom: '3px' }}
+          >
             <span>ITEMS COUNT:</span>
             <span>{bill.lineItems?.length || 0}</span>
           </div>
-          <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+          <div
+            className="flex justify-between items-center text-xs font-bold text-gray-600"
+            style={{ marginBottom: '3px' }}
+          >
             <span>SUBTOTAL:</span>
             <span>
-              INR {Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              INR {Number(bill.totalAmount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
-          <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+          <div
+            className="flex justify-between items-center text-xs font-bold text-gray-600"
+            style={{ marginBottom: '6px' }}
+          >
             <span>TAX / DEDUCTION (0%):</span>
             <span>INR 0.00</span>
           </div>
-          <div className="pt-2 border-t-2 border-b-2 border-black py-1.5 flex justify-between items-center">
-            <span className="font-black text-sm tracking-wide text-black">TOTAL AMOUNT:</span>
-            <span className="font-black text-base text-black tracking-tight">
-              INR {Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div
+            className="pt-2 border-t-2 border-b-2 border-black flex justify-between items-center"
+            style={{ padding: '6px 0' }}
+          >
+            <span className="font-black text-xs uppercase tracking-wide text-black">
+              TOTAL AMOUNT:
+            </span>
+            <span className="font-black text-sm text-black tracking-tight whitespace-nowrap">
+              INR {Number(bill.totalAmount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
-        </div>
-
-        {/* Thermal Barcode Graphic */}
-        <ThermalBarcode code={bill.receiptId || '00001'} />
-
-        {/* Bottom Notice */}
-        <div className="text-center pt-1 border-t border-dashed border-gray-200">
-          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
-            OFFICIAL CASH EXPENSE RECORD
-          </span>
-          <span className="text-[8px] text-gray-400 block mt-0.5">
-            AUTHENTIC THERMAL VOUCHER &bull; LIFO AUDIT
-          </span>
         </div>
       </div>
 
@@ -881,22 +952,139 @@ export function BillScreen({
   const [exportingBill, setExportingBill] = useState(null);
   const [exportingPng, setExportingPng] = useState(false);
   const offscreenReceiptRef = useRef(null);
-  const modalReceiptRef = useRef(null);
+
+  // Date Range Selector & Consolidated Report State (Requirement 2)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [activeRangePreset, setActiveRangePreset] = useState('this_month');
+  const [exportStartDate, setExportStartDate] = useState(() => {
+    const now = new Date();
+    return toDateInputString(new Date(now.getFullYear(), now.getMonth(), 1));
+  });
+  const [exportEndDate, setExportEndDate] = useState(() => {
+    return toDateInputString(new Date());
+  });
+  const [reportProgress, setReportProgress] = useState({ current: 0, total: 0 });
+  const [exportingReportBill, setExportingReportBill] = useState(null);
+  const offscreenReportBillRef = useRef(null);
+
+  // Filter bills matching selected date range for consolidated export
+  const matchingReportBills = useMemo(() => {
+    return userBills
+      .filter(bill => {
+        const bDate = bill.billDateTime || bill.createdAt;
+        if (!bDate) return true;
+        const bDateStr = toDateInputString(new Date(bDate));
+        if (exportStartDate && bDateStr < exportStartDate) return false;
+        if (exportEndDate && bDateStr > exportEndDate) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.billDateTime).getTime();
+        const timeB = new Date(b.createdAt || b.billDateTime).getTime();
+        return timeB - timeA; // strict LIFO order
+      });
+  }, [userBills, exportStartDate, exportEndDate]);
+
+  // Total amount of matching report bills
+  const reportTotalSum = useMemo(() => {
+    return matchingReportBills.reduce((acc, b) => acc + (Number(b.totalAmount) || 0), 0);
+  }, [matchingReportBills]);
+
+  // Consolidated Sum Calculation breakdown string (Requirement 2: e.g. Bill 1 Amount + Bill 2 Amount = Total Sum)
+  const consolidatedFormulaStr = useMemo(() => {
+    if (matchingReportBills.length === 0) return 'No receipts in selected range';
+    if (matchingReportBills.length === 1) {
+      const b = matchingReportBills[0];
+      const amt = Number(b.totalAmount || 0).toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      return `${b.receiptId || '#00001'} (₹${amt}) = ₹${amt}`;
+    }
+    const amountsStr = matchingReportBills
+      .map(b => '₹' + Number(b.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+      .join(' + ');
+    const totalStr = '₹' + Number(reportTotalSum).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${amountsStr} = ${totalStr}`;
+  }, [matchingReportBills, reportTotalSum]);
+
+  // Detailed breakdown with Receipt IDs
+  const consolidatedDetailedFormulaStr = useMemo(() => {
+    if (matchingReportBills.length <= 1) return '';
+    const items = matchingReportBills
+      .map(b => `${b.receiptId || '#00001'} (₹${Number(b.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`)
+      .join(' + ');
+    const totalStr = '₹' + Number(reportTotalSum).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${items} = ${totalStr}`;
+  }, [matchingReportBills, reportTotalSum]);
+
+  // Readable date range label
+  const reportDateRangeLabel = useMemo(() => {
+    if (!exportStartDate && !exportEndDate) return 'All History';
+    if (exportStartDate && exportEndDate) {
+      const s = formatShortDate(exportStartDate);
+      const e = formatShortDate(exportEndDate);
+      return s === e ? s : `${s} – ${e}`;
+    }
+    if (exportStartDate) return `From ${formatShortDate(exportStartDate)}`;
+    if (exportEndDate) return `Up to ${formatShortDate(exportEndDate)}`;
+    return 'Custom Range';
+  }, [exportStartDate, exportEndDate]);
+
+  // Quick preset button handler
+  const handleQuickRange = (preset) => {
+    setActiveRangePreset(preset);
+    const now = new Date();
+    if (preset === 'this_month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setExportStartDate(toDateInputString(firstDay));
+      setExportEndDate(toDateInputString(now));
+    } else if (preset === 'last_month') {
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      setExportStartDate(toDateInputString(firstDayLastMonth));
+      setExportEndDate(toDateInputString(lastDayLastMonth));
+    } else if (preset === 'last_30_days') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      setExportStartDate(toDateInputString(thirtyDaysAgo));
+      setExportEndDate(toDateInputString(now));
+    } else if (preset === 'all') {
+      setExportStartDate('');
+      setExportEndDate(toDateInputString(now));
+    }
+  };
+
+  // Open Export Modal with current month preset synced
+  const handleOpenExportModal = () => {
+    if (selectedMonth && selectedMonth !== 'all') {
+      try {
+        const [y, m] = selectedMonth.split('-');
+        const firstDay = new Date(Number(y), Number(m) - 1, 1);
+        const lastDay = new Date(Number(y), Number(m), 0);
+        setExportStartDate(toDateInputString(firstDay));
+        setExportEndDate(toDateInputString(lastDay));
+        setActiveRangePreset('custom');
+      } catch {
+        handleQuickRange('this_month');
+      }
+    } else {
+      handleQuickRange('this_month');
+    }
+    setIsExportModalOpen(true);
+  };
 
   // Individual Thermal Receipt Download as PNG & Native Share (Requirement 1)
-  const downloadReceiptAsPng = async (bill, targetElement = null) => {
+  const downloadReceiptAsPng = async (bill) => {
     if (!bill) return;
     setExportingPng(true);
     const cleanId = String(bill.receiptId || '00001').replace('#', '').trim();
     const filename = `Expense_Receipt_${cleanId}.png`;
 
     try {
-      let element = targetElement;
-      if (!element) {
-        setExportingBill(bill);
-        await new Promise(r => setTimeout(r, 120));
-        element = offscreenReceiptRef.current;
-      }
+      setExportingBill(bill);
+      // Wait for React to render the dedicated offscreen receipt
+      await new Promise(r => setTimeout(r, 120));
+      const element = offscreenReceiptRef.current;
 
       if (!element) {
         console.warn('[Receipt] Could not find thermal receipt element to capture');
@@ -955,39 +1143,111 @@ export function BillScreen({
 
   const handleDownloadAndShareReceipt = downloadReceiptAsPng;
 
-  // Consolidated Multi-Bill Export with Cover Page (Requirement 1 & 3)
-  const handleExportConsolidatedReport = async () => {
-    if (displayedBills.length === 0) return;
+  // Consolidated Multi-Bill Export with Cover Page (Requirement 2: Date Range, Consolidated Formula & Thermal UI Template)
+  const handleGenerateConsolidatedReport = async () => {
+    if (matchingReportBills.length === 0) return;
     setExportingReport(true);
-    try {
-      const ymTag = selectedMonth === 'all' ? 'All_History' : selectedMonth;
-      const filename = `Consolidated_Expense_Report_${ymTag}.pdf`;
+    setReportProgress({ current: 0, total: matchingReportBills.length });
 
-      const doc = generateConsolidatedReportPdf({
-        bills: displayedBills,
-        currentMember,
-        userEmail,
-        selectedMonth,
-        dateRangeStr: computedDateRangeStr,
+    try {
+      const doc = new jsPDF({
+        unit: 'pt',
+        format: 'a5',
       });
+
+      // 1. Cover Page (Page 1) with consolidated sum breakdown formula
+      renderReportCoverPage(doc, {
+        bills: matchingReportBills,
+        currentMember,
+        dateRangeStr: reportDateRangeLabel,
+        totalAmount: reportTotalSum,
+        formulaStr: consolidatedFormulaStr,
+        detailedFormulaStr: consolidatedDetailedFormulaStr,
+      });
+
+      // 2. Subsequent Pages: Exact Thermal Receipt UI Template
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      for (let i = 0; i < matchingReportBills.length; i++) {
+        const bill = matchingReportBills[i];
+        setReportProgress({ current: i + 1, total: matchingReportBills.length });
+        setExportingReportBill(bill);
+
+        // Allow DOM to update and render thermal receipt offscreen
+        await new Promise(r => setTimeout(r, 90));
+
+        const element = offscreenReportBillRef.current;
+        if (!element) continue;
+
+        const canvas = await html2canvas(element, {
+          scale: 2.5,
+          useCORS: true,
+          backgroundColor: '#FFFFFF',
+          scrollX: 0,
+          scrollY: 0,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        doc.addPage('a5', 'portrait');
+
+        // Header on receipt page
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(132, 93, 8);
+        doc.text(`EXPENSE RECEIPT • ${bill.receiptId || '#00001'}`, 26, 24);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(110, 110, 110);
+        doc.text(
+          `${formatShortDate(bill.billDateTime)} • ${i + 1} of ${matchingReportBills.length}`,
+          pageWidth - 26,
+          24,
+          { align: 'right' }
+        );
+
+        // Display thermal receipt image cleanly centered
+        const targetWidth = 260;
+        let finalWidth = targetWidth;
+        let finalHeight = (canvas.height * targetWidth) / canvas.width;
+
+        if (finalHeight > pageHeight - 65) {
+          finalHeight = pageHeight - 65;
+          finalWidth = (canvas.width * finalHeight) / canvas.height;
+        }
+
+        const finalX = (pageWidth - finalWidth) / 2;
+        const finalY = 32;
+
+        doc.addImage(imgData, 'PNG', finalX, finalY, finalWidth, finalHeight);
+
+        // Footer on receipt page
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(130, 130, 130);
+        doc.text(
+          `Consolidated Expense Report • Receipt ${i + 1} of ${matchingReportBills.length} • Page ${i + 2} of ${matchingReportBills.length + 1}`,
+          pageWidth / 2,
+          pageHeight - 12,
+          { align: 'center' }
+        );
+      }
+
+      const filename = `Consolidated_Expense_Report_${exportStartDate || 'Start'}_to_${exportEndDate || 'End'}.pdf`;
 
       // 1. Direct File Download
       doc.save(filename);
 
-      // 2. Simultaneous Native Device Sharing
+      // 2. Native Share
       try {
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
         const shareData = {
-          title: `Monthly Expense Report - ${computedDateRangeStr}`,
-          text: `Consolidated Monthly Expense Report for ${computedDateRangeStr} • Total: ₹${Number(monthlyMetrics.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${displayedBills.length} receipts) - Paid by ${currentMember?.name}`,
+          title: `Consolidated Expense Report (${reportDateRangeLabel})`,
+          text: `Consolidated Expense Report (${reportDateRangeLabel}) • Total: ₹${Number(reportTotalSum).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${matchingReportBills.length} receipts) - Paid by ${currentMember?.name}`,
         };
-
         if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-          await navigator.share({
-            ...shareData,
-            files: [pdfFile],
-          });
+          await navigator.share({ ...shareData, files: [pdfFile] });
         } else if (navigator.share) {
           await navigator.share(shareData);
         }
@@ -996,9 +1256,12 @@ export function BillScreen({
           console.warn('[ConsolidatedExport] Share sheet dismissed:', shareErr);
         }
       }
+
+      setIsExportModalOpen(false);
     } catch (err) {
-      console.error('[ConsolidatedExport] Failed to export consolidated report:', err);
+      console.error('[ConsolidatedExport] Failed to generate consolidated report:', err);
     } finally {
+      setExportingReportBill(null);
       setExportingReport(false);
     }
   };
@@ -1019,8 +1282,9 @@ export function BillScreen({
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '380px',
+          width: '360px',
           zIndex: -9999,
+          opacity: 0,
           pointerEvents: 'none',
         }}
         aria-hidden="true"
@@ -1028,9 +1292,32 @@ export function BillScreen({
         {exportingBill && (
           <div
             ref={offscreenReceiptRef}
-            style={{ width: '380px', padding: '12px 6px' }}
+            style={{ width: '360px', boxSizing: 'border-box' }}
           >
             <ThermalReceipt bill={exportingBill} />
+          </div>
+        )}
+      </div>
+
+      {/* Hidden Offscreen Thermal Receipt for Report PDF Generation */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '360px',
+          zIndex: -9999,
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
+      >
+        {exportingReportBill && (
+          <div
+            ref={offscreenReportBillRef}
+            style={{ width: '360px', boxSizing: 'border-box' }}
+          >
+            <ThermalReceipt bill={exportingReportBill} />
           </div>
         )}
       </div>
@@ -1057,14 +1344,14 @@ export function BillScreen({
 
           {/* Desktop/Tablet Docked Action Bar: Responsive FAB & Consolidated Export (Requirement 4) */}
           <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            {/* Consolidated Report Export Button */}
-            {displayedBills.length > 0 && (
+            {/* Consolidated Report Export Button (Opens Date Range Selector Modal) */}
+            {userBills.length > 0 && (
               <button
                 type="button"
-                onClick={handleExportConsolidatedReport}
+                onClick={handleOpenExportModal}
                 disabled={exportingReport}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs active-scale"
-                title={`Export Consolidated PDF for ${computedDateRangeStr} with Cover Page`}
+                title="Prepare and Export Consolidated Expense Report with Date Range"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-[#ECBD56]" />
                 <span>{exportingReport ? 'Exporting...' : 'Export Report'}</span>
@@ -1347,7 +1634,7 @@ export function BillScreen({
                       onClick={() => downloadReceiptAsPng(bill)}
                       disabled={exportingPng}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold shadow-2xs active-scale transition-all cursor-pointer"
-                      title="Download Thermal Cash Receipt PNG"
+                      title="Download Expense Receipt PNG"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download Receipt</span>
@@ -1548,14 +1835,14 @@ export function BillScreen({
         isOpen={Boolean(previewBill)}
         onClose={() => setPreviewBill(null)}
         title="Expense Receipt"
-        subtitle={`Receipt ${previewBill?.receiptId || ''} • Thermal Cash Voucher`}
+        subtitle={`Receipt ${previewBill?.receiptId || ''} • Expense Receipt`}
         className="max-w-md"
       >
         {previewBill && (
           <div className="space-y-4">
             {/* Authentic Thermal Receipt Paper Layout */}
             <div className="flex justify-center p-2.5 sm:p-4 bg-[#ECEAE3] dark:bg-[#0B0C0E] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
-              <div ref={modalReceiptRef} className="w-full flex justify-center">
+              <div className="w-full flex justify-center">
                 <ThermalReceipt bill={previewBill} />
               </div>
             </div>
@@ -1576,7 +1863,7 @@ export function BillScreen({
                 size="sm"
                 icon={Download}
                 loading={exportingPng}
-                onClick={() => downloadReceiptAsPng(previewBill, modalReceiptRef.current)}
+                onClick={() => downloadReceiptAsPng(previewBill)}
               >
                 Download PNG
               </Button>
@@ -1607,6 +1894,184 @@ export function BillScreen({
             </Button>
             <Button variant="destructive" size="sm" onClick={handleConfirmDelete}>
               Delete Receipt
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 9. DATE RANGE SELECTOR & CONSOLIDATED REPORT EXPORT MODAL (Requirement 2) */}
+      <Modal
+        isOpen={isExportModalOpen}
+        onClose={() => {
+          if (!exportingReport) setIsExportModalOpen(false);
+        }}
+        title="Export Consolidated Expense Report"
+        subtitle="Prepare multi-receipt report with date range & consolidated formula"
+        className="max-w-lg"
+      >
+        <div className="space-y-4">
+          {/* Quick Preset Buttons */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+              Quick Range Presets
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'this_month', label: 'This Month' },
+                { id: 'last_month', label: 'Last Month' },
+                { id: 'last_30_days', label: 'Last 30 Days' },
+                { id: 'all', label: 'All History' },
+              ].map(preset => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleQuickRange(preset.id)}
+                  disabled={exportingReport}
+                  className={`px-2.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    activeRangePreset === preset.id
+                      ? 'bg-[#ECBD56] text-[#111216] border-[#ECBD56] shadow-xs'
+                      : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date Range Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-[#ECBD56]" />
+                <span>Start Date</span>
+              </label>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => {
+                  setExportStartDate(e.target.value);
+                  setActiveRangePreset('custom');
+                }}
+                disabled={exportingReport}
+                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-[#ECBD56]" />
+                <span>End Date</span>
+              </label>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => {
+                  setExportEndDate(e.target.value);
+                  setActiveRangePreset('custom');
+                }}
+                disabled={exportingReport}
+                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+              />
+            </div>
+          </div>
+
+          {/* Live Preview & Calculation Summary Box */}
+          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ECBD56] block">
+                  Report Scope
+                </span>
+                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                  {reportDateRangeLabel}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] block">
+                  Matching Receipts
+                </span>
+                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                  {matchingReportBills.length} receipts
+                </span>
+              </div>
+            </div>
+
+            {/* Paid By info */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#4E525D] dark:text-[#9BA5B7]">Paid By (User):</span>
+              <span className="font-bold text-[#111216] dark:text-[#F7F6F3]">
+                {currentMember?.name || 'User'} {currentMember?.code ? `(${currentMember.code})` : ''}
+              </span>
+            </div>
+
+            {/* Total Sum */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-[#4E525D] dark:text-[#9BA5B7]">Total Consolidated Amount:</span>
+              <span className="text-base font-black text-[#ECBD56]">
+                ₹{reportTotalSum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Consolidated Sum Formula Breakdown (Exact User Requirement 2) */}
+            <div className="pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#4E525D] dark:text-[#9BA5B7] block">
+                Consolidated Calculation Formula:
+              </span>
+              <div className="p-2.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] font-mono text-[11px] leading-relaxed break-words text-[#111216] dark:text-[#F7F6F3]">
+                {consolidatedFormulaStr}
+              </div>
+              {consolidatedDetailedFormulaStr && (
+                <div className="p-2 rounded-lg bg-white/60 dark:bg-[#171F2C]/60 text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-mono break-words">
+                  {consolidatedDetailedFormulaStr}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Export Progress Bar */}
+          {exportingReport && (
+            <div className="p-3 rounded-xl bg-[#ECBD56]/15 border border-[#ECBD56]/30 text-xs space-y-2">
+              <div className="flex items-center justify-between font-bold text-[#111216] dark:text-[#F7F6F3]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#ECBD56] animate-ping" />
+                  <span>Converting Thermal Receipts to PDF...</span>
+                </span>
+                <span>
+                  {reportProgress.current} / {reportProgress.total}
+                </span>
+              </div>
+              <div className="w-full bg-[#DDD9D0] dark:bg-[#2A364B] h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-[#ECBD56] h-full transition-all duration-200"
+                  style={{
+                    width: `${reportProgress.total > 0 ? (reportProgress.current / reportProgress.total) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={exportingReport}
+              onClick={() => setIsExportModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              icon={Download}
+              loading={exportingReport}
+              disabled={matchingReportBills.length === 0 || exportingReport}
+              onClick={handleGenerateConsolidatedReport}
+            >
+              {exportingReport ? 'Generating Report...' : `Export PDF (${matchingReportBills.length})`}
             </Button>
           </div>
         </div>
