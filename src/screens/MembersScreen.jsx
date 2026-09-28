@@ -26,8 +26,6 @@ import {
   Search,
   X,
   Shield,
-  Utensils,
-  Hash,
 } from 'lucide-react';
 import {
   generateTemporaryPassword,
@@ -165,17 +163,7 @@ export function MembersScreen({
   const [editRole, setEditRole] = useState('member');
   const [editError, setEditError] = useState('');
 
-  // Calculate wash counts for each member
-  const getMemberWashStats = (memberId) => {
-    const logs = attendanceLogs.filter((l) => l.memberId === memberId && l.status === 'present');
-    const lunchCount = logs.filter((l) => l.meal === 'lunch').length;
-    const dinnerCount = logs.filter((l) => l.meal === 'dinner').length;
-    return {
-      lunch: lunchCount,
-      dinner: dinnerCount,
-      total: logs.length,
-    };
-  };
+
 
   const handleOpenAdd = () => {
     const seq = getNextMemberSequence(members);
