@@ -32,6 +32,7 @@ import {
 import {
   generateTemporaryPassword,
   generateDefaultUsername,
+  getNextMemberSequence,
 } from '../logic/authUtils';
 import { supabaseService } from '../services/supabaseService';
 
@@ -177,9 +178,9 @@ export function MembersScreen({
   };
 
   const handleOpenAdd = () => {
-    const nextNum = members.length + 1;
+    const seq = getNextMemberSequence(members);
     setNewName('');
-    setNewCode(`M${nextNum}`);
+    setNewCode(seq.code);
     setFormError('');
     setAddModalOpen(true);
   };
@@ -608,17 +609,16 @@ export function MembersScreen({
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredMembers.map((member) => {
+          {filteredMembers.map((member, index) => {
             const isActive = member.status === 'active';
             const isPrimary = isKavipriyan(member);
             const isThisAdmin = isMemberAdmin(member);
-            const queuePos = queue.indexOf(member.id);
-            const stats = getMemberWashStats(member.id);
             const credStatus = getMemberCredentialStatus(member);
             const memberWithCreds = {
               ...member,
               email: member.email || credStatus.email,
             };
+            const memberCode = member.code || `M${member.rotation_order || index + 1}`;
 
             return (
               <div
@@ -629,154 +629,100 @@ export function MembersScreen({
                     : 'bg-[#F2F1ED]/80 dark:bg-[#1F2A3C]/70 border-[#DDD9D0]/60 dark:border-[#2A364B]/60 opacity-80'
                 }`}
               >
-                <div className="p-3.5 sm:p-4">
-                  {/* Top: Member Info & Identity */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      {/* Avatar */}
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
-                          isPrimary || isThisAdmin
-                            ? 'admin-gradient text-white border border-[#ECBD56] ring-2 ring-[#ECBD56]/40 shadow-xs'
-                            : isActive
-                            ? 'bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40'
+                <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3">
+                  {/* Left: 1. Member ID, 2. Member Name, 3. Role Badge, 4. Member Active Status */}
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    {/* 1. Member ID Badge */}
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
+                        isPrimary || isThisAdmin
+                          ? 'admin-gradient text-white border border-[#ECBD56] shadow-xs'
+                          : isActive
+                          ? 'bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40'
+                          : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
+                      }`}
+                      title={`Member ID: ${memberCode}`}
+                    >
+                      {memberCode}
+                    </div>
+
+                    {/* 2. Member Name, 3. Role Badge, 4. Active Status Indicator */}
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <h3 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate max-w-[140px] sm:max-w-[200px]">
+                        {member.name}
+                      </h3>
+
+                      {/* 3. Role Badge */}
+                      {isPrimary ? (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                          <Crown className="w-3 h-3 text-[#ECBD56] fill-[#ECBD56]" />
+                          Primary Admin
+                        </span>
+                      ) : isThisAdmin ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                          <ShieldCheck className="w-3 h-3 text-[#ECBD56]" />
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B] shrink-0">
+                          Member
+                        </span>
+                      )}
+
+                      {/* 4. Active Status Indicator */}
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 ${
+                          isActive
+                            ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534]'
                             : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
                         }`}
                       >
-                        {isPrimary || isThisAdmin ? (
-                          <Crown className="w-5 h-5 text-[#ECBD56] fill-[#ECBD56]" />
-                        ) : (
-                          member.code
-                        )}
-                      </div>
-
-                      {/* Name & Primary Attributes */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate">
-                            {member.name}
-                          </h3>
-
-                          {/* Role Badge - Gold Theme & Admin Gradient */}
-                          {isPrimary ? (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 inline-flex items-center gap-1 shadow-2xs">
-                              <Crown className="w-3 h-3 text-[#ECBD56] fill-[#ECBD56]" />
-                              Primary Admin
-                            </span>
-                          ) : isThisAdmin ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/60 inline-flex items-center gap-1 shadow-2xs">
-                              <ShieldCheck className="w-3 h-3 text-[#ECBD56]" />
-                              Admin
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
-                              Member
-                            </span>
-                          )}
-
-                          {/* Active / Inactive Status Badge */}
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
-                              isActive
-                                ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534]'
-                                : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isActive ? 'bg-[#22AC77] dark:bg-[#4ADE80]' : 'bg-[#848A96] dark:bg-[#64748B]'
-                              }`}
-                            ></span>
-                            {isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-
-                        {/* Sub-line: Queue Position & Wash Stats */}
-                        <div className="flex items-center gap-2 text-xs text-[#848A96] dark:text-[#64748B] mt-1 flex-wrap">
-                          {isActive && queuePos !== -1 ? (
-                            <span className="font-bold text-[#111216] dark:text-[#ECBD56] inline-flex items-center gap-1 bg-[#ECBD56]/15 dark:bg-[#ECBD56]/20 px-2 py-0.5 rounded-full border border-[#ECBD56]/40 text-[11px]">
-                              <Hash className="w-3 h-3 text-[#ECBD56]" />
-                              Queue #{queuePos + 1}
-                              {queuePos === 0 ? ' (Next Up)' : ''}
-                            </span>
-                          ) : (
-                            <span className="text-[#848A96] dark:text-[#64748B]">Not in rotation</span>
-                          )}
-
-                          <span className="text-[#DDD9D0] dark:text-[#2A364B]">&bull;</span>
-
-                          <span className="inline-flex items-center gap-1 text-[#4E525D] dark:text-[#9BA5B7] font-medium">
-                            <Utensils className="w-3 h-3 text-[#848A96] dark:text-[#64748B]" />
-                            {stats.total} washes
-                            <span className="text-[#848A96] dark:text-[#64748B] text-[11px]">
-                              ({stats.lunch} lunch &bull; {stats.dinner} dinner)
-                            </span>
-                          </span>
-                        </div>
-
-                        {/* Credentials indicator */}
-                        <div className="mt-1.5 flex items-center gap-2">
-                          {credStatus.hasLogin ? (
-                            <div className="inline-flex items-center gap-1.5 text-[11px] text-[#22AC77] dark:text-[#4ADE80] bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 px-2.5 py-0.5 rounded-full">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-[#22AC77] dark:text-[#4ADE80]" />
-                              <span className="font-semibold text-[10px]">Login Active</span>
-                              {credStatus.email && (
-                                <span className="opacity-80 font-mono text-[10px] truncate max-w-[140px] sm:max-w-[220px]">
-                                  ({credStatus.email})
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#E0851A] dark:text-[#FF9F45] bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 border border-[#E0851A]/30 dark:border-[#FF9F45]/40 px-2.5 py-0.5 rounded-full">
-                              <AlertTriangle className="w-3 h-3 text-[#E0851A] dark:text-[#FF9F45]" />
-                              <span>No Login Set</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isActive ? 'bg-[#22AC77] dark:bg-[#4ADE80]' : 'bg-[#848A96] dark:bg-[#64748B]'
+                          }`}
+                        />
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bottom: Action Toolbar (Separated with clean top border) */}
-                  <div className="mt-3 pt-2.5 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    {/* Left: Credential Actions - Strictly Generate Credential OR Update Password */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {isAdmin ? (
-                        !credStatus.hasLogin ? (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCreateCredentials(memberWithCreds)}
-                            className="px-3 py-1.5 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale"
-                            title="Generate login credentials for this member"
-                          >
-                            <KeyRound className="w-3.5 h-3.5 text-[#111216]" />
-                            <span>Generate Credential</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenResetPassword(memberWithCreds)}
-                            className="px-3 py-1.5 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale"
-                            title="Update password for this member"
-                          >
-                            <KeyRound className="w-3.5 h-3.5 text-[#111216]" />
-                            <span>Update Password</span>
-                          </button>
-                        )
-                      ) : (
-                        <span className="text-[11px] text-[#848A96] dark:text-[#64748B] italic">
-                          {credStatus.hasLogin ? 'Login configured' : 'No credentials set'}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Right: Admin Action Buttons Toolbar */}
+                  {/* Right: 5. Credential Action & 6. Action Controls on the EXACT SAME ROW */}
+                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end flex-nowrap self-end sm:self-center">
+                    {/* 5. Credential Action Button ("Generate" for new users, "Update" for existing users) */}
                     {isAdmin && (
-                      <div className="flex items-center gap-1 justify-end">
-                        {/* Admin Role Toggle */}
+                      !credStatus.hasLogin ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCreateCredentials(memberWithCreds)}
+                          className="px-2.5 py-1 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-2xs active-scale shrink-0 whitespace-nowrap"
+                          title="Generate credentials for new user"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-[#111216] shrink-0" />
+                          <span>Generate</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenResetPassword(memberWithCreds)}
+                          className="px-2.5 py-1 text-xs font-bold text-[#111216] bg-[#ECBD56] hover:bg-[#DEAA3E] rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-2xs active-scale shrink-0 whitespace-nowrap"
+                          title="Update credentials for existing user"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-[#111216] shrink-0" />
+                          <span>Update</span>
+                        </button>
+                      )
+                    )}
+
+                    {/* 6. Action Controls: Make Admin, Edit, Inactive/Active toggle, Delete */}
+                    {isAdmin && (
+                      <>
+                        <div className="w-[1px] h-4 bg-[#DDD9D0] dark:bg-[#2A364B] mx-0.5 shrink-0" />
+
+                        {/* Make Admin / Co-Admin */}
                         {isPrimary ? (
                           <span
-                            className="p-1.5 text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-50"
+                            className="p-1.5 text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-50 shrink-0"
                             title="Primary Admin (Permanent)"
                           >
                             <Crown className="w-4 h-4 text-[#ECBD56] fill-[#ECBD56]" />
@@ -791,17 +737,16 @@ export function MembersScreen({
                                 action: 'revoke',
                               })
                             }
-                            className="px-2 py-1 text-[11px] font-bold text-[#D9483B] dark:text-[#FF5A4E] bg-[#D9483B]/10 dark:bg-[#FF5A4E]/15 border border-[#D9483B]/30 dark:border-[#FF5A4E]/40 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            className="p-1.5 text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 rounded-lg transition-colors cursor-pointer shrink-0"
                             title="Remove Co-Admin privileges"
                           >
-                            <ShieldAlert className="w-3.5 h-3.5 text-[#D9483B] dark:text-[#FF5A4E]" />
-                            <span>Remove Admin</span>
+                            <ShieldAlert className="w-4 h-4" />
                           </button>
                         ) : adminUserIds.length >= 2 ? (
                           <button
                             type="button"
                             disabled
-                            className="p-1.5 text-[#848A96] dark:text-[#64748B] cursor-not-allowed rounded-lg opacity-40"
+                            className="p-1.5 text-[#848A96] dark:text-[#64748B] cursor-not-allowed rounded-lg opacity-40 shrink-0"
                             title="Max 2 Admins reached. Remove Co-Admin to designate another."
                           >
                             <ShieldCheck className="w-4 h-4" />
@@ -816,58 +761,56 @@ export function MembersScreen({
                                 action: 'grant',
                               })
                             }
-                            className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#ECBD56] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] rounded-lg transition-colors cursor-pointer"
-                            title="Make Co-Admin (1 slot available)"
+                            className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#ECBD56] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] rounded-lg transition-colors cursor-pointer shrink-0"
+                            title="Make Co-Admin"
                           >
                             <Shield className="w-4 h-4" />
                           </button>
                         )}
 
-                        <div className="w-[1px] h-4 bg-[#DDD9D0] dark:bg-[#2A364B] mx-1"></div>
-
-                        {/* Edit Name Button */}
+                        {/* Edit Member */}
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(member)}
-                          className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] rounded-lg transition-colors cursor-pointer"
-                          title="Edit member name and details"
+                          className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] rounded-lg transition-colors cursor-pointer shrink-0"
+                          title="Edit member"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
 
-                        {/* Deactivate / Reactivate Button */}
+                        {/* Inactive / Active Toggle */}
                         <button
                           type="button"
                           onClick={() => setDeactivateModal({ isOpen: true, member })}
-                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
                             isActive
                               ? 'text-[#848A96] dark:text-[#64748B] hover:text-[#E0851A] dark:hover:text-[#FF9F45] hover:bg-[#E0851A]/10'
                               : 'text-[#22AC77] dark:text-[#4ADE80] hover:bg-[#22AC77]/10'
                           }`}
-                          title={isActive ? 'Deactivate from queue' : 'Reactivate into queue'}
+                          title={isActive ? 'Mark Inactive' : 'Mark Active'}
                         >
                           {isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                         </button>
 
-                        {/* Remove Member Button (Disabled for Primary Admin) */}
+                        {/* Delete Member */}
                         {!isPrimary ? (
                           <button
                             type="button"
                             onClick={() => handleOpenRemove(member)}
-                            className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#D9483B] dark:hover:text-[#FF5A4E] hover:bg-[#D9483B]/10 rounded-lg transition-colors cursor-pointer"
-                            title="Remove member permanently"
+                            className="p-1.5 text-[#848A96] dark:text-[#64748B] hover:text-[#D9483B] dark:hover:text-[#FF5A4E] hover:bg-[#D9483B]/10 rounded-lg transition-colors cursor-pointer shrink-0"
+                            title="Delete member"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         ) : (
                           <span
-                            className="p-1.5 text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-30"
-                            title="Primary Admin cannot be removed"
+                            className="p-1.5 text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-30 shrink-0"
+                            title="Primary Admin cannot be deleted"
                           >
                             <Trash2 className="w-4 h-4" />
                           </span>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>

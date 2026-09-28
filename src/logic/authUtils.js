@@ -96,3 +96,57 @@ export function generateTemporaryPassword() {
   const num = Math.floor(1000 + Math.random() * 9000);
   return `${word}#${num}`;
 }
+
+/**
+ * Automatically computes the next sequential Member ID and code (e.g., M1, M2... M6+).
+ * Finds the highest assigned sequence across member codes, IDs, and rotation orders.
+ * 
+ * @param {Array} members
+ * @returns {{ nextNum: number, code: string, id: string }}
+ */
+export function getNextMemberSequence(members = []) {
+  let maxNum = 0;
+  if (Array.isArray(members)) {
+    for (const m of members) {
+      if (!m) continue;
+      // 1. Check code property (e.g. 'M1', 'M2', 'M6')
+      if (m.code && typeof m.code === 'string') {
+        const match = m.code.trim().match(/^[Mm](\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+      // 2. Check id property (e.g. 'm1', 'm2', 'm6')
+      if (m.id && typeof m.id === 'string') {
+        const match = m.id.trim().match(/^[Mm](\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+      // 3. Check rotation_order property
+      if (typeof m.rotation_order === 'number' && m.rotation_order > maxNum) {
+        maxNum = m.rotation_order;
+      }
+    }
+
+    // Ensure sequence does not lag behind total member count
+    if (members.length > maxNum) {
+      maxNum = members.length;
+    }
+  }
+
+  // Base starting sequence: at least M5 baseline if canonical members exist
+  if (maxNum < 5 && Array.isArray(members) && members.length >= 5) {
+    maxNum = 5;
+  }
+
+  const nextNum = maxNum + 1;
+  return {
+    nextNum,
+    code: `M${nextNum}`,
+    id: `m${nextNum}`,
+  };
+}
+

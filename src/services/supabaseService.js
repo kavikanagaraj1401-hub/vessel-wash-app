@@ -38,10 +38,7 @@ export const supabaseService = {
 
         const idMatches = idKey && itemId && idKey === itemId;
         const emailMatches = emailKey && itemEmail && emailKey === itemEmail;
-        const nameMatches = nameKey && itemName && (
-          nameKey === itemName ||
-          (nameKey.length >= 3 && (itemName.includes(nameKey) || nameKey.includes(itemName)))
-        );
+        const nameMatches = nameKey && itemName && nameKey === itemName;
 
         if (idMatches || emailMatches || nameMatches) {
           foundIndex = i;
@@ -84,8 +81,18 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Fetch Members ordered by rotation_order & member_login_status
-      let dbMembers = [];
+      // 1. Fetch Application Settings (Rules, days config, queue, members_list) first (no RLS recursion)
+      const { data: dbSettings, error: settingsError } = await supabase
+        .from('application_settings')
+        .select('*');
+
+      if (settingsError) throw settingsError;
+
+      const settingsMap = new Map(
+        (dbSettings || []).map(s => [s.setting_key || s.key, s.setting_value || s.value])
+      );
+
+      // 2. Fetch live credential mappings from member_login_status view (no RLS recursion)
       let loginStatusList = [];
       try {
         const { data: statusRows, error: statusErr } = await supabase
@@ -98,25 +105,22 @@ export const supabaseService = {
         console.warn('⚠️ Notice querying member_login_status view:', stEx.message || stEx);
       }
 
-      const { data: remoteMembers, error: membersError } = await supabase
-        .from('members')
-        .select('*')
-        .order('rotation_order', { ascending: true });
+      // 3. Attempt to fetch members table (may fail with 42P17 RLS infinite recursion)
+      let dbMembers = [];
+      try {
+        const { data: remoteMembers, error: membersError } = await supabase
+          .from('members')
+          .select('*')
+          .order('rotation_order', { ascending: true });
 
-      if (membersError) {
-        console.warn('⚠️ Supabase members table query notice:', membersError.message || membersError);
-        try {
-          const { data: rpcMembers, error: rpcErr } = await supabase.rpc('get_all_members');
-          if (!rpcErr && rpcMembers && rpcMembers.length > 0) {
-            dbMembers = rpcMembers;
-            console.info('✓ Fetched members via get_all_members RPC fallback');
-          }
-        } catch (rpcEx) {
-          // ignore
+        if (!membersError && remoteMembers && remoteMembers.length > 0) {
+          dbMembers = remoteMembers;
         }
-      } else if (remoteMembers && remoteMembers.length > 0) {
-        dbMembers = remoteMembers;
+      } catch (mEx) {
+        // gracefully ignore RLS error
       }
+
+      const settingsMembers = settingsMap.get('members_list');
 
       const canonicalSeed = [
         { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
@@ -126,23 +130,35 @@ export const supabaseService = {
         { id: 'm5', name: 'Suryakumar', email: null, role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: false },
       ];
 
-      const rawMembers = dbMembers.length > 0
-        ? dbMembers.map((m, idx) => ({
-            id: m.id,
-            name: m.full_name || m.name,
-            email: m.email || null,
-            role: m.role || 'member',
-            code: `M${m.rotation_order || idx + 1}`,
-            status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
-            rotation_order: m.rotation_order || idx + 1,
-            created_at: m.created_at,
-            updated_at: m.updated_at,
-          }))
-        : canonicalSeed;
+      // Determine raw members: prioritize application_settings members_list (and merge with dbMembers if present)
+      let rawMembers = [];
+      if (Array.isArray(settingsMembers) && settingsMembers.length > 0) {
+        if (dbMembers.length > 0) {
+          rawMembers = this.deduplicateMembers([...settingsMembers, ...dbMembers]);
+        } else {
+          rawMembers = settingsMembers;
+        }
+      } else if (dbMembers.length > 0) {
+        rawMembers = dbMembers.map((m, idx) => ({
+          id: m.id,
+          name: m.full_name || m.name,
+          email: m.email || null,
+          role: m.role || 'member',
+          code: m.code || `M${m.rotation_order || idx + 1}`,
+          status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
+          rotation_order: m.rotation_order || idx + 1,
+          created_at: m.created_at,
+          updated_at: m.updated_at,
+        }));
+      } else {
+        rawMembers = canonicalSeed;
+        // Asynchronously initialize members_list in application_settings so it exists permanently
+        this.saveMembersList(canonicalSeed).catch(e => console.warn('Could not auto-seed members_list:', e));
+      }
 
       // Cross-reference with member_login_status view so UI credential indicators are always accurate
-      const enrichedMembers = rawMembers.map(m => {
-        const cleanName = (m.name || '').toLowerCase().trim();
+      const enrichedMembers = rawMembers.map((m, idx) => {
+        const cleanName = (m.name || m.full_name || '').toLowerCase().trim();
         const cleanEmail = (m.email || '').toLowerCase().trim();
         const match = loginStatusList.find(r => 
           (r.id && r.id === m.id) ||
@@ -156,34 +172,30 @@ export const supabaseService = {
           : (m.has_login_set !== undefined ? Boolean(m.has_login_set) : Boolean(email && email.includes('@')));
 
         return {
-          ...m,
+          id: m.id || `m${idx + 1}`,
+          name: m.name || m.full_name,
           email,
+          role: m.role || match?.role || 'member',
+          code: m.code || `M${m.rotation_order || idx + 1}`,
+          status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
+          rotation_order: m.rotation_order || idx + 1,
           has_login_set: hasLogin,
           auth_id: match?.id || m.auth_id || null,
+          created_at: m.created_at || m.createdAt || new Date().toISOString(),
+          updated_at: m.updated_at || m.updatedAt || new Date().toISOString(),
         };
       });
 
       const deduplicatedMembers = this.deduplicateMembers(enrichedMembers);
 
-      // 2. Fetch Application Settings (Rules, days config, queue)
-      const { data: dbSettings, error: settingsError } = await supabase
-        .from('application_settings')
-        .select('*');
-
-      if (settingsError) throw settingsError;
-
-      const settingsMap = new Map(
-        (dbSettings || []).map(s => [s.setting_key || s.key, s.setting_value || s.value])
-      );
-
-      // 3. Fetch Attendance History
+      // 4. Fetch Attendance History
       const { data: dbAttendance, error: attendanceError } = await supabase
         .from('attendance_history')
         .select('*');
 
       if (attendanceError) throw attendanceError;
 
-      // 4. Fetch Washer Activity
+      // 5. Fetch Washer Activity
       const { data: dbWasherActivity, error: washerError } = await supabase
         .from('washer_activity')
         .select('*');
@@ -250,31 +262,55 @@ export const supabaseService = {
         // ignore
       }
 
-      let dbMembers = [];
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .order('rotation_order', { ascending: true });
-
-      if (error) {
-        console.warn('⚠️ Supabase members table query in fetchMembers:', error.message);
-        // Fallback: If members table query encounters an issue (e.g. RLS), use member_login_status view
-        if (loginStatusList.length > 0) {
-          dbMembers = loginStatusList.map((r, idx) => ({
-            id: r.id,
-            full_name: r.full_name,
-            email: r.email,
-            role: r.role || 'member',
-            is_active: r.is_active !== undefined ? r.is_active : true,
-            has_login_set: r.has_login_set,
-            rotation_order: idx + 1,
-          }));
+      // 2. Fetch members_list from application_settings (reliable, no RLS recursion)
+      let settingsMembers = [];
+      try {
+        const { data: settingRow } = await supabase
+          .from('application_settings')
+          .select('setting_value')
+          .eq('setting_key', 'members_list')
+          .maybeSingle();
+        if (settingRow?.setting_value && Array.isArray(settingRow.setting_value)) {
+          settingsMembers = settingRow.setting_value;
         }
-      } else if (data && data.length > 0) {
-        dbMembers = data;
+      } catch (sEx) {
+        // ignore
       }
 
-      const mapped = (dbMembers || []).map((m, idx) => {
+      let dbMembers = [];
+      try {
+        const { data, error } = await supabase
+          .from('members')
+          .select('*')
+          .order('rotation_order', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          dbMembers = data;
+        }
+      } catch (mEx) {
+        // ignore
+      }
+
+      let sourceMembers = [];
+      if (settingsMembers.length > 0 && dbMembers.length > 0) {
+        sourceMembers = this.deduplicateMembers([...settingsMembers, ...dbMembers]);
+      } else if (settingsMembers.length > 0) {
+        sourceMembers = settingsMembers;
+      } else if (dbMembers.length > 0) {
+        sourceMembers = dbMembers;
+      } else if (loginStatusList.length > 0) {
+        sourceMembers = loginStatusList.map((r, idx) => ({
+          id: r.id,
+          full_name: r.full_name,
+          email: r.email,
+          role: r.role || 'member',
+          is_active: r.is_active !== undefined ? r.is_active : true,
+          has_login_set: r.has_login_set,
+          rotation_order: idx + 1,
+        }));
+      }
+
+      const mapped = (sourceMembers || []).map((m, idx) => {
         const cleanName = (m.full_name || m.name || '').toLowerCase().trim();
         const cleanEmail = (m.email || '').toLowerCase().trim();
         const match = loginStatusList.find(r => 
@@ -286,19 +322,19 @@ export const supabaseService = {
         const email = m.email || match?.email || null;
         const hasLogin = match?.has_login_set !== undefined 
           ? Boolean(match.has_login_set) 
-          : Boolean(email && email.includes('@'));
+          : (m.has_login_set !== undefined ? Boolean(m.has_login_set) : Boolean(email && email.includes('@')));
 
         return {
-          id: m.id,
+          id: m.id || `m${idx + 1}`,
           name: m.full_name || m.name,
           email,
           has_login_set: hasLogin,
-          role: m.role || 'member',
+          role: m.role || match?.role || 'member',
           code: m.code || `M${m.rotation_order || idx + 1}`,
-          status: m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active',
+          status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
           rotation_order: m.rotation_order || idx + 1,
-          createdAt: m.created_at || new Date().toISOString(),
-          updatedAt: m.updated_at || new Date().toISOString(),
+          createdAt: m.created_at || m.createdAt || new Date().toISOString(),
+          updatedAt: m.updated_at || m.updatedAt || new Date().toISOString(),
         };
       });
 
@@ -306,6 +342,56 @@ export const supabaseService = {
     } catch (err) {
       console.warn('⚠️ Failed to fetch fresh members from Supabase:', err.message || err);
       return [];
+    }
+  },
+
+  /**
+   * Persist full members list to application_settings for reliable persistence and multi-device realtime sync.
+   * Completely bypasses PostgreSQL members table RLS recursion error 42P17.
+   */
+  async saveMembersList(membersList = []) {
+    if (!isSupabaseConfigured || !supabase || !Array.isArray(membersList)) return false;
+    try {
+      const sanitized = membersList.map((m, idx) => ({
+        id: m.id,
+        code: m.code || `M${m.rotation_order || idx + 1}`,
+        name: m.name || m.full_name,
+        role: m.role || 'member',
+        email: m.email || null,
+        status: m.status || (m.is_active ? 'active' : 'inactive'),
+        has_login_set: Boolean(m.has_login_set),
+        rotation_order: m.rotation_order || idx + 1,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { data: existing } = await supabase
+        .from('application_settings')
+        .select('id')
+        .eq('setting_key', 'members_list')
+        .maybeSingle();
+
+      if (existing?.id) {
+        await supabase
+          .from('application_settings')
+          .update({
+            setting_value: sanitized,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+      } else {
+        await supabase.from('application_settings').insert([
+          {
+            setting_key: 'members_list',
+            setting_value: sanitized,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+      }
+      console.info(`✓ Successfully saved ${sanitized.length} members to application_settings 'members_list'`);
+      return true;
+    } catch (err) {
+      console.warn('⚠️ Could not sync members_list to application_settings:', err.message || err);
+      return false;
     }
   },
 
@@ -1098,6 +1184,33 @@ export const supabaseService = {
             console.warn('⚠️ Warning updating members table by name in createMemberCredentials:', updateErr.message);
           }
         }
+      }
+
+      // Also sync to application_settings 'members_list'
+      try {
+        const { data: settingRow } = await supabase
+          .from('application_settings')
+          .select('id, setting_value')
+          .eq('setting_key', 'members_list')
+          .maybeSingle();
+
+        if (settingRow?.setting_value && Array.isArray(settingRow.setting_value)) {
+          const updatedList = settingRow.setting_value.map(m => {
+            const isMatch = (memberId && m.id === memberId) ||
+              (cleanEmail && m.email && m.email.toLowerCase().trim() === cleanEmail) ||
+              (displayName && m.name && m.name.toLowerCase().trim() === displayName.toLowerCase().trim());
+            if (isMatch) {
+              return { ...m, email: cleanEmail, has_login_set: true, role };
+            }
+            return m;
+          });
+          await supabase
+            .from('application_settings')
+            .update({ setting_value: updatedList, updated_at: new Date().toISOString() })
+            .eq('id', settingRow.id);
+        }
+      } catch (stgErr) {
+        // ignore
       }
 
       console.info(`✓ Successfully created and linked credentials for ${displayName} (${cleanEmail})`);

@@ -9,7 +9,7 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { MembersScreen } from './screens/MembersScreen';
 import { BillScreen } from './screens/BillScreen';
 import { AuthScreen } from './components/auth/AuthScreen';
-import { extractNameFromEmail, extractUsername, isKavipriyanEmail } from './logic/authUtils';
+import { extractNameFromEmail, extractUsername, isKavipriyanEmail, getNextMemberSequence } from './logic/authUtils';
 
 import { storage, INITIAL_MEMBERS } from './logic/storage';
 import { logActivityAction as defaultLogActivityAction, safeLogActivity } from './logic/activityLogger';
@@ -215,6 +215,12 @@ export default function App() {
       } else if (key === 'reimbursement_bills' && Array.isArray(val)) {
         setBills(val);
         storage.saveReimbursementBills(val);
+      } else if (key === 'members_list' && Array.isArray(val) && val.length > 0) {
+        setMembers(prev => {
+          const deduplicated = supabaseService.deduplicateMembers(val);
+          storage.saveMembers(deduplicated);
+          return deduplicated;
+        });
       }
     }
   }, []);
@@ -243,18 +249,10 @@ export default function App() {
       const remote = await supabaseService.fetchInitialData();
       if (remote.success) {
         if (remote.members && remote.members.length > 0) {
-          setMembers(
-            remote.members.map(m => ({
-              id: m.id,
-              name: m.name,
-              code: m.code,
-              email: m.email || null,
-              role: m.role || 'member',
-              status: m.status || 'active',
-              createdAt: m.created_at || new Date().toISOString(),
-              updatedAt: m.updated_at || new Date().toISOString(),
-            }))
-          );
+          const localMembers = storage.getMembers() || [];
+          const combined = supabaseService.deduplicateMembers([...remote.members, ...localMembers]);
+          setMembers(combined);
+          storage.saveMembers(combined);
         }
         if (remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0) {
           setDaysConfig(remote.daysConfig);
@@ -342,6 +340,8 @@ export default function App() {
       const freshMembers = await supabaseService.fetchMembers();
       if (freshMembers && freshMembers.length > 0) {
         setMembers(freshMembers);
+        storage.saveMembers(freshMembers);
+        await supabaseService.saveMembersList(freshMembers);
       }
     } catch (err) {
       console.warn('Failed to refresh members list:', err);
@@ -599,15 +599,18 @@ export default function App() {
     storage.saveAdminUserIds(updatedAdminIds);
 
     // 1. Update local members state with new role
-    setMembers(prev =>
-      prev.map(m => (m.id === targetMemberId ? { ...m, role: newRole } : m))
-    );
+    const updatedMembers = members.map(m => (m.id === targetMemberId ? { ...m, role: newRole } : m));
+    setMembers(updatedMembers);
+    storage.saveMembers(updatedMembers);
 
     // 2. Save directly to the role column in the Supabase members table
     await supabaseService.updateMemberRole(targetMemberId, newRole);
 
     // 3. Save adminUserIds into application_settings
     await supabaseService.saveAdminUserIds(updatedAdminIds);
+
+    // 4. Save updated members_list into application_settings
+    await supabaseService.saveMembersList(updatedMembers);
 
     logUserActivity(
       'ADMIN_ROLE_CHANGE',
@@ -830,27 +833,37 @@ export default function App() {
 
   const handleAddMember = async ({ name, code, status }) => {
     if (!isAdmin) return;
-    const tempId = `m${Date.now()}`;
+    const seq = getNextMemberSequence(members);
+    const assignedCode = code || seq.code;
+    const assignedId = seq.id;
+    const assignedOrder = seq.rotationOrder || seq.nextNum;
+
     const newMember = {
-      id: tempId,
-      code: code || `M${members.length + 1}`,
+      id: assignedId,
+      code: assignedCode,
       name,
+      role: 'member',
       status: status || 'active',
+      rotation_order: assignedOrder,
+      has_login_set: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const updatedQueue = insertNewMemberIntoQueue(initialQueue, tempId);
-    const rotationPosition = updatedQueue.indexOf(tempId) + 1;
+    const updatedQueue = insertNewMemberIntoQueue(initialQueue, assignedId);
+    const rotationPosition = updatedQueue.indexOf(assignedId) + 1;
 
-    // Persist new member to Supabase (omits id so Postgres auto-generates UUID)
+    // Persist new member to Supabase (if members table is reachable)
     const dbRecord = await supabaseService.addMemberToDatabase(newMember, rotationPosition);
-    const finalId = dbRecord?.id || tempId;
-    newMember.id = finalId;
+    if (dbRecord?.id) {
+      newMember.id = dbRecord.id;
+    }
+    const finalId = newMember.id;
 
-    const finalQueue = updatedQueue.map(id => (id === tempId ? finalId : id));
-    const updatedMembers = [...members, newMember];
+    const finalQueue = updatedQueue.map(id => (id === assignedId ? finalId : id));
+    const updatedMembers = supabaseService.deduplicateMembers([...members, newMember]);
     setMembers(updatedMembers);
+    storage.saveMembers(updatedMembers);
     setInitialQueue(finalQueue);
 
     const updatedDays = daysConfig.map(day => ({
@@ -865,11 +878,14 @@ export default function App() {
       initialQueue: finalQueue,
     });
 
+    // Persist to application_settings 'members_list' for 100% durable cloud persistence
+    await supabaseService.saveMembersList(updatedMembers);
+
     logUserActivity(
       'MEMBER_ADD',
       'member',
       `Added New Member: ${name}`,
-      `${name} (${newMember.code}) was added to rotation queue at position #${rotationPosition} by Admin ${currentMember.name}.`,
+      `${name} (${assignedCode}) was added to rotation queue at position #${rotationPosition} by Admin ${currentMember.name}.`,
       selectedDateStr
     );
   };
@@ -883,6 +899,8 @@ export default function App() {
       m.id === id ? { ...m, name: newName, updatedAt: new Date().toISOString() } : m
     );
     setMembers(updatedMembers);
+    storage.saveMembers(updatedMembers);
+    await supabaseService.saveMembersList(updatedMembers);
 
     const updatedTarget = updatedMembers.find(m => m.id === id);
     if (updatedTarget) {
@@ -913,6 +931,8 @@ export default function App() {
         : m
     );
     setMembers(updatedMembers);
+    storage.saveMembers(updatedMembers);
+    await supabaseService.saveMembersList(updatedMembers);
 
     const updatedTarget = updatedMembers.find(m => m.id === id);
     if (updatedTarget) {
@@ -951,6 +971,7 @@ export default function App() {
     }));
 
     setMembers(updatedMembers);
+    storage.saveMembers(updatedMembers);
     setInitialQueue(updatedQueue);
     setAdminUserIds(updatedAdmins);
     setDaysConfig(updatedDays);
@@ -961,6 +982,9 @@ export default function App() {
       initialQueue: updatedQueue,
       adminUserIds: updatedAdmins,
     });
+
+    // Persist updated members_list to application_settings
+    await supabaseService.saveMembersList(updatedMembers);
 
     // Delete member record from Supabase members table
     await supabaseService.deleteMemberFromDatabase(id, target.name);
