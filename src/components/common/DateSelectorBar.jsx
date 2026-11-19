@@ -48,6 +48,17 @@ export function DateSelectorBar({
   const currentDayObj = availableDays[currentIndex] || {};
   const dayOfWeek = currentDayObj.dayOfWeek || '';
 
+  const [currentTime, setCurrentTime] = React.useState(() => {
+    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  });
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const minDate = '2026-01-01';
   const maxDate = availableDays[availableDays.length - 1]?.date || '2035-12-31';
 
@@ -65,9 +76,9 @@ export function DateSelectorBar({
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {/* Center: Selected Date + Status Tag */}
+        {/* Center: Selected Date + Live Time (No Live Today card) */}
         <div className="flex flex-col items-center justify-center min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap justify-center text-center">
             <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] tracking-tight">
               {formatShortDate(selectedDateStr)}
             </span>
@@ -76,22 +87,9 @@ export function DateSelectorBar({
                 · {dayOfWeek}
               </span>
             )}
-          </div>
-
-          <div className="flex items-center gap-1 mt-0.5">
-            {isToday ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] animate-pulse" />
-                Live Today
-              </span>
-            ) : isFuture ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDF3E8] dark:bg-[#331C08] text-[#E0851A] dark:text-[#FF9F45] border border-[#F7C68B] dark:border-[#854D0E] flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5 text-[#ECBD56]" />
-                Testing Future Date
-              </span>
-            ) : (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EAE8E2] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
-                Testing Past Date
+            {isToday && (
+              <span className="text-[11px] text-[#ECBD56] font-bold">
+                · {currentTime}
               </span>
             )}
           </div>

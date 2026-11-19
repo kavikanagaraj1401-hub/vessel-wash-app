@@ -93,15 +93,15 @@ export function HistoryScreen({
         .map(id => memberMap.get(id))
         .filter(Boolean);
 
+      const isToday = day.date === todayDateStr;
+
       // Extract who washed on this date
       // Check verified attendance records in attendanceLogs
       let lunchWashers = [];
       const verifiedLunch = attendanceLogs.filter(
         l => l.date === day.date && l.meal === 'lunch' && l.status === 'present'
       );
-      const isLunchVerified = isLunchAvail && attendanceLogs.some(
-        l => l.date === day.date && l.meal === 'lunch'
-      );
+      const isLunchVerified = isLunchAvail && (verifiedLunch.length > 0 || (!isToday && (day.lunchEaters || []).length > 0));
 
       if (isLunchAvail) {
         if (verifiedLunch.length > 0) {
@@ -113,8 +113,8 @@ export function HistoryScreen({
             verified: true,
             markedBy: l.markedBy,
           }));
-        } else {
-          // Fall back to computed slots for past/today
+        } else if (!isToday) {
+          // Past days completed via timetable rotation rules
           const lunchSlots = (compDay.slots || []).filter(s => s.meal === 'lunch');
           lunchWashers = lunchSlots
             .filter(s => s.assignedMemberId && s.assignedMemberName !== '-')
@@ -123,8 +123,11 @@ export function HistoryScreen({
               name: s.assignedMemberName,
               slotIndex: s.slotIndex,
               code: memberMap.get(s.assignedMemberId)?.code || '',
-              verified: false,
+              verified: true,
             }));
+        } else {
+          // TODAY: He will wash the vessel on his time. Do not show who is going to wash today!
+          lunchWashers = [];
         }
       }
 
@@ -133,9 +136,7 @@ export function HistoryScreen({
       const verifiedDinner = attendanceLogs.filter(
         l => l.date === day.date && l.meal === 'dinner' && l.status === 'present'
       );
-      const isDinnerVerified = isDinnerAvail && attendanceLogs.some(
-        l => l.date === day.date && l.meal === 'dinner'
-      );
+      const isDinnerVerified = isDinnerAvail && (verifiedDinner.length > 0 || (!isToday && (day.dinnerEaters || []).length > 0));
 
       if (isDinnerAvail) {
         if (verifiedDinner.length > 0) {
@@ -147,7 +148,8 @@ export function HistoryScreen({
             verified: true,
             markedBy: l.markedBy,
           }));
-        } else {
+        } else if (!isToday) {
+          // Past days completed via timetable rotation rules
           const dinnerSlot = (compDay.slots || []).find(s => s.meal === 'dinner');
           if (dinnerSlot && dinnerSlot.assignedMemberId && dinnerSlot.assignedMemberName !== '-') {
             dinnerWashers = [{
@@ -155,17 +157,19 @@ export function HistoryScreen({
               name: dinnerSlot.assignedMemberName,
               slotIndex: dinnerSlot.slotIndex || 1,
               code: memberMap.get(dinnerSlot.assignedMemberId)?.code || '',
-              verified: false,
+              verified: true,
             }];
           }
+        } else {
+          // TODAY: He will wash the vessel on his time. Do not show who is going to wash today!
+          dinnerWashers = [];
         }
       }
 
       // Check whether day has any unmarked / pending verification
-      const isPending =
-        !hasAnyMeal ||
-        (isLunchAvail && !isLunchVerified) ||
-        (isDinnerAvail && !isDinnerVerified);
+      const isPending = isToday
+        ? true // Today remains unmarked until actually completed
+        : !hasAnyMeal || (isLunchAvail && !isLunchVerified) || (isDinnerAvail && !isDinnerVerified);
 
       // Parse date components
       const dateParts = day.date.split('-');
@@ -566,6 +570,8 @@ export function HistoryScreen({
                                 <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] mt-0.5 block">
                                   {lunchWashers.length > 0
                                     ? lunchWashers.map(w => `${w.name}${w.markedBy ? ` (${w.markedBy})` : ''}`).join(' & ')
+                                    : isToday
+                                    ? 'Unmarked (In progress today)'
                                     : 'None recorded'}
                                 </span>
                               </div>
@@ -575,7 +581,7 @@ export function HistoryScreen({
                                 ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
                                 : 'bg-[#E0851A]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40'
                             }`}>
-                              {isLunchVerified ? 'Washed' : 'Pending'}
+                              {isLunchVerified ? 'Washed' : 'Unmarked'}
                             </span>
                           </div>
 
@@ -663,6 +669,8 @@ export function HistoryScreen({
                                 <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] mt-0.5 block">
                                   {dinnerWashers.length > 0
                                     ? dinnerWashers.map(w => `${w.name}${w.markedBy ? ` (${w.markedBy})` : ''}`).join(', ')
+                                    : isToday
+                                    ? 'Unmarked (In progress today)'
                                     : 'None recorded'}
                                 </span>
                               </div>
@@ -672,7 +680,7 @@ export function HistoryScreen({
                                 ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
                                 : 'bg-[#E0851A]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40'
                             }`}>
-                              {isDinnerVerified ? 'Washed' : 'Pending'}
+                              {isDinnerVerified ? 'Washed' : 'Unmarked'}
                             </span>
                           </div>
 

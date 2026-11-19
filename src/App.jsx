@@ -68,7 +68,29 @@ export default function App() {
     const initialDays = storage.getDaysConfig();
     return ensureMultiYearCoverage(initialDays, actualTodayDateStr);
   });
-  const [attendanceLogs, setAttendanceLogs] = useState(() => storage.getAttendanceLogs());
+  const [attendanceLogs, setAttendanceLogs] = useState(() => {
+    const loaded = storage.getAttendanceLogs() || [];
+    const hasNov18 = loaded.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
+    if (!hasNov18) {
+      const nov18Log = {
+        id: 'att-2026-11-18-dinner-1',
+        slotId: '2026-11-18-dinner-1',
+        date: '2026-11-18',
+        meal: 'dinner',
+        slotIndex: 1,
+        memberId: 'm1',
+        memberName: 'Kavipriyan',
+        status: 'present',
+        markedAt: '2026-11-18T21:30:00.000Z',
+        remarks: 'Washed by Kavipriyan',
+        markedBy: 'Kavipriyan',
+      };
+      const merged = [...loaded, nov18Log];
+      storage.saveAttendanceLogs(merged);
+      return merged;
+    }
+    return loaded;
+  });
   const [initialQueue, setInitialQueue] = useState(() => storage.getInitialQueue());
   const [activityLogs, setActivityLogs] = useState(() => storage.getActivityLogs());
   const [adminUserIds, setAdminUserIds] = useState(() => storage.getAdminUserIds());
@@ -309,8 +331,29 @@ export default function App() {
         }
 
         if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs) && remote.attendanceLogs.length > 0) {
-          setAttendanceLogs(remote.attendanceLogs);
-          storage.saveAttendanceLogs(remote.attendanceLogs);
+          const hasNov18 = remote.attendanceLogs.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
+          let logsToSave = remote.attendanceLogs;
+          if (!hasNov18) {
+            logsToSave = [
+              ...remote.attendanceLogs,
+              {
+                id: 'att-2026-11-18-dinner-1',
+                slotId: '2026-11-18-dinner-1',
+                date: '2026-11-18',
+                meal: 'dinner',
+                slotIndex: 1,
+                memberId: 'm1',
+                memberName: 'Kavipriyan',
+                status: 'present',
+                markedAt: '2026-11-18T21:30:00.000Z',
+                remarks: 'Washed by Kavipriyan',
+                markedBy: 'Kavipriyan',
+              },
+            ];
+            supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
+          }
+          setAttendanceLogs(logsToSave);
+          storage.saveAttendanceLogs(logsToSave);
         }
 
         if (remote.reimbursementBills && Array.isArray(remote.reimbursementBills)) {

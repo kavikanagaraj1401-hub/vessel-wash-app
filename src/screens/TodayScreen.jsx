@@ -3,13 +3,9 @@ import {
   Sun,
   Moon,
   Check,
-  X,
   UtensilsCrossed,
   AlertCircle,
   Users,
-  CheckCircle2,
-  XCircle,
-  RotateCcw,
 } from 'lucide-react';
 import { assignSlot, assignLunchPair } from '../logic/rotationEngine';
 import { getTodayDateStr } from '../logic/dateUtils';
@@ -161,32 +157,6 @@ export function TodayScreen({
   }, [selectedMeal, isMealProvided, washersCount, currentEaters, queue, todayConfig?.date, memberMap]);
 
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
-
-  // On behalf tracking per slot
-  const [behalfMode, setBehalfMode] = useState({});
-  const [behalfActor, setBehalfActor] = useState({});
-
-  const handleToggleBehalf = (slotId, enabled) => {
-    setBehalfMode(prev => ({ ...prev, [slotId]: enabled }));
-  };
-
-  const handleSelectBehalfMember = (slotId, memberName) => {
-    setBehalfActor(prev => ({ ...prev, [slotId]: memberName }));
-  };
-
-  const handleConfirmWashed = (slot) => {
-    if (!onMarkAttendance) return;
-    const isBehalf = Boolean(behalfMode[slot.id]);
-    const chosenActor = behalfActor[slot.id];
-    const actorLabel = isBehalf && chosenActor ? `${chosenActor} (on behalf of ${slot.assignedMemberName})` : `${slot.assignedMemberName} (Self)`;
-    const remarks = isBehalf && chosenActor ? `Instead of ${slot.assignedMemberName} -> ${chosenActor} Washed` : 'Washed successfully';
-    onMarkAttendance(slot, 'present', remarks, actorLabel);
-  };
-
-  const handleConfirmNotWashed = (slot) => {
-    if (!onMarkAttendance) return;
-    onMarkAttendance(slot, 'absent', 'Marked Did Not Wash', `${slot.assignedMemberName} (Absent)`);
-  };
 
   return (
     <div className="w-full max-w-full pb-28 px-4 pt-3 space-y-4">
@@ -482,181 +452,40 @@ export function TodayScreen({
                   <div className={`grid ${liveAssignedSlots.length === 2 ? 'grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4' : 'grid-cols-1 gap-3'}`}>
                     {liveAssignedSlots.map((slot) => {
                       const member = memberMap.get(slot.assignedMemberId);
-                      const log = attendanceLogs.find(l =>
-                        l.slotId === slot.id ||
-                        (l.date === todayConfig?.date && l.meal === selectedMeal && Number(l.slotIndex) === Number(slot.slotIndex))
-                      );
-                      const isWashed = log?.status === 'present';
-                      const isNotWashed = log?.status === 'absent';
-                      const isPending = !isWashed && !isNotWashed;
-                      const isBehalfActive = Boolean(behalfMode[slot.id]);
 
                       return (
                         <div
                           key={slot.id}
-                          className="p-4 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] flex flex-col justify-between shadow-2xs space-y-3"
+                          className="p-4 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between gap-3 shadow-2xs"
                         >
-                          {/* Member info row */}
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`w-12 h-12 rounded-full font-extrabold text-sm flex items-center justify-center shadow-xs flex-shrink-0 ${
-                                isWashed
-                                  ? 'bg-[#22AC77] text-white ring-2 ring-[#22AC77]/40'
-                                  : isNotWashed
-                                  ? 'bg-[#D9483B] text-white ring-2 ring-[#D9483B]/40'
-                                  : 'bg-[#ECBD56] text-[#111216]'
-                              }`}>
-                                {member?.code || 'M'}
-                              </div>
-                              <div className="min-w-0">
-                                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40 inline-block truncate max-w-full">
-                                  {liveAssignedSlots.length === 2
-                                    ? `Washer ${slot.slotIndex}`
-                                    : selectedMeal === 'lunch'
-                                    ? 'Lunch Duty'
-                                    : 'Dinner Duty'}
-                                </span>
-                                <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3] tracking-tight truncate leading-tight mt-0.5">
-                                  {slot.assignedMemberName}
-                                </h3>
-                                <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block truncate">
-                                  Assigned via Queue
-                                </span>
-                              </div>
+                          {/* Member info */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-full font-extrabold text-sm flex items-center justify-center shadow-xs flex-shrink-0 bg-[#ECBD56] text-[#111216]">
+                              {member?.code || 'M'}
                             </div>
-
-                            <div className="flex-shrink-0 text-right">
-                              <span className="text-[10px] text-[#848A96] dark:text-[#64748B] block font-medium">Position</span>
-                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#171F2C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B] inline-block">
-                                #{slot.slotIndex} in Queue
+                            <div className="min-w-0">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40 inline-block truncate max-w-full">
+                                {liveAssignedSlots.length === 2
+                                  ? `Washer ${slot.slotIndex}`
+                                  : selectedMeal === 'lunch'
+                                  ? 'Lunch Duty'
+                                  : 'Dinner Duty'}
+                              </span>
+                              <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3] tracking-tight truncate leading-tight mt-0.5">
+                                {slot.assignedMemberName}
+                              </h3>
+                              <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block truncate">
+                                Assigned via Queue &amp; Timetable Rules
                               </span>
                             </div>
                           </div>
 
-                          {/* Duty Status & Action Area */}
-                          {isWashed ? (
-                            <div className="p-2.5 rounded-xl bg-[#EAF8F1] dark:bg-[#0E2E1D] border border-[#97E2C0] dark:border-[#166534] flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80] shrink-0" />
-                                <div className="min-w-0">
-                                  <span className="text-xs font-bold text-[#22AC77] dark:text-[#4ADE80] block truncate">
-                                    Vessels Washed ✓
-                                  </span>
-                                  <span className="text-[10px] text-[#22AC77]/90 dark:text-[#4ADE80]/90 block truncate">
-                                    {log?.remarks || `Marked by ${log?.markedBy || slot.assignedMemberName}`}
-                                  </span>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => onResetAttendanceForSlot && onResetAttendanceForSlot(slot.id)}
-                                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white dark:bg-[#171F2C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] transition-colors cursor-pointer active-scale flex items-center gap-1 shrink-0"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                                <span>Change</span>
-                              </button>
-                            </div>
-                          ) : isNotWashed ? (
-                            <div className="p-2.5 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <XCircle className="w-4 h-4 text-[#D9483B] dark:text-[#FF5A4E] shrink-0" />
-                                <div className="min-w-0">
-                                  <span className="text-xs font-bold text-[#D9483B] dark:text-[#FF5A4E] block truncate">
-                                    Did Not Wash ✗
-                                  </span>
-                                  <span className="text-[10px] text-[#D9483B]/80 dark:text-[#FF5A4E]/80 block truncate">
-                                    Marked by {log?.markedBy || 'Colleague / Admin'}
-                                  </span>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleConfirmWashed(slot)}
-                                className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] text-[#111216] hover:opacity-95 shadow-2xs transition-all cursor-pointer active-scale shrink-0"
-                              >
-                                Mark Washed
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="pt-2 border-t border-[#DDD9D0]/50 dark:border-[#2A364B]/50 space-y-2">
-                              {/* Who washed selector */}
-                              <div className="flex items-center justify-between gap-1.5">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#848A96] dark:text-[#64748B]">
-                                  Mark Wash:
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleBehalf(slot.id, false)}
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                                      !isBehalfActive
-                                        ? 'bg-[#ECBD56] text-[#111216] shadow-2xs'
-                                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7]'
-                                    }`}
-                                  >
-                                    Self
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleBehalf(slot.id, true)}
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                                      isBehalfActive
-                                        ? 'bg-[#ECBD56] text-[#111216] shadow-2xs'
-                                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7]'
-                                    }`}
-                                  >
-                                    On Behalf
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* On Behalf member picker */}
-                              {isBehalfActive && (
-                                <div className="p-2 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-1">
-                                  <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] block font-medium">
-                                    Select who washed for {slot.assignedMemberName}:
-                                  </span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {activeMembers.filter(m => m.id !== slot.assignedMemberId).map(m => (
-                                      <button
-                                        key={m.id}
-                                        type="button"
-                                        onClick={() => handleSelectBehalfMember(slot.id, m.name)}
-                                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
-                                          behalfActor[slot.id] === m.name
-                                            ? 'bg-[#ECBD56] text-[#111216] font-bold'
-                                            : 'bg-white dark:bg-[#171F2C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]'
-                                        }`}
-                                      >
-                                        {m.name}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Action buttons */}
-                              <div className="grid grid-cols-2 gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleConfirmWashed(slot)}
-                                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-bold bg-[#22AC77] dark:bg-[#4ADE80] text-[#111216] hover:opacity-95 shadow-2xs active-scale transition-all cursor-pointer"
-                                >
-                                  <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-                                  <span>Mark Washed</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleConfirmNotWashed(slot)}
-                                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-semibold bg-[#FDF1F0] dark:bg-[#331310] hover:bg-[#FCE8E6] text-[#D9483B] dark:text-[#FF5A4E] border border-[#F5A9A2] dark:border-[#991B1B] active-scale transition-all cursor-pointer"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                  <span>Did Not Wash</span>
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                          <div className="flex-shrink-0 text-right">
+                            <span className="text-[10px] text-[#848A96] dark:text-[#64748B] block font-medium">Rotation</span>
+                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B] inline-block">
+                              #{slot.slotIndex} in Queue
+                            </span>
+                          </div>
                         </div>
                       );
                     })}

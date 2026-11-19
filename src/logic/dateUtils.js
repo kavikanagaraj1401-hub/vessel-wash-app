@@ -153,6 +153,15 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     }
   }
 
+  // Ensure Nov 18, 2026 has dinner marked available with attending eaters
+  const nov18 = updated.find(d => d.date === '2026-11-18');
+  if (nov18) {
+    nov18.dinnerProvided = true;
+    if (!nov18.dinnerEaters || nov18.dinnerEaters.length === 0) {
+      nov18.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    }
+  }
+
   updated.sort((a, b) => a.date.localeCompare(b.date));
   return updated;
 }

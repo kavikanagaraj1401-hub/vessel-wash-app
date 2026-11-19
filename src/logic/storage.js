@@ -280,6 +280,19 @@ export const INITIAL_ATTENDANCE_LOGS = [
     markedAt: '2026-09-22T20:40:00.000Z',
     remarks: 'Dinner Washer',
   },
+  {
+    id: 'att-2026-11-18-dinner-1',
+    slotId: '2026-11-18-dinner-1',
+    date: '2026-11-18',
+    meal: 'dinner',
+    slotIndex: 1,
+    memberId: 'm1',
+    memberName: 'Kavipriyan',
+    status: 'present',
+    markedAt: '2026-11-18T21:30:00.000Z',
+    remarks: 'Washed by Kavipriyan',
+    markedBy: 'Kavipriyan',
+  },
 ];
 
 export const INITIAL_ACTIVITY_LOGS = [
