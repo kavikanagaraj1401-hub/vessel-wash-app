@@ -16,14 +16,24 @@ export function DateSelectorBar({
   const hasNext = currentIndex >= 0 && currentIndex < availableDays.length - 1;
 
   const handlePrev = () => {
-    if (hasPrev) {
+    if (currentIndex > 0) {
       onSelectDate(availableDays[currentIndex - 1].date);
+    } else {
+      const cur = new Date(selectedDateStr);
+      cur.setDate(cur.getDate() - 1);
+      const prevDate = cur.toISOString().split('T')[0];
+      onSelectDate(prevDate);
     }
   };
 
   const handleNext = () => {
-    if (hasNext) {
+    if (currentIndex >= 0 && currentIndex < availableDays.length - 1) {
       onSelectDate(availableDays[currentIndex + 1].date);
+    } else {
+      const cur = new Date(selectedDateStr);
+      cur.setDate(cur.getDate() + 1);
+      const nextDate = cur.toISOString().split('T')[0];
+      onSelectDate(nextDate);
     }
   };
 
@@ -38,8 +48,8 @@ export function DateSelectorBar({
   const currentDayObj = availableDays[currentIndex] || {};
   const dayOfWeek = currentDayObj.dayOfWeek || '';
 
-  const minDate = availableDays[0]?.date || '2026-09-01';
-  const maxDate = availableDays[availableDays.length - 1]?.date || '2026-12-31';
+  const minDate = '2026-01-01';
+  const maxDate = availableDays[availableDays.length - 1]?.date || '2035-12-31';
 
   return (
     <div className="bg-white dark:bg-[#171F2C] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] p-3 shadow-xs space-y-2.5">
@@ -49,8 +59,7 @@ export function DateSelectorBar({
         <button
           type="button"
           onClick={handlePrev}
-          disabled={!hasPrev}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] disabled:opacity-25 disabled:pointer-events-none active-scale transition-colors border border-[#DDD9D0] dark:border-[#2A364B] flex-shrink-0 cursor-pointer"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active-scale transition-colors border border-[#DDD9D0] dark:border-[#2A364B] flex-shrink-0 cursor-pointer"
           title="Previous day"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -92,8 +101,7 @@ export function DateSelectorBar({
         <button
           type="button"
           onClick={handleNext}
-          disabled={!hasNext}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] disabled:opacity-25 disabled:pointer-events-none active-scale transition-colors border border-[#DDD9D0] dark:border-[#2A364B] flex-shrink-0 cursor-pointer"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active-scale transition-colors border border-[#DDD9D0] dark:border-[#2A364B] flex-shrink-0 cursor-pointer"
           title="Next day"
         >
           <ChevronRight className="w-4 h-4" />

@@ -346,17 +346,61 @@ export const supabaseService = {
   },
 
   /**
-   * Persist full members list to application_settings for reliable persistence and multi-device realtime sync.
-   * Completely bypasses PostgreSQL members table RLS recursion error 42P17.
+   * Resiliently upsert a key-value setting in application_settings.
+   * Auto-detects whether the schema uses (key, value) or (setting_key, setting_value, id).
    */
-  async saveMembersList(membersList = []) {
-    if (!isSupabaseConfigured || !supabase || !Array.isArray(membersList)) return false;
+  async upsertSetting(keyName, value) {
+    if (!isSupabaseConfigured || !supabase) return false;
     try {
-      const sanitized = membersList.map((m, idx) => ({
-        id: m.id,
-        code: m.code || `M${m.rotation_order || idx + 1}`,
+      const { data: existingRows, error: selectErr } = await supabase
+        .from('application_settings')
+        .select('*')
+        .or(`key.eq.${keyName},setting_key.eq.${keyName}`);
+
+      if (!selectErr && existingRows && existingRows.length > 0) {
+        const row = existingRows[0];
+        const valCol = row.value !== undefined ? 'value' : 'setting_value';
+        if (row.id !== undefined) {
+          await supabase
+            .from('application_settings')
+            .update({ [valCol]: value, updated_at: new Date().toISOString() })
+            .eq('id', row.id);
+        } else {
+          const keyCol = row.key !== undefined ? 'key' : 'setting_key';
+          await supabase
+            .from('application_settings')
+            .update({ [valCol]: value, updated_at: new Date().toISOString() })
+            .eq(keyCol, keyName);
+        }
+      } else {
+        // Try insert with key/value first, fallback to setting_key/setting_value
+        const { error: insErr1 } = await supabase.from('application_settings').insert([
+          { key: keyName, value: value, updated_at: new Date().toISOString() },
+        ]);
+        if (insErr1) {
+          await supabase.from('application_settings').insert([
+            { setting_key: keyName, setting_value: value, updated_at: new Date().toISOString() },
+          ]);
+        }
+      }
+      return true;
+    } catch (err) {
+      console.warn(`⚠️ Failed to upsert setting "${keyName}":`, err.message || err);
+      return false;
+    }
+  },
+
+  /**
+   * Persist full members list to application_settings for reliable persistence and multi-device realtime sync.
+   */
+  async saveMembersList(members = []) {
+    if (!isSupabaseConfigured || !supabase || !Array.isArray(members)) return false;
+    try {
+      const sanitized = members.map((m, idx) => ({
+        id: m.id || `m${idx + 1}`,
         name: m.name || m.full_name,
         role: m.role || 'member',
+        code: m.code || `M${m.rotation_order || idx + 1}`,
         email: m.email || null,
         status: m.status || (m.is_active ? 'active' : 'inactive'),
         has_login_set: Boolean(m.has_login_set),
@@ -364,29 +408,7 @@ export const supabaseService = {
         updated_at: new Date().toISOString(),
       }));
 
-      const { data: existing } = await supabase
-        .from('application_settings')
-        .select('id')
-        .eq('setting_key', 'members_list')
-        .maybeSingle();
-
-      if (existing?.id) {
-        await supabase
-          .from('application_settings')
-          .update({
-            setting_value: sanitized,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('application_settings').insert([
-          {
-            setting_key: 'members_list',
-            setting_value: sanitized,
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-      }
+      await this.upsertSetting('members_list', sanitized);
       console.info(`✓ Successfully saved ${sanitized.length} members to application_settings 'members_list'`);
       return true;
     } catch (err) {
@@ -401,29 +423,7 @@ export const supabaseService = {
   async saveAttendanceLogs(logs = []) {
     if (!isSupabaseConfigured || !supabase || !Array.isArray(logs)) return false;
     try {
-      const { data: existing } = await supabase
-        .from('application_settings')
-        .select('id')
-        .eq('setting_key', 'attendance_logs')
-        .maybeSingle();
-
-      if (existing?.id) {
-        await supabase
-          .from('application_settings')
-          .update({
-            setting_value: logs,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('application_settings').insert([
-          {
-            setting_key: 'attendance_logs',
-            setting_value: logs,
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-      }
+      await this.upsertSetting('attendance_logs', logs);
       return true;
     } catch (err) {
       console.warn('⚠️ Could not sync attendanceLogs to application_settings:', err.message || err);
@@ -479,40 +479,10 @@ export const supabaseService = {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
-      const settingsItems = [
-        { setting_key: 'days_config', setting_value: daysConfig },
-        { setting_key: 'initial_queue', setting_value: initialQueue },
-        { setting_key: 'roster_rules', setting_value: rosterRules || {} },
-        { setting_key: 'admin_user_ids', setting_value: adminUserIds },
-      ];
-
-      for (const item of settingsItems) {
-        if (!item.setting_value) continue;
-
-        const { data: existing } = await supabase
-          .from('application_settings')
-          .select('id')
-          .eq('setting_key', item.setting_key)
-          .maybeSingle();
-
-        if (existing && existing.id) {
-          await supabase
-            .from('application_settings')
-            .update({
-              setting_value: item.setting_value,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id);
-        } else {
-          await supabase.from('application_settings').insert([
-            {
-              setting_key: item.setting_key,
-              setting_value: item.setting_value,
-              updated_at: new Date().toISOString(),
-            },
-          ]);
-        }
-      }
+      if (daysConfig) await this.upsertSetting('days_config', daysConfig);
+      if (initialQueue) await this.upsertSetting('initial_queue', initialQueue);
+      if (rosterRules) await this.upsertSetting('roster_rules', rosterRules);
+      if (adminUserIds) await this.upsertSetting('admin_user_ids', adminUserIds);
 
       console.info('✓ Successfully saved application settings & rules to Supabase.');
       return true;
@@ -528,30 +498,7 @@ export const supabaseService = {
   async saveAdminUserIds(adminUserIds) {
     if (!isSupabaseConfigured || !supabase || !adminUserIds) return false;
     try {
-      const { data: existing } = await supabase
-        .from('application_settings')
-        .select('id')
-        .eq('setting_key', 'admin_user_ids')
-        .maybeSingle();
-
-      if (existing && existing.id) {
-        await supabase
-          .from('application_settings')
-          .update({
-            setting_value: adminUserIds,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('application_settings').insert([
-          {
-            setting_key: 'admin_user_ids',
-            setting_value: adminUserIds,
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-      }
-      return true;
+      return await this.upsertSetting('admin_user_ids', adminUserIds);
     } catch (err) {
       console.warn('Failed to save admin_user_ids to Supabase:', err);
       return false;
@@ -560,34 +507,63 @@ export const supabaseService = {
 
   /**
    * Save reimbursement bills array to Supabase application_settings.
+   * Merges with existing remote bills so no user's bill is ever lost.
    */
-  async saveReimbursementBills(bills) {
+  async saveReimbursementBills(bills = []) {
     if (!isSupabaseConfigured || !supabase) return false;
     try {
-      const { data: existing } = await supabase
+      const { data: existingRows } = await supabase
         .from('application_settings')
         .select('*')
         .or('key.eq.reimbursement_bills,setting_key.eq.reimbursement_bills');
 
-      if (existing && existing.length > 0) {
-        const idCol = existing[0].key ? 'key' : 'setting_key';
-        const valCol = existing[0].value !== undefined ? 'value' : 'setting_value';
-        await supabase
-          .from('application_settings')
-          .update({ [valCol]: bills, updated_at: new Date().toISOString() })
-          .eq(idCol, 'reimbursement_bills');
-      } else {
-        await supabase.from('application_settings').insert([
-          {
-            setting_key: 'reimbursement_bills',
-            setting_value: bills,
-            updated_at: new Date().toISOString(),
-          },
-        ]);
+      let remoteBills = [];
+      if (existingRows && existingRows.length > 0) {
+        const row = existingRows[0];
+        const val = row.value !== undefined ? row.value : row.setting_value;
+        if (Array.isArray(val)) remoteBills = val;
       }
-      return true;
+
+      // Merge remote bills and incoming bills by ID so NO user's bill is ever lost
+      const billMap = new Map();
+      remoteBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
+      (bills || []).forEach(b => { if (b && b.id) billMap.set(b.id, b); });
+
+      const mergedBills = Array.from(billMap.values()).sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.billDateTime).getTime();
+        const timeB = new Date(b.createdAt || b.billDateTime).getTime();
+        return timeB - timeA;
+      });
+
+      return await this.upsertSetting('reimbursement_bills', mergedBills);
     } catch (err) {
       console.warn('Failed to save reimbursement_bills to Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Delete a single reimbursement bill from Supabase application_settings by ID.
+   */
+  async deleteReimbursementBill(billId) {
+    if (!isSupabaseConfigured || !supabase || !billId) return false;
+    try {
+      const { data: existingRows } = await supabase
+        .from('application_settings')
+        .select('*')
+        .or('key.eq.reimbursement_bills,setting_key.eq.reimbursement_bills');
+
+      let remoteBills = [];
+      if (existingRows && existingRows.length > 0) {
+        const row = existingRows[0];
+        const val = row.value !== undefined ? row.value : row.setting_value;
+        if (Array.isArray(val)) remoteBills = val;
+      }
+
+      const remainingBills = remoteBills.filter(b => b.id !== billId);
+      return await this.upsertSetting('reimbursement_bills', remainingBills);
+    } catch (err) {
+      console.warn('Failed to delete reimbursement bill from Supabase:', err);
       return false;
     }
   },

@@ -709,15 +709,29 @@ export function BillScreen({
   onDeleteBill,
   todayDateStr = '',
 }) {
-  // 1. Creator Scoping & Verification
+  // 1. Creator Scoping & Verification (Only creator can see and delete)
   const isCreator = (bill) => {
     if (!bill) return false;
-    if (!currentMember) return true;
-    if (bill.createdBy && currentMember.id && String(bill.createdBy) === String(currentMember.id)) return true;
-    if (bill.creatorEmail && userEmail && bill.creatorEmail.toLowerCase() === userEmail.toLowerCase()) return true;
-    if (bill.creatorName && currentMember.name && bill.creatorName.trim().toLowerCase() === currentMember.name.trim().toLowerCase()) return true;
-    if (bill.paidByMemberId && currentMember.id && String(bill.paidByMemberId) === String(currentMember.id)) return true;
-    if (bill.paidByMemberName && currentMember.name && bill.paidByMemberName.trim().toLowerCase() === currentMember.name.trim().toLowerCase()) return true;
+    if (!currentMember && !userEmail) return true;
+
+    const curId = currentMember?.id ? String(currentMember.id).toLowerCase().trim() : '';
+    const curName = currentMember?.name ? currentMember.name.toLowerCase().trim() : '';
+    const curEmail = (userEmail || currentMember?.email || '').toLowerCase().trim();
+    const curPrefix = curEmail ? curEmail.split('@')[0] : '';
+
+    const billCreatedBy = bill.createdBy ? String(bill.createdBy).toLowerCase().trim() : '';
+    const billCreatorEmail = bill.creatorEmail ? bill.creatorEmail.toLowerCase().trim() : '';
+    const billCreatorName = bill.creatorName ? bill.creatorName.toLowerCase().trim() : '';
+    const billPaidById = bill.paidByMemberId ? String(bill.paidByMemberId).toLowerCase().trim() : '';
+    const billPaidByName = bill.paidByMemberName ? bill.paidByMemberName.toLowerCase().trim() : '';
+
+    if (curId && billCreatedBy && (curId === billCreatedBy || billCreatedBy.includes(curId) || curId.includes(billCreatedBy))) return true;
+    if (curEmail && billCreatorEmail && curEmail === billCreatorEmail) return true;
+    if (curPrefix && billCreatorEmail && (curPrefix === billCreatorEmail.split('@')[0] || billCreatorEmail.startsWith(curPrefix))) return true;
+    if (curName && billCreatorName && (curName === billCreatorName || curName.includes(billCreatorName) || billCreatorName.includes(curName))) return true;
+    if (curId && billPaidById && (curId === billPaidById || billPaidById.includes(curId) || curId.includes(billPaidById))) return true;
+    if (curName && billPaidByName && (curName === billPaidByName || curName.includes(billPaidByName) || billPaidByName.includes(curName))) return true;
+
     return false;
   };
 
@@ -747,9 +761,7 @@ export function BillScreen({
     return Array.from(set).sort().reverse();
   }, [userBills, todayDateStr]);
 
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    return getYearMonthKey(todayDateStr || new Date().toISOString()) || 'all';
-  });
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedBillIds, setExpandedBillIds] = useState(() => new Set());
@@ -927,12 +939,7 @@ export function BillScreen({
         });
 
         // Ensure newly created bill is instantly visible in LIFO view
-        const billMonth = getYearMonthKey(billDateTime);
-        if (billMonth && billMonth !== 'Unknown') {
-          setSelectedMonth(billMonth);
-        } else {
-          setSelectedMonth('all');
-        }
+        setSelectedMonth('all');
         setSearchQuery('');
       }
 
@@ -1266,10 +1273,14 @@ export function BillScreen({
     }
   };
 
-  // Delete Handler with prompt
+  // Delete Handler with prompt (Strictly creator only)
   const [billToDelete, setBillToDelete] = useState(null);
   const handleConfirmDelete = async () => {
     if (!billToDelete || !onDeleteBill) return;
+    if (!isCreator(billToDelete)) {
+      setBillToDelete(null);
+      return;
+    }
     await onDeleteBill(billToDelete.id);
     setBillToDelete(null);
   };

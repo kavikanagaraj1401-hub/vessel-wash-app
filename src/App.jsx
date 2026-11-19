@@ -75,6 +75,8 @@ export default function App() {
   const [bills, setBills] = useState(() => storage.getReimbursementBills());
 
   const unsubscribeRealtimeRef = useRef(null);
+  const lastLocalEditTimeRef = useRef(0);
+  const syncTimeoutRef = useRef(null);
 
   // Centralized Real-time payload handler across all tables (attendance_history, washer_activity, members, application_settings)
   const handleRealtimePayload = useCallback((table, payload) => {
@@ -101,6 +103,11 @@ export default function App() {
       const targetDate = rec.date;
       const meal = rec.meal || rec.meal_type;
       if (!targetDate || !meal) return;
+
+      // Ignore realtime echo if this client made local edits in the last 2 seconds
+      if (Date.now() - lastLocalEditTimeRef.current < 2000 && targetDate === selectedDateStr) {
+        return;
+      }
 
       const isProvided = rec.is_provided !== undefined ? Boolean(rec.is_provided) : true;
       const eaters = Array.isArray(rec.eaters) ? rec.eaters : [];
@@ -203,18 +210,32 @@ export default function App() {
       const key = setting?.setting_key || setting?.key;
       const val = setting?.setting_value || setting?.value;
       if (key === 'days_config' && Array.isArray(val)) {
-        setDaysConfig(val);
+        if (Date.now() - lastLocalEditTimeRef.current < 2000) return;
+        const covered = ensureMultiYearCoverage(val, actualTodayDateStr);
+        setDaysConfig(covered);
+        storage.saveDaysConfig(covered);
       } else if (key === 'initial_queue' && Array.isArray(val)) {
         setInitialQueue(val);
       } else if (key === 'admin_user_ids' && Array.isArray(val)) {
         setAdminUserIds(val);
         storage.saveAdminUserIds(val);
       } else if (key === 'attendance_logs' && Array.isArray(val)) {
-        setAttendanceLogs(val);
-        storage.saveAttendanceLogs(val);
+        setAttendanceLogs(prev => {
+          const map = new Map();
+          (prev || []).forEach(l => { if (l && l.id) map.set(l.id, l); });
+          (val || []).forEach(l => { if (l && l.id) map.set(l.id, l); });
+          const merged = Array.from(map.values()).sort((a, b) => new Date(b.markedAt || 0) - new Date(a.markedAt || 0));
+          storage.saveAttendanceLogs(merged);
+          return merged;
+        });
       } else if (key === 'reimbursement_bills' && Array.isArray(val)) {
-        setBills(val);
-        storage.saveReimbursementBills(val);
+        const sorted = [...val].sort((a, b) => {
+          const timeA = new Date(a.createdAt || a.billDateTime).getTime();
+          const timeB = new Date(b.createdAt || b.billDateTime).getTime();
+          return timeB - timeA;
+        });
+        setBills(sorted);
+        storage.saveReimbursementBills(sorted);
       } else if (key === 'members_list' && Array.isArray(val) && val.length > 0) {
         setMembers(prev => {
           const deduplicated = supabaseService.deduplicateMembers(val);
@@ -223,7 +244,7 @@ export default function App() {
         });
       }
     }
-  }, []);
+  }, [selectedDateStr, actualTodayDateStr]);
 
   // Fetch initial remote data and explicitly subscribe to real-time channels
   const syncRealtimeAndData = useCallback(async (activeSession) => {
@@ -255,7 +276,9 @@ export default function App() {
           storage.saveMembers(combined);
         }
         if (remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0) {
-          setDaysConfig(remote.daysConfig);
+          const covered = ensureMultiYearCoverage(remote.daysConfig, actualTodayDateStr);
+          setDaysConfig(covered);
+          storage.saveDaysConfig(covered);
         }
         if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
           setInitialQueue(remote.initialQueue);
@@ -291,17 +314,13 @@ export default function App() {
         }
 
         if (remote.reimbursementBills && Array.isArray(remote.reimbursementBills)) {
-          const localBills = storage.getReimbursementBills() || [];
-          const billMap = new Map();
-          remote.reimbursementBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
-          localBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
-          const mergedBills = Array.from(billMap.values()).sort((a, b) => {
+          const sorted = [...remote.reimbursementBills].sort((a, b) => {
             const timeA = new Date(a.createdAt || a.billDateTime).getTime();
             const timeB = new Date(b.createdAt || b.billDateTime).getTime();
             return timeB - timeA;
           });
-          setBills(mergedBills);
-          storage.saveReimbursementBills(mergedBills);
+          setBills(sorted);
+          storage.saveReimbursementBills(sorted);
         }
 
         // Auto-seed if database is empty on first connection
@@ -565,7 +584,11 @@ export default function App() {
 
   // Date selection handler ensuring target day is covered in configuration
   const handleSelectDate = (dateStr) => {
-    setDaysConfig(prev => ensureDaysCoverDate(prev, dateStr));
+    setDaysConfig(prev => {
+      const ensured = ensureDaysCoverDate(prev, dateStr);
+      storage.saveDaysConfig(ensured);
+      return ensured;
+    });
     setSelectedDateStr(dateStr);
   };
 
@@ -639,7 +662,7 @@ export default function App() {
   const currentDayQueue = computedCurrentDay?.queueBefore || finalQueue;
 
   // Synchronize attendance and recalculate washer assignment to Supabase
-  const syncAttendanceAndWasher = async (dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig) => {
+  const syncAttendanceAndWasher = useCallback(async (dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig) => {
     try {
       const activeDays = nextDaysConfig || daysConfig;
       const compDay = computedDays.find(d => d.date === dateStr);
@@ -701,7 +724,17 @@ export default function App() {
     } catch (err) {
       console.warn('Failed to sync attendance/washer to Supabase:', err);
     }
-  };
+  }, [daysConfig, computedDays, initialQueue, members, adminUserIds]);
+
+  // Debounced Supabase sync to eliminate race conditions and rapid-selection self-refreshes
+  const debouncedSyncAttendanceAndWasher = useCallback((dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig) => {
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+    syncTimeoutRef.current = setTimeout(() => {
+      syncAttendanceAndWasher(dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig);
+    }, 350);
+  }, [syncAttendanceAndWasher]);
 
   // Handlers with Activity Logging
   const handleMarkAttendance = (slot, status, remarks = '', markedBy = '') => {
@@ -716,14 +749,15 @@ export default function App() {
       memberName: slot.assignedMemberName,
       status: status, // 'present' | 'absent'
       markedAt: new Date().toISOString(),
-      markedBy: markedBy || (status === 'present' ? `${slot.assignedMemberName} (Self)` : 'System'),
+      markedBy: actorLabel,
       remarks: remarks || (status === 'present' ? 'Washed successfully' : 'Marked absent'),
     };
 
     // Remove existing log for this slot if any and add new
-    const updated = attendanceLogs.filter(l => l.slotId !== slot.id);
+    const updated = attendanceLogs.filter(l => l.slotId !== slot.id && !(l.date === slot.date && l.meal === slot.meal && l.slotIndex === slot.slotIndex));
     const nextLogs = [newRecord, ...updated];
     setAttendanceLogs(nextLogs);
+    storage.saveAttendanceLogs(nextLogs);
     supabaseService.saveAttendanceLogs(nextLogs);
 
     logUserActivity(
@@ -741,6 +775,7 @@ export default function App() {
     const existingLog = attendanceLogs.find(l => l.slotId === slotId);
     const nextLogs = attendanceLogs.filter(l => l.slotId !== slotId);
     setAttendanceLogs(nextLogs);
+    storage.saveAttendanceLogs(nextLogs);
     supabaseService.saveAttendanceLogs(nextLogs);
 
     if (existingLog) {
@@ -755,6 +790,7 @@ export default function App() {
   };
 
   const handleUpdateEaters = (meal, eaterIds) => {
+    lastLocalEditTimeRef.current = Date.now();
     const updatedDays = daysConfig.map(day => {
       if (day.date !== selectedDateStr) return day;
       return {
@@ -763,12 +799,13 @@ export default function App() {
       };
     });
     setDaysConfig(updatedDays);
+    storage.saveDaysConfig(updatedDays);
 
     const currentDay = updatedDays.find(d => d.date === selectedDateStr);
     const isProvided = meal === 'lunch' ? Boolean(currentDay?.lunchProvided) : Boolean(currentDay?.dinnerProvided);
     const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
 
-    syncAttendanceAndWasher(selectedDateStr, meal, isProvided, eaterIds, washersCount, updatedDays);
+    debouncedSyncAttendanceAndWasher(selectedDateStr, meal, isProvided, eaterIds, washersCount, updatedDays);
 
     const mealTitle = meal === 'lunch' ? 'Lunch' : 'Dinner';
     logUserActivity(
@@ -781,6 +818,7 @@ export default function App() {
   };
 
   const handleToggleMealProvided = (meal, provided) => {
+    lastLocalEditTimeRef.current = Date.now();
     const updatedDays = daysConfig.map(day => {
       if (day.date !== selectedDateStr) return day;
       return {
@@ -789,12 +827,13 @@ export default function App() {
       };
     });
     setDaysConfig(updatedDays);
+    storage.saveDaysConfig(updatedDays);
 
     const currentDay = updatedDays.find(d => d.date === selectedDateStr);
     const eaterIds = meal === 'lunch' ? (currentDay?.lunchEaters || []) : (currentDay?.dinnerEaters || []);
     const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
 
-    syncAttendanceAndWasher(selectedDateStr, meal, provided, eaterIds, washersCount, updatedDays);
+    debouncedSyncAttendanceAndWasher(selectedDateStr, meal, provided, eaterIds, washersCount, updatedDays);
 
     const mealTitle = meal === 'lunch' ? 'Lunch' : 'Dinner';
     logUserActivity(
@@ -807,6 +846,7 @@ export default function App() {
   };
 
   const handleToggleLunchWashers = (washersCount) => {
+    lastLocalEditTimeRef.current = Date.now();
     const updatedDays = daysConfig.map(day => {
       if (day.date !== selectedDateStr) return day;
       return {
@@ -815,12 +855,13 @@ export default function App() {
       };
     });
     setDaysConfig(updatedDays);
+    storage.saveDaysConfig(updatedDays);
 
     const currentDay = updatedDays.find(d => d.date === selectedDateStr);
     const isProvided = Boolean(currentDay?.lunchProvided);
     const eaterIds = currentDay?.lunchEaters || [];
 
-    syncAttendanceAndWasher(selectedDateStr, 'lunch', isProvided, eaterIds, washersCount, updatedDays);
+    debouncedSyncAttendanceAndWasher(selectedDateStr, 'lunch', isProvided, eaterIds, washersCount, updatedDays);
 
     logUserActivity(
       'MEAL_TOGGLE',
@@ -1088,15 +1129,16 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
+    let updatedBills = [];
     setBills(prev => {
-      const updated = [newBill, ...(prev || []).filter(b => b.id !== newBill.id)];
-      storage.saveReimbursementBills(updated);
-      return updated;
+      const filtered = (prev || []).filter(b => b.id !== newBill.id);
+      updatedBills = [newBill, ...filtered];
+      storage.saveReimbursementBills(updatedBills);
+      return updatedBills;
     });
 
     try {
-      const currentAll = storage.getReimbursementBills() || [];
-      await supabaseService.saveReimbursementBills(currentAll);
+      await supabaseService.saveReimbursementBills([newBill]);
     } catch (dbErr) {
       console.warn('[BillScreen] Non-fatal: Supabase sync error for new bill:', dbErr);
     }
@@ -1121,14 +1163,13 @@ export default function App() {
     let target = null;
     setBills(prev => {
       target = (prev || []).find(b => b.id === billId);
-      const updated = (prev || []).filter(b => b.id !== billId);
-      storage.saveReimbursementBills(updated);
-      return updated;
+      const remaining = (prev || []).filter(b => b.id !== billId);
+      storage.saveReimbursementBills(remaining);
+      return remaining;
     });
 
     try {
-      const currentAll = storage.getReimbursementBills() || [];
-      await supabaseService.saveReimbursementBills(currentAll);
+      await supabaseService.deleteReimbursementBill(billId);
     } catch (dbErr) {
       console.warn('[BillScreen] Non-fatal: Supabase sync error on bill delete:', dbErr);
     }

@@ -121,14 +121,14 @@ export function ensureDaysCoverDate(existingDays = [], targetDateStr) {
  */
 export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
   const targetYear = targetDateStr ? parseInt(targetDateStr.split('-')[0], 10) : new Date().getFullYear();
-  const endYear = Math.max(targetYear + 1, 2027);
+  const startYear = Math.min(targetYear, 2026);
+  const endYear = Math.max(targetYear + 3, 2030);
 
   const existingDates = new Set((existingDays || []).map(d => d.date));
   const updated = Array.isArray(existingDays) ? [...existingDays] : [];
 
-  for (let year = 2026; year <= endYear; year++) {
-    const startM = year === 2026 ? 9 : 1;
-    for (let month = startM; month <= 12; month++) {
+  for (let year = startYear; year <= endYear; year++) {
+    for (let month = 1; month <= 12; month++) {
       const daysInMonth = new Date(year, month, 0).getDate();
       for (let day = 1; day <= daysInMonth; day++) {
         const mStr = String(month).padStart(2, '0');
