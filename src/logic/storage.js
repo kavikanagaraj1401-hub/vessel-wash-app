@@ -122,11 +122,7 @@ export function generateInitialMonthConfig() {
       dinnerProvided = true;
       dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
     } else if (day === 22) {
-      // 22-Sep: Dinner (1 washer), all 5 ate
-      dinnerProvided = true;
-      dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
-    } else if (day === 24) {
-      // 24-Sep: Dinner (1 washer), all 5 ate (Today)
+      // 22-Sep: Dinner (1 washer), all 5 ate (Last wash before pause)
       dinnerProvided = true;
       dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
     }
@@ -292,6 +288,19 @@ export const INITIAL_ATTENDANCE_LOGS = [
     markedAt: '2026-11-18T21:30:00.000Z',
     remarks: 'Washed by Kavipriyan',
     markedBy: 'Kavipriyan',
+  },
+  {
+    id: 'att-2026-11-19-dinner-1',
+    slotId: '2026-11-19-dinner-1',
+    date: '2026-11-19',
+    meal: 'dinner',
+    slotIndex: 1,
+    memberId: 'm2',
+    memberName: 'Marudhu',
+    status: 'present',
+    markedAt: '2026-11-19T21:30:00.000Z',
+    remarks: 'Washed by Marudhu',
+    markedBy: 'Marudhu',
   },
 ];
 

@@ -725,7 +725,11 @@ export function BillScreen({
     const billPaidById = bill.paidByMemberId ? String(bill.paidByMemberId).toLowerCase().trim() : '';
     const billPaidByName = bill.paidByMemberName ? bill.paidByMemberName.toLowerCase().trim() : '';
 
+    const curCode = currentMember?.code ? String(currentMember.code).toLowerCase().trim() : '';
+    const billPaidByCode = bill.paidByMemberCode ? String(bill.paidByMemberCode).toLowerCase().trim() : '';
+
     if (curId && billCreatedBy && (curId === billCreatedBy || billCreatedBy.includes(curId) || curId.includes(billCreatedBy))) return true;
+    if (curCode && billPaidByCode && curCode === billPaidByCode) return true;
     if (curEmail && billCreatorEmail && curEmail === billCreatorEmail) return true;
     if (curPrefix && billCreatorEmail && (curPrefix === billCreatorEmail.split('@')[0] || billCreatorEmail.startsWith(curPrefix))) return true;
     if (curName && billCreatorName && (curName === billCreatorName || curName.includes(billCreatorName) || billCreatorName.includes(curName))) return true;

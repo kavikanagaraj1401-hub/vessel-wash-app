@@ -92,14 +92,27 @@ export function computeMonthRotation(members, daysConfig, initialQueueOrder, anc
   const computedDays = [];
 
   for (const day of daysConfig) {
-    // Optional anchor date reset (if explicitly specified)
-    if (anchorDate && day.date === anchorDate) {
-      currentQueue = initialQueueOrder.filter(id => activeIds.has(id));
-      activeMembers.forEach(m => {
-        if (!currentQueue.includes(m.id)) {
-          currentQueue.push(m.id);
-        }
+    // 1. Skip pause period (September 23 through November 17, 2026) completely in rotation calculations
+    // No shifts are scheduled or counted; queue remains unchanged
+    if (day.date >= '2026-09-23' && day.date <= '2026-11-17') {
+      computedDays.push({
+        ...day,
+        queueBefore: [...currentQueue],
+        queueAfter: [...currentQueue],
+        slots: [],
       });
+      continue;
+    }
+
+    // 2. Anchor schedule resumption on November 18, 2026 (or custom anchorDate)
+    // Starts sequence: Nov 18 = Kavipriyan (m1), Nov 19 = Marudhu (m2), Nov 20 = Perumal (m3)...
+    if (day.date === '2026-11-18' || (anchorDate && day.date === anchorDate)) {
+      const baseSequence = ['m1', 'm2', 'm3', 'm4', 'm5'];
+      const filteredBase = baseSequence.filter(id => activeIds.has(id));
+      const remainingActive = activeMembers
+        .map(m => m.id)
+        .filter(id => !filteredBase.includes(id));
+      currentQueue = [...filteredBase, ...remainingActive];
     }
 
     const queueBefore = [...currentQueue];

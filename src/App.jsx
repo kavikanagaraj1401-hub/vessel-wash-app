@@ -126,8 +126,8 @@ export default function App() {
       const meal = rec.meal || rec.meal_type;
       if (!targetDate || !meal) return;
 
-      // Ignore realtime echo if this client made local edits in the last 2 seconds
-      if (Date.now() - lastLocalEditTimeRef.current < 2000 && targetDate === selectedDateStr) {
+      // Ignore realtime echo if this client made local edits in the last 4 seconds
+      if (Date.now() - lastLocalEditTimeRef.current < 4000 && targetDate === selectedDateStr) {
         return;
       }
 
@@ -232,7 +232,7 @@ export default function App() {
       const key = setting?.setting_key || setting?.key;
       const val = setting?.setting_value || setting?.value;
       if (key === 'days_config' && Array.isArray(val)) {
-        if (Date.now() - lastLocalEditTimeRef.current < 2000) return;
+        if (Date.now() - lastLocalEditTimeRef.current < 4000) return;
         const covered = ensureMultiYearCoverage(val, actualTodayDateStr);
         setDaysConfig(covered);
         storage.saveDaysConfig(covered);
@@ -251,6 +251,7 @@ export default function App() {
           return merged;
         });
       } else if (key === 'reimbursement_bills' && Array.isArray(val)) {
+        if (Date.now() - lastLocalEditTimeRef.current < 4000) return;
         const sorted = [...val].sort((a, b) => {
           const timeA = new Date(a.createdAt || a.billDateTime).getTime();
           const timeB = new Date(b.createdAt || b.billDateTime).getTime();
@@ -330,40 +331,63 @@ export default function App() {
           });
         }
 
-        if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs) && remote.attendanceLogs.length > 0) {
-          const hasNov18 = remote.attendanceLogs.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
-          let logsToSave = remote.attendanceLogs;
+        if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs)) {
+          let logsToSave = [...remote.attendanceLogs];
+          const hasNov18 = logsToSave.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
           if (!hasNov18) {
-            logsToSave = [
-              ...remote.attendanceLogs,
-              {
-                id: 'att-2026-11-18-dinner-1',
-                slotId: '2026-11-18-dinner-1',
-                date: '2026-11-18',
-                meal: 'dinner',
-                slotIndex: 1,
-                memberId: 'm1',
-                memberName: 'Kavipriyan',
-                status: 'present',
-                markedAt: '2026-11-18T21:30:00.000Z',
-                remarks: 'Washed by Kavipriyan',
-                markedBy: 'Kavipriyan',
-              },
-            ];
-            supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
+            logsToSave.push({
+              id: 'att-2026-11-18-dinner-1',
+              slotId: '2026-11-18-dinner-1',
+              date: '2026-11-18',
+              meal: 'dinner',
+              slotIndex: 1,
+              memberId: 'm1',
+              memberName: 'Kavipriyan',
+              status: 'present',
+              markedAt: '2026-11-18T21:30:00.000Z',
+              remarks: 'Washed by Kavipriyan',
+              markedBy: 'Kavipriyan',
+            });
+          }
+          const hasNov19 = logsToSave.some(l => l.date === '2026-11-19' && l.meal === 'dinner');
+          if (!hasNov19) {
+            logsToSave.push({
+              id: 'att-2026-11-19-dinner-1',
+              slotId: '2026-11-19-dinner-1',
+              date: '2026-11-19',
+              meal: 'dinner',
+              slotIndex: 1,
+              memberId: 'm2',
+              memberName: 'Marudhu',
+              status: 'present',
+              markedAt: '2026-11-19T21:30:00.000Z',
+              remarks: 'Washed by Marudhu',
+              markedBy: 'Marudhu',
+            });
           }
           setAttendanceLogs(logsToSave);
           storage.saveAttendanceLogs(logsToSave);
+          if (!hasNov18 || !hasNov19) {
+            supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
+          }
         }
 
+        // Merge local bills with remote bills so offline/newly-created bills are never lost
+        const localBills = storage.getReimbursementBills() || [];
+        const billMap = new Map();
+        localBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
         if (remote.reimbursementBills && Array.isArray(remote.reimbursementBills)) {
-          const sorted = [...remote.reimbursementBills].sort((a, b) => {
-            const timeA = new Date(a.createdAt || a.billDateTime).getTime();
-            const timeB = new Date(b.createdAt || b.billDateTime).getTime();
-            return timeB - timeA;
-          });
-          setBills(sorted);
-          storage.saveReimbursementBills(sorted);
+          remote.reimbursementBills.forEach(b => { if (b && b.id) billMap.set(b.id, b); });
+        }
+        const mergedBills = Array.from(billMap.values()).sort((a, b) => {
+          const timeA = new Date(a.createdAt || a.billDateTime).getTime();
+          const timeB = new Date(b.createdAt || b.billDateTime).getTime();
+          return timeB - timeA;
+        });
+        setBills(mergedBills);
+        storage.saveReimbursementBills(mergedBills);
+        if (localBills.some(lb => !remote.reimbursementBills?.some(rb => rb.id === lb.id))) {
+          supabaseService.saveReimbursementBills(mergedBills).catch(() => {});
         }
 
         // Auto-seed if database is empty on first connection
@@ -707,6 +731,7 @@ export default function App() {
   // Synchronize attendance and recalculate washer assignment to Supabase
   const syncAttendanceAndWasher = useCallback(async (dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig) => {
     try {
+      lastLocalEditTimeRef.current = Date.now();
       const activeDays = nextDaysConfig || daysConfig;
       const compDay = computedDays.find(d => d.date === dateStr);
       const queueForMeal = compDay?.queueBefore || initialQueue;
@@ -1154,6 +1179,7 @@ export default function App() {
 
   // Handle Create Reimbursement Bill
   const handleCreateBill = useCallback(async (billData) => {
+    lastLocalEditTimeRef.current = Date.now();
     const existing = storage.getReimbursementBills() || [];
     const nextReceiptId = storage.generateNextReceiptId(existing);
     const newBill = {
@@ -1203,6 +1229,7 @@ export default function App() {
 
   // Handle Delete Reimbursement Bill
   const handleDeleteBill = useCallback(async (billId) => {
+    lastLocalEditTimeRef.current = Date.now();
     let target = null;
     setBills(prev => {
       target = (prev || []).find(b => b.id === billId);

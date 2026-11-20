@@ -347,7 +347,7 @@ export const supabaseService = {
 
   /**
    * Resiliently upsert a key-value setting in application_settings.
-   * Auto-detects whether the schema uses (key, value) or (setting_key, setting_value, id).
+   * Conforms strictly to schema: setting_key, setting_value, id.
    */
   async upsertSetting(keyName, value) {
     if (!isSupabaseConfigured || !supabase) return false;
@@ -355,33 +355,22 @@ export const supabaseService = {
       const { data: existingRows, error: selectErr } = await supabase
         .from('application_settings')
         .select('*')
-        .or(`key.eq.${keyName},setting_key.eq.${keyName}`);
+        .eq('setting_key', keyName);
 
       if (!selectErr && existingRows && existingRows.length > 0) {
         const row = existingRows[0];
-        const valCol = row.value !== undefined ? 'value' : 'setting_value';
-        if (row.id !== undefined) {
-          await supabase
-            .from('application_settings')
-            .update({ [valCol]: value, updated_at: new Date().toISOString() })
-            .eq('id', row.id);
-        } else {
-          const keyCol = row.key !== undefined ? 'key' : 'setting_key';
-          await supabase
-            .from('application_settings')
-            .update({ [valCol]: value, updated_at: new Date().toISOString() })
-            .eq(keyCol, keyName);
-        }
+        const { error: updateErr } = await supabase
+          .from('application_settings')
+          .update({ setting_value: value, updated_at: new Date().toISOString() })
+          .eq('id', row.id);
+        if (updateErr) throw updateErr;
       } else {
-        // Try insert with key/value first, fallback to setting_key/setting_value
-        const { error: insErr1 } = await supabase.from('application_settings').insert([
-          { key: keyName, value: value, updated_at: new Date().toISOString() },
-        ]);
-        if (insErr1) {
-          await supabase.from('application_settings').insert([
+        const { error: insertErr } = await supabase
+          .from('application_settings')
+          .insert([
             { setting_key: keyName, setting_value: value, updated_at: new Date().toISOString() },
           ]);
-        }
+        if (insertErr) throw insertErr;
       }
       return true;
     } catch (err) {
@@ -515,12 +504,12 @@ export const supabaseService = {
       const { data: existingRows } = await supabase
         .from('application_settings')
         .select('*')
-        .or('key.eq.reimbursement_bills,setting_key.eq.reimbursement_bills');
+        .eq('setting_key', 'reimbursement_bills');
 
       let remoteBills = [];
       if (existingRows && existingRows.length > 0) {
         const row = existingRows[0];
-        const val = row.value !== undefined ? row.value : row.setting_value;
+        const val = row.setting_value !== undefined ? row.setting_value : row.value;
         if (Array.isArray(val)) remoteBills = val;
       }
 
@@ -551,12 +540,12 @@ export const supabaseService = {
       const { data: existingRows } = await supabase
         .from('application_settings')
         .select('*')
-        .or('key.eq.reimbursement_bills,setting_key.eq.reimbursement_bills');
+        .eq('setting_key', 'reimbursement_bills');
 
       let remoteBills = [];
       if (existingRows && existingRows.length > 0) {
         const row = existingRows[0];
-        const val = row.value !== undefined ? row.value : row.setting_value;
+        const val = row.setting_value !== undefined ? row.setting_value : row.value;
         if (Array.isArray(val)) remoteBills = val;
       }
 

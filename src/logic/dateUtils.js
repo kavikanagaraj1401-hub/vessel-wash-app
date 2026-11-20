@@ -153,12 +153,40 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     }
   }
 
-  // Ensure Nov 18, 2026 has dinner marked available with attending eaters
+  // Ensure Pause Period (September 23 through November 17, 2026) has NO washes or meal provisions
+  updated.forEach(d => {
+    if (d.date >= '2026-09-23' && d.date <= '2026-11-17') {
+      d.lunchProvided = false;
+      d.dinnerProvided = false;
+      d.lunchEaters = [];
+      d.dinnerEaters = [];
+    }
+  });
+
+  // Ensure Nov 18, 2026 (day before yesterday) has dinner marked available with attending eaters
   const nov18 = updated.find(d => d.date === '2026-11-18');
   if (nov18) {
     nov18.dinnerProvided = true;
     if (!nov18.dinnerEaters || nov18.dinnerEaters.length === 0) {
       nov18.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    }
+  }
+
+  // Ensure Nov 19, 2026 (yesterday) has dinner marked available with attending eaters
+  const nov19 = updated.find(d => d.date === '2026-11-19');
+  if (nov19) {
+    nov19.dinnerProvided = true;
+    if (!nov19.dinnerEaters || nov19.dinnerEaters.length === 0) {
+      nov19.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    }
+  }
+
+  // Ensure Nov 20, 2026 (today) has dinner marked available with attending eaters
+  const nov20 = updated.find(d => d.date === '2026-11-20');
+  if (nov20) {
+    nov20.dinnerProvided = true;
+    if (!nov20.dinnerEaters || nov20.dinnerEaters.length === 0) {
+      nov20.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
     }
   }
 
