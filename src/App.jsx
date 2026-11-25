@@ -1403,8 +1403,8 @@ export default function App() {
           isLiveConnected={isSupabaseConfigured}
         />
 
-        {/* Main Content Area (Scrolls independently below static header) */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full pb-28">
+        {/* Main Content Area (Scrolls independently between static header and bottom bar) */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full pb-4 sm:pb-6">
           {activeTab === 'today' && (
             <TodayScreen
               currentDateStr={actualTodayDateStr}
