@@ -174,7 +174,7 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     }
   }
 
-  // Nov 24, 2026 (yesterday) was NOT assigned to Ponnelan - no meal provided
+  // Nov 24, 2026: No meal provided, no washer assigned
   const nov24 = updated.find(d => d.date === '2026-11-24');
   if (nov24) {
     nov24.lunchProvided = false;
@@ -183,12 +183,21 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     nov24.dinnerEaters = [];
   }
 
-  // Ensure Nov 25, 2026 (today) has dinner marked available for Ponnelan's turn
+  // Nov 25, 2026 (yesterday): Food was NOT available - entry revoked, no meal provided, no washer assigned
   const nov25 = updated.find(d => d.date === '2026-11-25');
   if (nov25) {
-    nov25.dinnerProvided = true;
-    if (!nov25.dinnerEaters || nov25.dinnerEaters.length === 0) {
-      nov25.dinnerEaters = allEaters;
+    nov25.lunchProvided = false;
+    nov25.dinnerProvided = false;
+    nov25.lunchEaters = [];
+    nov25.dinnerEaters = [];
+  }
+
+  // Ensure Nov 26, 2026 (today) has dinner marked available for Ponnelan's turn
+  const nov26 = updated.find(d => d.date === '2026-11-26');
+  if (nov26) {
+    nov26.dinnerProvided = true;
+    if (!nov26.dinnerEaters || nov26.dinnerEaters.length === 0) {
+      nov26.dinnerEaters = allEaters;
     }
   }
 

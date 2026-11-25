@@ -47,6 +47,15 @@ export function TodayScreen({
     }
   };
 
+  // Auto-switch to dinner if lunch is not provided but dinner is provided
+  React.useEffect(() => {
+    if (todayConfig) {
+      if (!todayConfig.lunchProvided && todayConfig.dinnerProvided && selectedMeal === 'lunch') {
+        setSelectedMeal('dinner');
+      }
+    }
+  }, [todayConfig?.date, todayConfig?.lunchProvided, todayConfig?.dinnerProvided, selectedMeal]);
+
   const memberMap = useMemo(() => new Map(allMembers.map(m => [m.id, m])), [allMembers]);
 
   // Current active eater list for selected meal directly derived from todayConfig (single source of truth)

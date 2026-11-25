@@ -184,8 +184,8 @@ export function computeMonthRotation(members, daysConfig, initialQueueOrder, anc
       currentQueue = [...filteredPerumal, ...remainingPermanent];
     }
 
-    // 4. Ensure November 24, 2026 (yesterday) is NOT assigned to Ponnelan or anyone
-    if (day.date === '2026-11-24') {
+    // 4. Ensure November 24 and November 25, 2026 (yesterday food not available) have NO washer assigned
+    if (day.date === '2026-11-24' || day.date === '2026-11-25') {
       computedDays.push({
         ...day,
         queueBefore: [...currentQueue],
@@ -214,9 +214,9 @@ export function computeMonthRotation(members, daysConfig, initialQueueOrder, anc
       continue;
     }
 
-    // 5. Set today (November 25, 2026) as Ponnelan's (m4) vessel wash turn, followed next by Suryakumar (m5)
-    // Rotation continues forward: Ponnelan (Nov 25) -> Suryakumar (Nov 26) -> Arun (Nov 27) -> Kavipriyan (Nov 28) -> Marudhu (Nov 29) -> Perumal (Nov 30)...
-    if (day.date === '2026-11-25' || (anchorDate && day.date === anchorDate)) {
+    // 5. Set today (November 26, 2026) as Ponnelan's (m4) vessel wash turn, followed next by Suryakumar (m5)
+    // Rotation continues forward: Ponnelan (Nov 26) -> Suryakumar (Nov 27) -> Arun (Nov 28) -> Kavipriyan (Nov 29) -> Marudhu (Nov 30) -> Perumal (Dec 01)...
+    if (day.date === '2026-11-26' || (anchorDate && day.date === anchorDate)) {
       const ponnelanSequence = ['m4', 'm5', 'm6', 'm1', 'm2', 'm3'];
       const filteredPonnelan = ponnelanSequence.filter(id => permanentIds.has(id));
       const remainingPermanent = permanentMembers
