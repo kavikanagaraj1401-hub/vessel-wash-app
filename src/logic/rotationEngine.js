@@ -104,15 +104,25 @@ export function computeMonthRotation(members, daysConfig, initialQueueOrder, anc
       continue;
     }
 
-    // 2. Anchor schedule resumption on November 18, 2026 (or custom anchorDate)
-    // Starts sequence: Nov 18 = Kavipriyan (m1), Nov 19 = Marudhu (m2), Nov 20 = Perumal (m3)...
-    if (day.date === '2026-11-18' || (anchorDate && day.date === anchorDate)) {
-      const baseSequence = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    // 2. Anchor schedule resumption on November 18, 2026
+    if (day.date === '2026-11-18') {
+      const baseSequence = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
       const filteredBase = baseSequence.filter(id => activeIds.has(id));
       const remainingActive = activeMembers
         .map(m => m.id)
         .filter(id => !filteredBase.includes(id));
       currentQueue = [...filteredBase, ...remainingActive];
+    }
+
+    // 3. Anchor November 23, 2026 (day before yesterday) to Perumal (m3 / M3)
+    // Rotation continues forward: Perumal (Nov 23) -> Ponneelan (Nov 24) -> Suryakumar (Nov 25) -> Arun (Nov 26) -> Kavipriyan (Nov 27) -> Marudhu (Nov 28)...
+    if (day.date === '2026-11-23' || (anchorDate && day.date === anchorDate)) {
+      const perumalSequence = ['m3', 'm4', 'm5', 'm6', 'm1', 'm2'];
+      const filteredPerumal = perumalSequence.filter(id => activeIds.has(id));
+      const remainingActive = activeMembers
+        .map(m => m.id)
+        .filter(id => !filteredPerumal.includes(id));
+      currentQueue = [...filteredPerumal, ...remainingActive];
     }
 
     const queueBefore = [...currentQueue];

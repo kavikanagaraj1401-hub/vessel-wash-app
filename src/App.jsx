@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { TopAppBar } from './components/navigation/TopAppBar';
 import { BottomNav } from './components/navigation/BottomNav';
 import { SettingsModal } from './components/common/SettingsModal';
+import { GentleReminderBanner } from './components/common/GentleReminderBanner';
 
 import { TodayScreen } from './screens/TodayScreen';
 import { ActivityScreen } from './screens/ActivityScreen';
@@ -99,6 +100,12 @@ export default function App() {
   const unsubscribeRealtimeRef = useRef(null);
   const lastLocalEditTimeRef = useRef(0);
   const syncTimeoutRef = useRef(null);
+  const hasInitializedRef = useRef(false);
+  const selectedDateStrRef = useRef(selectedDateStr);
+
+  useEffect(() => {
+    selectedDateStrRef.current = selectedDateStr;
+  }, [selectedDateStr]);
 
   // Centralized Real-time payload handler across all tables (attendance_history, washer_activity, members, application_settings)
   const handleRealtimePayload = useCallback((table, payload) => {
@@ -126,8 +133,8 @@ export default function App() {
       const meal = rec.meal || rec.meal_type;
       if (!targetDate || !meal) return;
 
-      // Ignore realtime echo if this client made local edits in the last 4 seconds
-      if (Date.now() - lastLocalEditTimeRef.current < 4000 && targetDate === selectedDateStr) {
+      // Ignore realtime echo if this client made local edits in the last 6 seconds
+      if (Date.now() - lastLocalEditTimeRef.current < 6000) {
         return;
       }
 
@@ -232,7 +239,7 @@ export default function App() {
       const key = setting?.setting_key || setting?.key;
       const val = setting?.setting_value || setting?.value;
       if (key === 'days_config' && Array.isArray(val)) {
-        if (Date.now() - lastLocalEditTimeRef.current < 4000) return;
+        if (Date.now() - lastLocalEditTimeRef.current < 6000) return;
         const covered = ensureMultiYearCoverage(val, actualTodayDateStr);
         setDaysConfig(covered);
         storage.saveDaysConfig(covered);
@@ -251,7 +258,7 @@ export default function App() {
           return merged;
         });
       } else if (key === 'reimbursement_bills' && Array.isArray(val)) {
-        if (Date.now() - lastLocalEditTimeRef.current < 4000) return;
+        if (Date.now() - lastLocalEditTimeRef.current < 6000) return;
         const sorted = [...val].sort((a, b) => {
           const timeA = new Date(a.createdAt || a.billDateTime).getTime();
           const timeB = new Date(b.createdAt || b.billDateTime).getTime();
@@ -267,7 +274,7 @@ export default function App() {
         });
       }
     }
-  }, [selectedDateStr, actualTodayDateStr]);
+  }, [actualTodayDateStr]);
 
   // Fetch initial remote data and explicitly subscribe to real-time channels
   const syncRealtimeAndData = useCallback(async (activeSession) => {
@@ -299,9 +306,11 @@ export default function App() {
           storage.saveMembers(combined);
         }
         if (remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0) {
-          const covered = ensureMultiYearCoverage(remote.daysConfig, actualTodayDateStr);
-          setDaysConfig(covered);
-          storage.saveDaysConfig(covered);
+          if (Date.now() - lastLocalEditTimeRef.current >= 6000) {
+            const covered = ensureMultiYearCoverage(remote.daysConfig, actualTodayDateStr);
+            setDaysConfig(covered);
+            storage.saveDaysConfig(covered);
+          }
         }
         if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
           setInitialQueue(remote.initialQueue);
@@ -311,24 +320,26 @@ export default function App() {
           storage.saveAdminUserIds(remote.adminUserIds);
         }
         if (remote.attendanceHistory && Array.isArray(remote.attendanceHistory) && remote.attendanceHistory.length > 0) {
-          setDaysConfig(prev => {
-            let updated = [...prev];
-            remote.attendanceHistory.forEach(rec => {
-              const targetDate = rec.date;
-              const meal = rec.meal || rec.meal_type;
-              if (!targetDate || !meal) return;
-              updated = updated.map(d => {
-                if (d.date !== targetDate) return d;
-                return {
-                  ...d,
-                  [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: rec.is_provided !== undefined ? Boolean(rec.is_provided) : true,
-                  [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: Array.isArray(rec.eaters) ? rec.eaters : (d[meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters'] || []),
-                  ...(meal === 'lunch' && rec.washers_count ? { lunchWashers: rec.washers_count } : {}),
-                };
+          if (Date.now() - lastLocalEditTimeRef.current >= 6000) {
+            setDaysConfig(prev => {
+              let updated = [...prev];
+              remote.attendanceHistory.forEach(rec => {
+                const targetDate = rec.date;
+                const meal = rec.meal || rec.meal_type;
+                if (!targetDate || !meal) return;
+                updated = updated.map(d => {
+                  if (d.date !== targetDate) return d;
+                  return {
+                    ...d,
+                    [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: rec.is_provided !== undefined ? Boolean(rec.is_provided) : true,
+                    [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: Array.isArray(rec.eaters) ? rec.eaters : (d[meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters'] || []),
+                    ...(meal === 'lunch' && rec.washers_count ? { lunchWashers: rec.washers_count } : {}),
+                  };
+                });
               });
+              return updated;
             });
-            return updated;
-          });
+          }
         }
 
         if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs)) {
@@ -438,8 +449,11 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Immediately initialize data sync and bind Universal Realtime channels on mount for ALL users
-    syncRealtimeAndData(null);
+    // 1. Immediately initialize data sync on mount once
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      syncRealtimeAndData(null);
+    }
 
     // 2. Concurrently check existing auth session and update token if present
     async function checkAuthSession() {
@@ -789,6 +803,7 @@ export default function App() {
         initialQueue,
         adminUserIds,
       });
+      lastLocalEditTimeRef.current = Date.now();
     } catch (err) {
       console.warn('Failed to sync attendance/washer to Supabase:', err);
     }
@@ -1314,6 +1329,15 @@ export default function App() {
 
         {/* Main Content Area (Scrolls independently below static header) */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden w-full pb-28">
+          {/* Gentle Reminder for all logged-in members */}
+          <GentleReminderBanner
+            todayDateStr={actualTodayDateStr}
+            computedDays={computedDays}
+            members={members}
+            attendanceLogs={attendanceLogs}
+            onNavigateToday={() => setActiveTab('today')}
+          />
+
           {activeTab === 'today' && (
             <TodayScreen
               currentDateStr={actualTodayDateStr}

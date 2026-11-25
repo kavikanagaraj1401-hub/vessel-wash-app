@@ -117,6 +117,8 @@ export function MembersScreen({
       marudhu: 'marudhu@vesselwash.app',
       perumal: 'perumal@vesselwash.app',
       ponneelan: 'ponneelan@vesselwash.app',
+      suryakumar: 'suryakumar@vesselwash.app',
+      arun: 'arun@vesselwash.app',
     };
 
     // Lookup in live member_login_status view

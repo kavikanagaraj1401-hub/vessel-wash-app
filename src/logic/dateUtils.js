@@ -163,30 +163,32 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     }
   });
 
-  // Ensure Nov 18, 2026 (day before yesterday) has dinner marked available with attending eaters
-  const nov18 = updated.find(d => d.date === '2026-11-18');
-  if (nov18) {
-    nov18.dinnerProvided = true;
-    if (!nov18.dinnerEaters || nov18.dinnerEaters.length === 0) {
-      nov18.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+  const allEaters = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
+
+  // Ensure Nov 23, 2026 (day before yesterday) has dinner marked available
+  const nov23 = updated.find(d => d.date === '2026-11-23');
+  if (nov23) {
+    nov23.dinnerProvided = true;
+    if (!nov23.dinnerEaters || nov23.dinnerEaters.length === 0) {
+      nov23.dinnerEaters = allEaters;
     }
   }
 
-  // Ensure Nov 19, 2026 (yesterday) has dinner marked available with attending eaters
-  const nov19 = updated.find(d => d.date === '2026-11-19');
-  if (nov19) {
-    nov19.dinnerProvided = true;
-    if (!nov19.dinnerEaters || nov19.dinnerEaters.length === 0) {
-      nov19.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+  // Ensure Nov 24, 2026 (yesterday) has dinner marked available
+  const nov24 = updated.find(d => d.date === '2026-11-24');
+  if (nov24) {
+    nov24.dinnerProvided = true;
+    if (!nov24.dinnerEaters || nov24.dinnerEaters.length === 0) {
+      nov24.dinnerEaters = allEaters;
     }
   }
 
-  // Ensure Nov 20, 2026 (today) has dinner marked available with attending eaters
-  const nov20 = updated.find(d => d.date === '2026-11-20');
-  if (nov20) {
-    nov20.dinnerProvided = true;
-    if (!nov20.dinnerEaters || nov20.dinnerEaters.length === 0) {
-      nov20.dinnerEaters = ['m1', 'm2', 'm3', 'm4', 'm5'];
+  // Ensure Nov 25, 2026 (today) has dinner marked available with attending eaters if not yet configured
+  const nov25 = updated.find(d => d.date === '2026-11-25');
+  if (nov25) {
+    if (nov25.dinnerProvided === undefined) {
+      nov25.dinnerProvided = true;
+      nov25.dinnerEaters = allEaters;
     }
   }
 

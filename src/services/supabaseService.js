@@ -127,7 +127,8 @@ export const supabaseService = {
         { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
         { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
         { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
-        { id: 'm5', name: 'Suryakumar', email: null, role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: false },
+        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
+        { id: 'm6', name: 'Arun', email: 'arun@vesselwash.app', role: 'member', code: 'M6', status: 'active', rotation_order: 6, has_login_set: true },
       ];
 
       // Determine raw members: prioritize application_settings members_list (and merge with dbMembers if present)
@@ -136,7 +137,7 @@ export const supabaseService = {
         if (dbMembers.length > 0) {
           rawMembers = this.deduplicateMembers([...settingsMembers, ...dbMembers]);
         } else {
-          rawMembers = settingsMembers;
+          rawMembers = [...settingsMembers];
         }
       } else if (dbMembers.length > 0) {
         rawMembers = dbMembers.map((m, idx) => ({
@@ -151,10 +152,23 @@ export const supabaseService = {
           updated_at: m.updated_at,
         }));
       } else {
-        rawMembers = canonicalSeed;
+        rawMembers = [...canonicalSeed];
         // Asynchronously initialize members_list in application_settings so it exists permanently
         this.saveMembersList(canonicalSeed).catch(e => console.warn('Could not auto-seed members_list:', e));
       }
+
+      // Ensure all canonical core members (including M6 Arun) are permanently present in rawMembers
+      canonicalSeed.forEach(seedMem => {
+        const exists = rawMembers.some(
+          m => (m.id && m.id === seedMem.id) ||
+               (m.code && m.code.toUpperCase() === seedMem.code.toUpperCase()) ||
+               ((m.name || m.full_name) && (m.name || m.full_name).toLowerCase().trim() === seedMem.name.toLowerCase().trim()) ||
+               (m.email && seedMem.email && m.email.toLowerCase().trim() === seedMem.email.toLowerCase().trim())
+        );
+        if (!exists) {
+          rawMembers.push(seedMem);
+        }
+      });
 
       // Cross-reference with member_login_status view so UI credential indicators are always accurate
       const enrichedMembers = rawMembers.map((m, idx) => {
@@ -309,6 +323,28 @@ export const supabaseService = {
           rotation_order: idx + 1,
         }));
       }
+
+      // Ensure all canonical core members (M1-M6 Arun) are permanently included in fetchMembers
+      const canonicalSeed = [
+        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
+        { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
+        { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
+        { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
+        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
+        { id: 'm6', name: 'Arun', email: 'arun@vesselwash.app', role: 'member', code: 'M6', status: 'active', rotation_order: 6, has_login_set: true },
+      ];
+
+      canonicalSeed.forEach(seedMem => {
+        const exists = (sourceMembers || []).some(
+          m => (m.id && m.id === seedMem.id) ||
+               (m.code && m.code.toUpperCase() === seedMem.code.toUpperCase()) ||
+               ((m.name || m.full_name) && (m.name || m.full_name).toLowerCase().trim() === seedMem.name.toLowerCase().trim()) ||
+               (m.email && seedMem.email && m.email.toLowerCase().trim() === seedMem.email.toLowerCase().trim())
+        );
+        if (!exists) {
+          sourceMembers.push(seedMem);
+        }
+      });
 
       const mapped = (sourceMembers || []).map((m, idx) => {
         const cleanName = (m.full_name || m.name || '').toLowerCase().trim();
