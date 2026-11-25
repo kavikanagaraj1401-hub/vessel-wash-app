@@ -71,8 +71,8 @@ export default function App() {
   });
   const [attendanceLogs, setAttendanceLogs] = useState(() => {
     let loaded = storage.getAttendanceLogs() || [];
-    // Revoke any 2026-11-24 or 2026-11-25 (food not available) logs
-    loaded = loaded.filter(l => l.date !== '2026-11-24' && l.date !== '2026-11-25');
+    // Skip 2026-11-24 (pause/no meal day)
+    loaded = loaded.filter(l => l.date !== '2026-11-24');
 
     const hasNov18 = loaded.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
     if (!hasNov18) {
@@ -106,18 +106,18 @@ export default function App() {
         markedBy: 'Marudhu',
       });
     }
-    const hasNov26 = loaded.some(l => l.date === '2026-11-26' && l.meal === 'dinner');
-    if (!hasNov26) {
+    const hasNov25 = loaded.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
+    if (!hasNov25) {
       loaded.push({
-        id: 'att-2026-11-26-dinner-1',
-        slotId: '2026-11-26-dinner-1',
-        date: '2026-11-26',
+        id: 'att-2026-11-25-dinner-1',
+        slotId: '2026-11-25-dinner-1',
+        date: '2026-11-25',
         meal: 'dinner',
         slotIndex: 1,
         memberId: 'm4',
         memberName: 'Ponneelan',
         status: 'present',
-        markedAt: '2026-11-26T21:30:00.000Z',
+        markedAt: '2026-11-25T21:30:00.000Z',
         remarks: 'Washed by Ponneelan',
         markedBy: 'Ponneelan',
       });
@@ -165,7 +165,7 @@ export default function App() {
       const targetDate = rec.date;
       const meal = rec.meal || rec.meal_type;
       if (!targetDate || !meal) return;
-      if (targetDate === '2026-11-24' || targetDate === '2026-11-25') return;
+      if (targetDate === '2026-11-24') return;
 
       // Ignore realtime echo if this client made local edits in the last 6 seconds
       if (Date.now() - lastLocalEditTimeRef.current < 6000) {
@@ -361,8 +361,8 @@ export default function App() {
                 const targetDate = rec.date;
                 const meal = rec.meal || rec.meal_type;
                 if (!targetDate || !meal) return;
-                // Never restore revoked dates 2026-11-24 or 2026-11-25
-                if (targetDate === '2026-11-24' || targetDate === '2026-11-25') return;
+                // Never restore revoked pause date 2026-11-24
+                if (targetDate === '2026-11-24') return;
                 updated = updated.map(d => {
                   if (d.date !== targetDate) return d;
                   return {
@@ -379,7 +379,7 @@ export default function App() {
         }
 
         if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs)) {
-          let logsToSave = remote.attendanceLogs.filter(l => l.date !== '2026-11-24' && l.date !== '2026-11-25');
+          let logsToSave = remote.attendanceLogs.filter(l => l.date !== '2026-11-24');
           const hasNov18 = logsToSave.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
           if (!hasNov18) {
             logsToSave.push({
@@ -412,18 +412,18 @@ export default function App() {
               markedBy: 'Marudhu',
             });
           }
-          const hasNov26 = logsToSave.some(l => l.date === '2026-11-26' && l.meal === 'dinner');
-          if (!hasNov26) {
+          const hasNov25 = logsToSave.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
+          if (!hasNov25) {
             logsToSave.push({
-              id: 'att-2026-11-26-dinner-1',
-              slotId: '2026-11-26-dinner-1',
-              date: '2026-11-26',
+              id: 'att-2026-11-25-dinner-1',
+              slotId: '2026-11-25-dinner-1',
+              date: '2026-11-25',
               meal: 'dinner',
               slotIndex: 1,
               memberId: 'm4',
               memberName: 'Ponneelan',
               status: 'present',
-              markedAt: '2026-11-26T21:30:00.000Z',
+              markedAt: '2026-11-25T21:30:00.000Z',
               remarks: 'Washed by Ponneelan',
               markedBy: 'Ponneelan',
             });

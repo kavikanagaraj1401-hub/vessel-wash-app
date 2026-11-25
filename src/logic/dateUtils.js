@@ -183,16 +183,16 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     nov24.dinnerEaters = [];
   }
 
-  // Nov 25, 2026 (yesterday): Food was NOT available - entry revoked, no meal provided, no washer assigned
+  // Nov 25, 2026 (yesterday): Vessel washed by Ponnelan
   const nov25 = updated.find(d => d.date === '2026-11-25');
   if (nov25) {
-    nov25.lunchProvided = false;
-    nov25.dinnerProvided = false;
-    nov25.lunchEaters = [];
-    nov25.dinnerEaters = [];
+    nov25.dinnerProvided = true;
+    if (!nov25.dinnerEaters || nov25.dinnerEaters.length === 0) {
+      nov25.dinnerEaters = allEaters;
+    }
   }
 
-  // Ensure Nov 26, 2026 (today) has dinner marked available for Ponnelan's turn
+  // Ensure Nov 26, 2026 (today) has dinner marked available for Suryakumar's turn
   const nov26 = updated.find(d => d.date === '2026-11-26');
   if (nov26) {
     nov26.dinnerProvided = true;

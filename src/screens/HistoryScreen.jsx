@@ -166,8 +166,8 @@ export function HistoryScreen({
         }
       }
 
-      // Ensure Nov 24, 2026 and Nov 25, 2026 (yesterday) are NOT assigned to anyone (food not available / revoked)
-      if (day.date === '2026-11-24' || day.date === '2026-11-25') {
+      // Ensure Nov 24, 2026 is NOT assigned to anyone (pause / skipped day)
+      if (day.date === '2026-11-24') {
         lunchWashers = [];
         dinnerWashers = [];
       }
