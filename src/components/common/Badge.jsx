@@ -3,7 +3,7 @@ import { CheckCircle2, XCircle, Clock, AlertCircle, UserX, Sparkles, Crown } fro
 
 /**
  * Design System Status Badge
- * Fully rounded pill tags supporting Light & Dark tokens, Gold accents, and Admin gradient
+ * Standardized 4px tags supporting Light & Dark tokens, Gold accents, and Admin gradient
  */
 export function Badge({
   children,
@@ -96,13 +96,13 @@ export function Badge({
 
   const sizeStyles = {
     sm: 'px-2 py-0.5 text-[11px] gap-1',
-    md: 'px-2.5 py-0.8 text-xs gap-1.5',
-    lg: 'px-3.5 py-1.5 text-sm gap-2',
+    md: 'px-2.5 py-0.5 text-xs gap-1.5',
+    lg: 'px-3.5 py-1 text-sm gap-2',
   };
 
   return (
     <span
-      className={`inline-flex items-center font-bold rounded-full border shadow-2xs ${config.bg} ${config.text} ${config.border} ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center font-bold rounded-[4px] border shadow-2xs ${config.bg} ${config.text} ${config.border} ${sizeStyles[size]} ${className}`}
     >
       {showIcon && IconComponent && <IconComponent className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.2} />}
       <span>{children || config.label}</span>

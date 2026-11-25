@@ -36,11 +36,11 @@ export function TextInput({
           onChange={onChange}
           disabled={disabled}
           placeholder={placeholder}
-          className={`w-full min-h-[44px] px-3.5 text-sm bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] rounded-xl border transition-all outline-none
-            ${Icon ? 'pl-10' : ''}
+          className={`w-full min-h-[40px] px-3 text-xs bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] rounded-[4px] border transition-all outline-none
+            ${Icon ? 'pl-9' : ''}
             ${error
-              ? 'border-[#D9483B] dark:border-[#FF5A4E] focus:ring-2 focus:ring-[#D9483B]/20'
-              : 'border-[#DDD9D0] dark:border-[#2A364B] focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20'
+              ? 'border-[#D9483B] dark:border-[#FF5A4E] focus:ring-1 focus:ring-[#D9483B]'
+              : 'border-[#DDD9D0] dark:border-[#2A364B] focus:border-[#EA580C] dark:focus:border-[#F59E0B] focus:ring-1 focus:ring-[#EA580C]/20'
             }
             ${disabled ? 'bg-[#EAE8E2] dark:bg-[#1F2A3C] text-[#848A96] cursor-not-allowed' : ''}
           `}
@@ -86,8 +86,8 @@ export function Toggle({ checked, onChange, label, description, disabled = false
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ECBD56] ${
-          checked ? 'bg-[#ECBD56]' : 'bg-[#DDD9D0] dark:bg-[#2A364B]'
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C] ${
+          checked ? 'bg-gradient-to-r from-[#EA580C] to-[#F59E0B]' : 'bg-[#DDD9D0] dark:bg-[#2A364B]'
         }`}
       >
         <span

@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Modern Design System Card Component
- * Surface container with 22px rounded corners and Light/Dark token support
+ * Standardized 4px border-radius with Light/Dark token support
  * Light: #FFFFFF (Pure White) | Dark: #171F2C (Deep Slate)
  */
 export function Card({
@@ -22,17 +22,17 @@ export function Card({
   };
 
   const highlightBorder = highlight
-    ? 'border-[#ECBD56] ring-2 ring-[#ECBD56]/20 shadow-md'
+    ? 'border-[#EA580C] dark:border-[#F59E0B] ring-2 ring-[#EA580C]/20 shadow-md'
     : 'border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs';
 
   const clickableStyles = onClick
-    ? 'cursor-pointer active-scale hover:border-[#ECBD56]/60 dark:hover:border-[#ECBD56]/60 transition-all'
+    ? 'cursor-pointer active-scale hover:border-[#EA580C]/60 dark:hover:border-[#F59E0B]/60 transition-all'
     : '';
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-[22px] border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
+      className={`bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
       {...props}
     >
       {children}

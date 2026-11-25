@@ -1055,6 +1055,10 @@ export function BillScreen({
       const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
       setExportStartDate(toDateInputString(firstDayLastMonth));
       setExportEndDate(toDateInputString(lastDayLastMonth));
+    } else if (preset === 'last_2_months') {
+      const firstDayTwoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      setExportStartDate(toDateInputString(firstDayTwoMonthsAgo));
+      setExportEndDate(toDateInputString(now));
     } else if (preset === 'last_30_days') {
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       setExportStartDate(toDateInputString(thirtyDaysAgo));
@@ -1338,14 +1342,14 @@ export function BillScreen({
       </div>
 
       {/* 1. Monthly Expense Section Header & Metric Cards */}
-      <div className="p-4 sm:p-5 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3.5">
+      <div className="p-4 sm:p-5 rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#ECBD56]">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#EA580C] dark:text-[#F59E0B]">
                 Expense Management
               </span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#ECBD56] border border-[#ECBD56]/40">
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/20">
                 LIFO Feed
               </span>
             </div>
@@ -1357,7 +1361,7 @@ export function BillScreen({
             </p>
           </div>
 
-          {/* Desktop/Tablet Docked Action Bar: Responsive FAB & Consolidated Export (Requirement 4) */}
+          {/* Desktop/Tablet Docked Action Bar: Responsive FAB & Consolidated Export */}
           <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
             {/* Consolidated Report Export Button (Opens Date Range Selector Modal) */}
             {userBills.length > 0 && (
@@ -1365,19 +1369,19 @@ export function BillScreen({
                 type="button"
                 onClick={handleOpenExportModal}
                 disabled={exportingReport}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs active-scale"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs active-scale"
                 title="Prepare and Export Consolidated Expense Report with Date Range"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-[#ECBD56]" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F59E0B]" />
                 <span>{exportingReport ? 'Exporting...' : 'Export Report'}</span>
               </button>
             )}
 
-            {/* Desktop Docked "New Bill" Button (Requirement 4: Adapts cleanly on desktop/tablet) */}
+            {/* Desktop Docked "New Bill" Button */}
             <button
               type="button"
               onClick={handleOpenNewBill}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] active:bg-[#C9972E] text-[#111216] font-bold text-xs shadow-xs active-scale transition-all cursor-pointer select-none"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white font-bold text-xs shadow-xs active-scale transition-all cursor-pointer select-none"
               title="Create Expense Bill"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -1396,28 +1400,28 @@ export function BillScreen({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search receipts by ID, particular, or expense type..."
-              className="w-full h-10 pl-9 pr-9 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 shadow-2xs transition-all"
+              className="w-full h-10 pl-9 pr-9 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 shadow-2xs transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] p-0.5 rounded-full hover:bg-white dark:hover:bg-[#171F2C] transition-colors cursor-pointer"
+                className="absolute right-2.5 top-2.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] p-0.5 rounded-[4px] hover:bg-white dark:hover:bg-[#171F2C] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Month Filter Pills */}
-          <div className="flex items-center gap-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] p-1 rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-x-auto scrollbar-none">
+          {/* Month Filter Pills: Clean Grayscale Non-Meal Tabs */}
+          <div className="flex items-center gap-1 bg-[#F2F1ED] dark:bg-[#121620] p-1 rounded-[4px] border border-[#DDD9D0] dark:border-[#263042] overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => setSelectedMonth('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1.5 rounded-[4px] text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedMonth === 'all'
-                  ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#ECBD56] shadow-xs'
-                  : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                  ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs'
+                  : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
               }`}
             >
               All History
@@ -1427,10 +1431,10 @@ export function BillScreen({
                 key={ym}
                 type="button"
                 onClick={() => setSelectedMonth(ym)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-3 py-1.5 rounded-[4px] text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                   selectedMonth === ym
-                    ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#ECBD56] shadow-xs'
-                    : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                    ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs'
+                    : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
                 }`}
               >
                 {formatMonthTitle(ym)}
@@ -1439,21 +1443,21 @@ export function BillScreen({
           </div>
         </div>
 
-        {/* 3. Summary Metrics: Exact 3 Requested Metric Labels */}
+        {/* 3. Summary Metrics: 3 Requested Metric Labels */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+          <div className="p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
             <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
               Total Monthly Expense Amount
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-black text-[#ECBD56] tracking-tight">
+              <span className="text-2xl font-black text-[#EA580C] dark:text-[#F59E0B] tracking-tight">
                 ₹{monthlyMetrics.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               <span className="text-[10px] font-bold text-[#4E525D] dark:text-[#9BA5B7]">INR</span>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+          <div className="p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
             <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
               Total Receipts
             </span>
@@ -1465,7 +1469,7 @@ export function BillScreen({
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+          <div className="p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
             <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
               Avg. Spent Amount
             </span>
@@ -1481,8 +1485,8 @@ export function BillScreen({
 
       {/* 4. LIFO History Cards Feed */}
       {displayedBills.length === 0 ? (
-        <div className="p-8 sm:p-12 text-center rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-[#ECBD56]/15 text-[#ECBD56] flex items-center justify-center mx-auto border border-[#ECBD56]/30 shadow-xs">
+        <div className="p-8 sm:p-12 text-center rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3">
+          <div className="w-14 h-14 rounded-[4px] bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F97316] flex items-center justify-center mx-auto border border-[#EA580C]/30 shadow-xs">
             <Receipt className="w-7 h-7" />
           </div>
           <div>
@@ -1499,7 +1503,7 @@ export function BillScreen({
             <button
               type="button"
               onClick={handleOpenNewBill}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold shadow-xs active-scale transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white text-xs font-bold shadow-xs active-scale transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Record First Expense</span>
@@ -1515,7 +1519,7 @@ export function BillScreen({
             return (
               <div
                 key={bill.id}
-                className="rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs transition-all p-4 sm:p-5 space-y-3.5"
+                className="rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs transition-all p-4 sm:p-5 space-y-3.5"
               >
                 {/* Top Row: Primary Heading = Receipt No. + Expense Date & Total Amount */}
                 <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
@@ -1525,7 +1529,7 @@ export function BillScreen({
                       <h3 className="text-base sm:text-lg font-black tracking-tight text-[#111216] dark:text-[#F7F6F3]">
                         {bill.receiptId || '#00001'}
                       </h3>
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] text-[11px] font-semibold border border-[#DDD9D0] dark:border-[#2A364B]">
+                      <span className="px-2.5 py-0.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] text-[11px] font-semibold border border-[#DDD9D0] dark:border-[#2A364B]">
                         {bill.expenseType || 'General Expense'}
                       </span>
                     </div>
@@ -1543,17 +1547,17 @@ export function BillScreen({
                   {/* Expense Date and Total Amount */}
                   <div className="text-right shrink-0">
                     <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] flex items-center justify-end gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#ECBD56]" />
+                      <Calendar className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
                       {formatBillDisplayDate(bill.billDateTime)}
                     </span>
-                    <span className="text-xl sm:text-2xl font-black text-[#ECBD56] tracking-tight block mt-0.5">
+                    <span className="text-xl sm:text-2xl font-black text-[#EA580C] dark:text-[#F97316] tracking-tight block mt-0.5">
                       ₹{Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
 
                 {/* Particulars / Line Items Summary */}
-                <div className="rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] p-3 border border-[#DDD9D0] dark:border-[#2A364B]">
+                <div className="rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] p-3 border border-[#DDD9D0] dark:border-[#2A364B]">
                   <div
                     onClick={() => toggleExpand(bill.id)}
                     className="flex items-center justify-between cursor-pointer select-none"
@@ -1569,17 +1573,17 @@ export function BillScreen({
 
                     <button
                       type="button"
-                      className="text-xs font-bold text-[#ECBD56] hover:underline flex items-center gap-1 shrink-0"
+                      className="text-xs font-bold text-[#EA580C] dark:text-[#F97316] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
                     >
                       <span>{isExpanded ? 'Hide' : `View (${bill.lineItems?.length || 0})`}</span>
                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                   </div>
 
-                  {/* Expandable itemized table with sleek rounded corners */}
+                  {/* Expandable itemized table with structured borders and 4px corners */}
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70 animate-fadeIn">
-                      <table className="w-full text-xs">
+                      <table className="w-full text-xs border-collapse">
                         <thead>
                           <tr className="text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
                             <th className="text-left font-bold py-1.5 w-12">S.No</th>
@@ -1594,7 +1598,7 @@ export function BillScreen({
                                 #{item.sNo || idx + 1}
                               </td>
                               <td className="py-1.5 font-medium">{item.particular}</td>
-                              <td className="py-1.5 font-bold text-right text-[#ECBD56]">
+                              <td className="py-1.5 font-bold text-right text-[#EA580C] dark:text-[#F97316]">
                                 ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
@@ -1603,7 +1607,7 @@ export function BillScreen({
                             <td colSpan={2} className="pt-2 text-right text-[#4E525D] dark:text-[#9BA5B7]">
                               Total:
                             </td>
-                            <td className="pt-2 text-right text-sm text-[#ECBD56] font-black">
+                            <td className="pt-2 text-right text-sm text-[#EA580C] dark:text-[#F97316] font-black">
                               ₹{Number(bill.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
@@ -1613,7 +1617,7 @@ export function BillScreen({
                   )}
                 </div>
 
-                {/* 5. BILL HISTORY CARD BUTTON ORDER (Requirement 5):
+                {/* 5. BILL HISTORY CARD BUTTON ORDER:
                     Strictly in horizontal order:
                     1. Delete (Trash icon)
                     2. View Receipt
@@ -1624,7 +1628,7 @@ export function BillScreen({
                     <button
                       type="button"
                       onClick={() => setBillToDelete(bill)}
-                      className="p-2 rounded-xl text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 dark:hover:bg-[#FF5A4E]/15 border border-[#DDD9D0] dark:border-[#2A364B] transition-colors cursor-pointer"
+                      className="p-2 rounded-[4px] text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 border border-[#DDD9D0] dark:border-[#2A364B] transition-colors cursor-pointer"
                       title="Delete Receipt"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1635,10 +1639,10 @@ export function BillScreen({
                   <button
                     type="button"
                     onClick={() => setPreviewBill(bill)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs"
                     title="View Receipt Preview"
                   >
-                    <Receipt className="w-3.5 h-3.5 text-[#ECBD56]" />
+                    <Receipt className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
                     <span>View Receipt</span>
                   </button>
 
@@ -1648,7 +1652,7 @@ export function BillScreen({
                       type="button"
                       onClick={() => downloadReceiptAsPng(bill)}
                       disabled={exportingPng}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold shadow-2xs active-scale transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white text-xs font-bold shadow-2xs active-scale transition-all cursor-pointer"
                       title="Download Expense Receipt PNG"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -1662,12 +1666,12 @@ export function BillScreen({
         </div>
       )}
 
-      {/* 5. Mobile Floating Action Button (FAB) "New Bill" (Requirement 4: sm:hidden on tablet/desktop) */}
+      {/* 5. Mobile Floating Action Button (FAB) "New Bill" */}
       <div className="sm:hidden fixed bottom-24 right-5 z-30">
         <button
           type="button"
           onClick={handleOpenNewBill}
-          className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#ECBD56] hover:bg-[#DEAA3E] active:bg-[#C9972E] text-[#111216] font-bold text-xs shadow-xl border border-[#ECBD56] ring-4 ring-[#ECBD56]/25 active-scale transition-all cursor-pointer select-none"
+          className="flex items-center gap-2 px-4 py-3 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] active:opacity-90 text-white font-bold text-xs shadow-xl border border-[#EA580C]/40 ring-4 ring-[#EA580C]/20 active-scale transition-all cursor-pointer select-none"
           title="Create Expense Bill"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -1685,7 +1689,7 @@ export function BillScreen({
       >
         <form onSubmit={handleFormSubmit} className="space-y-4">
           {formError && (
-            <div className="p-3 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-[#D9483B] dark:text-[#FF5A4E] text-xs flex items-start gap-2">
+            <div className="p-3 rounded-[4px] bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{formError}</span>
             </div>
@@ -1695,7 +1699,7 @@ export function BillScreen({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#ECBD56]" />
+                <Calendar className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
                 <span>Bill Date &amp; Time</span>
               </span>
               <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-normal">
@@ -1707,30 +1711,30 @@ export function BillScreen({
               required
               value={billDateTime}
               onChange={(e) => setBillDateTime(e.target.value)}
-              className="w-full h-10 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 transition-all"
+              className="w-full h-10 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 transition-all"
             />
           </div>
 
           {/* Paid By - RESTRICTED & AUTO-BOUND TO CURRENT LOGGED-IN USER */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#ECBD56]" />
+              <User className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
               <span>Paid By</span>
             </label>
-            <div className="w-full h-10 px-3.5 flex items-center justify-between text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
+            <div className="w-full h-10 px-3.5 flex items-center justify-between text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B]">
               <span className="font-bold">
                 {currentMember?.name || 'Member'} {currentMember?.code ? `(${currentMember.code})` : ''}
               </span>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#ECBD56] border border-[#ECBD56]/30">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-[4px] bg-[#EA580C]/10 text-[#EA580C] dark:text-[#F97316] border border-[#EA580C]/20">
                 Logged In User
               </span>
             </div>
           </div>
 
-          {/* Expense Type - STRICTLY CLEAN TEXT INPUT, NO CATEGORY SUGGESTIONS */}
+          {/* Expense Type - STRICTLY CLEAN TEXT INPUT */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5 text-[#ECBD56]" />
+              <Tag className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
               <span>Expense Type</span>
             </label>
             <input
@@ -1739,11 +1743,11 @@ export function BillScreen({
               value={expenseType}
               onChange={(e) => setExpenseType(e.target.value)}
               placeholder="Enter expense type (e.g. Vegetables, Grocery, Gas Refill)"
-              className="w-full h-10 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 transition-all placeholder-[#848A96] dark:placeholder-[#64748B]"
+              className="w-full h-10 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 transition-all placeholder-[#848A96] dark:placeholder-[#64748B]"
             />
           </div>
 
-          {/* Line Items Table with Minimal Sleek Rounded Corners */}
+          {/* Line Items Table with Structured Cell Borders and Clear Alignment */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
@@ -1752,73 +1756,79 @@ export function BillScreen({
               <button
                 type="button"
                 onClick={handleAddLineItem}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ECBD56] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#EA580C] dark:text-[#F97316] hover:underline cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Item</span>
               </button>
             </div>
 
-            <div className="rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden bg-white dark:bg-[#171F2C]">
-              <div className="grid grid-cols-12 gap-1.5 p-2.5 bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0] dark:border-[#2A364B]">
-                <div className="col-span-2 text-center">S.No</div>
-                <div className="col-span-6">Particular</div>
-                <div className="col-span-3 text-right">Amount (₹)</div>
-                <div className="col-span-1"></div>
-              </div>
-
-              <div className="divide-y divide-[#DDD9D0]/50 dark:divide-[#2A364B]/50 max-h-52 overflow-y-auto p-1.5 space-y-1">
-                {lineItems.map((item, idx) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-1.5 items-center py-1">
-                    <div className="col-span-2 text-center text-xs font-bold text-[#4E525D] dark:text-[#9BA5B7]">
-                      #{item.sNo}
-                    </div>
-                    <div className="col-span-6">
-                      <input
-                        type="text"
-                        required
-                        value={item.particular}
-                        onChange={(e) => handleLineItemChange(idx, 'particular', e.target.value)}
-                        placeholder="Particular description"
-                        className="w-full h-8 px-2.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        required
-                        value={item.amount}
-                        onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)}
-                        placeholder="0.00"
-                        className="w-full h-8 px-2.5 text-xs text-right bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] font-bold rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
-                      />
-                    </div>
-                    <div className="col-span-1 flex justify-center">
-                      {lineItems.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLineItem(idx)}
-                          className="p-1 rounded-md text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 cursor-pointer transition-colors"
-                          title="Remove item"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Total Calculation Row */}
-              <div className="flex items-center justify-between p-3 bg-[#F2F1ED] dark:bg-[#1F2A3C] border-t border-[#DDD9D0] dark:border-[#2A364B]">
-                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
-                  Auto Calculated Sum:
-                </span>
-                <span className="text-base font-black text-[#ECBD56]">
-                  ₹{calculatedGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
+            <div className="rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden bg-white dark:bg-[#171F2C]">
+              <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0] dark:border-[#2A364B]">
+                      <th className="py-2 px-2.5 text-center w-12 border-r border-[#DDD9D0] dark:border-[#2A364B]">S.No</th>
+                      <th className="py-2 px-3 text-left border-r border-[#DDD9D0] dark:border-[#2A364B]">Particular</th>
+                      <th className="py-2 px-3 text-right w-32 border-r border-[#DDD9D0] dark:border-[#2A364B]">Amount (₹)</th>
+                      <th className="py-2 px-2 text-center w-10">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#DDD9D0]/60 dark:divide-[#2A364B]/60">
+                    {lineItems.map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-[#F9F8F6] dark:hover:bg-[#1C2534] transition-colors">
+                        <td className="py-1.5 px-2 text-center font-bold text-[#4E525D] dark:text-[#9BA5B7] border-r border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                          #{item.sNo}
+                        </td>
+                        <td className="py-1 px-2 border-r border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                          <input
+                            type="text"
+                            required
+                            value={item.particular}
+                            onChange={(e) => handleLineItemChange(idx, 'particular', e.target.value)}
+                            placeholder="Particular description"
+                            className="w-full h-8 px-2.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] focus:ring-1 focus:ring-[#EA580C]"
+                          />
+                        </td>
+                        <td className="py-1 px-2 border-r border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            required
+                            value={item.amount}
+                            onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)}
+                            placeholder="0.00"
+                            className="w-full h-8 px-2.5 text-xs text-right bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] font-bold rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] focus:ring-1 focus:ring-[#EA580C]"
+                          />
+                        </td>
+                        <td className="py-1 px-1 text-center">
+                          {lineItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLineItem(idx)}
+                              className="p-1 rounded-[4px] text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 cursor-pointer transition-colors"
+                              title="Remove item"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-[#F2F1ED] dark:bg-[#1F2A3C] border-t border-[#DDD9D0] dark:border-[#2A364B]">
+                      <td colSpan={2} className="py-2.5 px-3 text-right text-xs font-bold text-[#111216] dark:text-[#F7F6F3] border-r border-[#DDD9D0] dark:border-[#2A364B]">
+                        Auto Calculated Sum:
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-sm font-black text-[#EA580C] dark:text-[#F97316] border-r border-[#DDD9D0] dark:border-[#2A364B]">
+                        ₹{calculatedGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           </div>
@@ -1845,7 +1855,7 @@ export function BillScreen({
         </form>
       </Modal>
 
-      {/* 7. EXPENSE RECEIPT MODAL VIEW (Exact Thermal Cash Receipt UI & PNG Download - Requirement 1) */}
+      {/* 7. EXPENSE RECEIPT MODAL VIEW */}
       <Modal
         isOpen={Boolean(previewBill)}
         onClose={() => setPreviewBill(null)}
@@ -1856,7 +1866,7 @@ export function BillScreen({
         {previewBill && (
           <div className="space-y-4">
             {/* Authentic Thermal Receipt Paper Layout */}
-            <div className="flex justify-center p-2.5 sm:p-4 bg-[#ECEAE3] dark:bg-[#0B0C0E] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
+            <div className="flex justify-center p-2.5 sm:p-4 bg-[#ECEAE3] dark:bg-[#0B0C0E] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
               <div className="w-full flex justify-center">
                 <ThermalReceipt bill={previewBill} />
               </div>
@@ -1887,7 +1897,7 @@ export function BillScreen({
         )}
       </Modal>
 
-      {/* 8. Delete Confirmation Modal (Requirement 2) */}
+      {/* 8. Delete Confirmation Modal */}
       <Modal
         isOpen={Boolean(billToDelete)}
         onClose={() => setBillToDelete(null)}
@@ -1895,8 +1905,8 @@ export function BillScreen({
         subtitle="Are you sure you want to delete this receipt?"
       >
         <div className="space-y-4">
-          <div className="p-3.5 rounded-2xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-xs space-y-1.5">
-            <p className="font-bold text-[#D9483B] dark:text-[#FF5A4E]">
+          <div className="p-3.5 rounded-[4px] bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-xs space-y-1.5">
+            <p className="font-bold text-[#DC2626] dark:text-[#EF4444]">
               Are you sure you want to delete this receipt?
             </p>
             <p className="text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
@@ -1914,7 +1924,7 @@ export function BillScreen({
         </div>
       </Modal>
 
-      {/* 9. DATE RANGE SELECTOR & CONSOLIDATED REPORT EXPORT MODAL (Requirement 2) */}
+      {/* 9. DATE RANGE SELECTOR & CONSOLIDATED REPORT EXPORT MODAL */}
       <Modal
         isOpen={isExportModalOpen}
         onClose={() => {
@@ -1925,15 +1935,16 @@ export function BillScreen({
         className="max-w-lg"
       >
         <div className="space-y-4">
-          {/* Quick Preset Buttons */}
+          {/* Quick Preset Buttons (Includes Last 2 Months) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
               Quick Range Presets
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
                 { id: 'this_month', label: 'This Month' },
                 { id: 'last_month', label: 'Last Month' },
+                { id: 'last_2_months', label: 'Last 2 Months' },
                 { id: 'last_30_days', label: 'Last 30 Days' },
                 { id: 'all', label: 'All History' },
               ].map(preset => (
@@ -1942,9 +1953,9 @@ export function BillScreen({
                   type="button"
                   onClick={() => handleQuickRange(preset.id)}
                   disabled={exportingReport}
-                  className={`px-2.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                  className={`px-2 py-2 text-xs font-bold rounded-[4px] border transition-all cursor-pointer whitespace-nowrap text-center ${
                     activeRangePreset === preset.id
-                      ? 'bg-[#ECBD56] text-[#111216] border-[#ECBD56] shadow-xs'
+                      ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border-transparent shadow-xs'
                       : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
                   }`}
                 >
@@ -1958,7 +1969,7 @@ export function BillScreen({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-[#ECBD56]" />
+                <Calendar className="w-3 h-3 text-[#EA580C] dark:text-[#F97316]" />
                 <span>Start Date</span>
               </label>
               <input
@@ -1969,12 +1980,12 @@ export function BillScreen({
                   setActiveRangePreset('custom');
                 }}
                 disabled={exportingReport}
-                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-[#ECBD56]" />
+                <Calendar className="w-3 h-3 text-[#EA580C] dark:text-[#F97316]" />
                 <span>End Date</span>
               </label>
               <input
@@ -1985,16 +1996,16 @@ export function BillScreen({
                   setActiveRangePreset('custom');
                 }}
                 disabled={exportingReport}
-                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]"
               />
             </div>
           </div>
 
           {/* Live Preview & Calculation Summary Box */}
-          <div className="p-3.5 rounded-2xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3">
+          <div className="p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ECBD56] block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#EA580C] dark:text-[#F97316] block">
                   Report Scope
                 </span>
                 <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
@@ -2022,21 +2033,21 @@ export function BillScreen({
             {/* Total Sum */}
             <div className="flex items-center justify-between text-xs pt-1">
               <span className="text-[#4E525D] dark:text-[#9BA5B7]">Total Consolidated Amount:</span>
-              <span className="text-base font-black text-[#ECBD56]">
+              <span className="text-base font-black text-[#EA580C] dark:text-[#F97316]">
                 ₹{reportTotalSum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
-            {/* Consolidated Sum Formula Breakdown (Exact User Requirement 2) */}
+            {/* Consolidated Sum Formula Breakdown */}
             <div className="pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#4E525D] dark:text-[#9BA5B7] block">
                 Consolidated Calculation Formula:
               </span>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] font-mono text-[11px] leading-relaxed break-words text-[#111216] dark:text-[#F7F6F3]">
+              <div className="p-2.5 rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] font-mono text-[11px] leading-relaxed break-words text-[#111216] dark:text-[#F7F6F3]">
                 {consolidatedFormulaStr}
               </div>
               {consolidatedDetailedFormulaStr && (
-                <div className="p-2 rounded-lg bg-white/60 dark:bg-[#171F2C]/60 text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-mono break-words">
+                <div className="p-2 rounded-[4px] bg-white/60 dark:bg-[#171F2C]/60 text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-mono break-words">
                   {consolidatedDetailedFormulaStr}
                 </div>
               )}
@@ -2045,19 +2056,19 @@ export function BillScreen({
 
           {/* Export Progress Bar */}
           {exportingReport && (
-            <div className="p-3 rounded-xl bg-[#ECBD56]/15 border border-[#ECBD56]/30 text-xs space-y-2">
+            <div className="p-3 rounded-[4px] bg-[#EA580C]/10 border border-[#EA580C]/30 text-xs space-y-2">
               <div className="flex items-center justify-between font-bold text-[#111216] dark:text-[#F7F6F3]">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#ECBD56] animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-ping" />
                   <span>Converting Thermal Receipts to PDF...</span>
                 </span>
                 <span>
                   {reportProgress.current} / {reportProgress.total}
                 </span>
               </div>
-              <div className="w-full bg-[#DDD9D0] dark:bg-[#2A364B] h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-[#DDD9D0] dark:bg-[#2A364B] h-2 rounded-[4px] overflow-hidden">
                 <div
-                  className="bg-[#ECBD56] h-full transition-all duration-200"
+                  className="bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] h-full transition-all duration-200"
                   style={{
                     width: `${reportProgress.total > 0 ? (reportProgress.current / reportProgress.total) * 100 : 0}%`,
                   }}

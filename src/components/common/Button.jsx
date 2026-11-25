@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Design System Button component
- * Pill shaped (rounded-full) with exact Light/Dark tokens & Gold accent
+ * Standardized 4px corner radius with exact Light/Dark tokens & warm coral-amber accent
  */
 export function Button({
   children,
@@ -18,22 +18,22 @@ export function Button({
   type = 'button',
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active-scale disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-full font-sans cursor-pointer';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active-scale disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-[4px] font-sans cursor-pointer';
 
   const sizeStyles = {
-    sm: 'h-9 px-3.5 text-xs gap-1.5',
-    md: 'min-h-[44px] px-5 text-sm gap-2', // Meets 44px min touch target
-    lg: 'h-12 px-6 text-base gap-2.5',
-    icon: 'h-11 w-11 p-0',
+    sm: 'h-8 px-3 text-xs gap-1.5',
+    md: 'min-h-[40px] px-4 text-sm gap-2',
+    lg: 'h-11 px-5 text-base gap-2.5',
+    icon: 'h-9 w-9 p-0',
   };
 
   const variantStyles = {
-    // Primary Gold Accent
-    primary: 'bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] active:bg-[#C9972E] focus-visible:ring-[#ECBD56] shadow-xs hover:shadow-sm font-bold',
+    // Primary Coral-Amber Accent
+    primary: 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white hover:opacity-95 focus-visible:ring-[#EA580C] shadow-xs font-bold border border-transparent',
     // Rich Ink / Dark
-    dark: 'bg-[#111216] text-[#F7F6F3] dark:bg-[#ECBD56] dark:text-[#111216] hover:bg-[#2D2D2D] active:bg-[#000000] focus-visible:ring-[#111216] shadow-xs font-bold',
+    dark: 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] hover:bg-[#27272A] active:bg-[#09090B] focus-visible:ring-[#18181B] shadow-xs font-bold border border-transparent',
     // White/Slate Secondary Surface
-    secondary: 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active:bg-[#EAE8E2] dark:active:bg-[#253248] focus-visible:ring-[#ECBD56] shadow-2xs',
+    secondary: 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active:bg-[#EAE8E2] dark:active:bg-[#253248] focus-visible:ring-[#EA580C] shadow-2xs',
     // Ghost / Tertiary
     tertiary: 'bg-transparent text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2]/60 dark:hover:bg-[#1F2A3C]/60 active:bg-[#EAE8E2] dark:active:bg-[#1F2A3C] focus-visible:ring-[#DDD9D0]',
     // Semantic Error
