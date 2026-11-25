@@ -113,7 +113,7 @@ export function TodayScreen({
 
     // Lunch with 2 washers (Excel rule: dual washers on multiple lunch)
     if (selectedMeal === 'lunch' && washersCount === 2 && activeEaterList.length >= 2) {
-      const { assigned1, assigned2, updatedQueue } = assignLunchPair(queue, activeEaterList);
+      const { assigned1, assigned2, updatedQueue } = assignLunchPair(queue, activeEaterList, allMembers);
       const slots = [
         {
           id: `${todayConfig?.date || 'today'}-lunch-1`,
@@ -138,7 +138,7 @@ export function TodayScreen({
       };
     } else {
       // Single washer
-      const { assignedId, updatedQueue } = assignSlot(queue, activeEaterList);
+      const { assignedId, updatedQueue } = assignSlot(queue, activeEaterList, allMembers);
       const slots = [
         {
           id: `${todayConfig?.date || 'today'}-${selectedMeal}-1`,
@@ -154,7 +154,7 @@ export function TodayScreen({
         liveNextWasherId: updatedQueue[0] || null,
       };
     }
-  }, [selectedMeal, isMealProvided, washersCount, currentEaters, queue, todayConfig?.date, memberMap]);
+  }, [selectedMeal, isMealProvided, washersCount, currentEaters, queue, todayConfig?.date, memberMap, allMembers]);
 
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
 
@@ -167,20 +167,6 @@ export function TodayScreen({
         todayDateStr={currentDateStr}
         availableDays={availableDays}
       />
-
-      {/* Member Info Banner if not Admin */}
-      {!isAdmin && (
-        <div className="p-3.5 rounded-[22px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] flex items-center justify-between gap-2.5 shadow-2xs">
-          <div className="flex items-center gap-2.5 text-xs">
-            <div className="w-7 h-7 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/30">
-              <UtensilsCrossed className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-medium text-[11px] leading-tight text-[#4E525D] dark:text-[#9BA5B7]">
-              <strong className="text-[#111216] dark:text-[#F7F6F3]">Member Access:</strong> You can mark meal availability, washer requirements, and complete washing duty records below.
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Responsive Cards Layout */}
       <div className="w-full max-w-full space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-5 md:gap-4 lg:gap-6">

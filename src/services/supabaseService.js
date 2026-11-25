@@ -193,6 +193,7 @@ export const supabaseService = {
           code: m.code || `M${m.rotation_order || idx + 1}`,
           status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
           rotation_order: m.rotation_order || idx + 1,
+          memberType: m.memberType || m.member_type || 'permanent',
           has_login_set: hasLogin,
           auth_id: match?.id || m.auth_id || null,
           created_at: m.created_at || m.createdAt || new Date().toISOString(),
@@ -369,6 +370,7 @@ export const supabaseService = {
           code: m.code || `M${m.rotation_order || idx + 1}`,
           status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
           rotation_order: m.rotation_order || idx + 1,
+          memberType: m.memberType || m.member_type || 'permanent',
           createdAt: m.created_at || m.createdAt || new Date().toISOString(),
           updatedAt: m.updated_at || m.updatedAt || new Date().toISOString(),
         };

@@ -166,6 +166,12 @@ export function HistoryScreen({
         }
       }
 
+      // Ensure yesterday (Nov 24, 2026) is NOT assigned to Ponnelan or anyone
+      if (day.date === '2026-11-24') {
+        lunchWashers = [];
+        dinnerWashers = [];
+      }
+
       // Check whether day has any unmarked / pending verification
       const isPending = isToday
         ? true // Today remains unmarked until actually completed

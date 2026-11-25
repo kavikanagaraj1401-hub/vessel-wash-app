@@ -760,7 +760,7 @@ export default function App() {
 
       if (isProvided && activeEaterList.length > 0) {
         if (meal === 'lunch' && washersCount === 2 && activeEaterList.length >= 2) {
-          const { assigned1, assigned2, updatedQueue } = assignLunchPair(queueForMeal, activeEaterList);
+          const { assigned1, assigned2, updatedQueue } = assignLunchPair(queueForMeal, activeEaterList, members);
           assignedSlots = [
             {
               assignedMemberId: assigned1,
@@ -773,7 +773,7 @@ export default function App() {
           ];
           nextWasherId = updatedQueue[0] || null;
         } else {
-          const { assignedId, updatedQueue } = assignSlot(queueForMeal, activeEaterList);
+          const { assignedId, updatedQueue } = assignSlot(queueForMeal, activeEaterList, members);
           assignedSlots = [
             {
               assignedMemberId: assignedId,
@@ -955,7 +955,7 @@ export default function App() {
     );
   };
 
-  const handleAddMember = async ({ name, code, status }) => {
+  const handleAddMember = async ({ name, code, status, memberType = 'permanent' }) => {
     if (!isAdmin) return;
     const seq = getNextMemberSequence(members);
     const assignedCode = code || seq.code;
@@ -968,14 +968,18 @@ export default function App() {
       name,
       role: 'member',
       status: status || 'active',
-      rotation_order: assignedOrder,
+      memberType: memberType || 'permanent',
+      rotation_order: memberType === 'permanent' ? assignedOrder : null,
       has_login_set: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const updatedQueue = insertNewMemberIntoQueue(initialQueue, assignedId);
-    const rotationPosition = updatedQueue.indexOf(assignedId) + 1;
+    const isPermanent = newMember.memberType === 'permanent';
+    const updatedQueue = isPermanent
+      ? insertNewMemberIntoQueue(initialQueue, assignedId, 'permanent')
+      : [...initialQueue];
+    const rotationPosition = isPermanent ? updatedQueue.indexOf(assignedId) + 1 : null;
 
     // Persist new member to Supabase (if members table is reachable)
     const dbRecord = await supabaseService.addMemberToDatabase(newMember, rotationPosition);
@@ -984,11 +988,14 @@ export default function App() {
     }
     const finalId = newMember.id;
 
-    const finalQueue = updatedQueue.map(id => (id === assignedId ? finalId : id));
+    const finalQueue = isPermanent
+      ? updatedQueue.map(id => (id === assignedId ? finalId : id))
+      : [...initialQueue];
     const updatedMembers = supabaseService.deduplicateMembers([...members, newMember]);
     setMembers(updatedMembers);
     storage.saveMembers(updatedMembers);
     setInitialQueue(finalQueue);
+    storage.saveInitialQueue(finalQueue);
 
     const updatedDays = daysConfig.map(day => ({
       ...day,
@@ -996,6 +1003,7 @@ export default function App() {
       dinnerEaters: day.dinnerEaters ? [...day.dinnerEaters, finalId] : [finalId],
     }));
     setDaysConfig(updatedDays);
+    storage.saveDaysConfig(updatedDays);
 
     await supabaseService.saveApplicationRules({
       daysConfig: updatedDays,
@@ -1008,22 +1016,40 @@ export default function App() {
     logUserActivity(
       'MEMBER_ADD',
       'member',
-      `Added New Member: ${name}`,
-      `${name} (${assignedCode}) was added to rotation queue at position #${rotationPosition} by Admin ${currentMember.name}.`,
+      `Added New ${isPermanent ? 'Permanent' : 'Temporary'} Member: ${name}`,
+      `${name} (${assignedCode}, ${isPermanent ? 'Permanent' : 'Temporary'}) was added ${isPermanent ? `to rotation queue at position #${rotationPosition}` : 'as attendance-based duty washer'} by Admin ${currentMember.name}.`,
       selectedDateStr
     );
   };
 
-  const handleEditMember = async (id, newName) => {
+  const handleEditMember = async (id, newName, newMemberType) => {
     if (!isAdmin) return;
     const target = members.find(m => m.id === id);
     const oldName = target?.name || id;
 
     const updatedMembers = members.map(m =>
-      m.id === id ? { ...m, name: newName, updatedAt: new Date().toISOString() } : m
+      m.id === id ? {
+        ...m,
+        name: newName,
+        ...(newMemberType ? { memberType: newMemberType } : {}),
+        updatedAt: new Date().toISOString()
+      } : m
     );
     setMembers(updatedMembers);
     storage.saveMembers(updatedMembers);
+
+    // Update queue if memberType changed
+    let updatedQueue = [...initialQueue];
+    if (newMemberType === 'permanent' && !updatedQueue.includes(id)) {
+      updatedQueue.push(id);
+      setInitialQueue(updatedQueue);
+      storage.saveInitialQueue(updatedQueue);
+    } else if (newMemberType === 'temporary') {
+      updatedQueue = updatedQueue.filter(qId => qId !== id);
+      setInitialQueue(updatedQueue);
+      storage.saveInitialQueue(updatedQueue);
+    }
+
     await supabaseService.saveMembersList(updatedMembers);
 
     const updatedTarget = updatedMembers.find(m => m.id === id);
@@ -1034,7 +1060,7 @@ export default function App() {
     logUserActivity(
       'MEMBER_EDIT',
       'member',
-      `Renamed Member: ${oldName} → ${newName}`,
+      `Renamed Member: ${oldName} → ${newName}${newMemberType ? ` (${newMemberType})` : ''}`,
       `Member name was updated from "${oldName}" to "${newName}" by Admin ${currentMember.name}.`,
       selectedDateStr
     );
@@ -1329,15 +1355,6 @@ export default function App() {
 
         {/* Main Content Area (Scrolls independently below static header) */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden w-full pb-28">
-          {/* Gentle Reminder for all logged-in members */}
-          <GentleReminderBanner
-            todayDateStr={actualTodayDateStr}
-            computedDays={computedDays}
-            members={members}
-            attendanceLogs={attendanceLogs}
-            onNavigateToday={() => setActiveTab('today')}
-          />
-
           {activeTab === 'today' && (
             <TodayScreen
               currentDateStr={actualTodayDateStr}

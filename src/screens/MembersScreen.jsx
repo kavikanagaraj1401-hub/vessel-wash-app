@@ -158,19 +158,20 @@ export function MembersScreen({
   // Add Member Form state
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
+  const [newMemberType, setNewMemberType] = useState('permanent'); // 'permanent' | 'temporary'
   const [formError, setFormError] = useState('');
 
   // Edit Member Form state
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('member');
+  const [editMemberType, setEditMemberType] = useState('permanent');
   const [editError, setEditError] = useState('');
-
-
 
   const handleOpenAdd = () => {
     const seq = getNextMemberSequence(members);
     setNewName('');
     setNewCode(seq.code);
+    setNewMemberType('permanent');
     setFormError('');
     setAddModalOpen(true);
   };
@@ -190,6 +191,7 @@ export function MembersScreen({
       name: trimmed,
       code: newCode.trim() || `M${members.length + 1}`,
       status: 'active',
+      memberType: newMemberType,
     });
 
     setAddModalOpen(false);
@@ -199,6 +201,7 @@ export function MembersScreen({
     setEditModal({ isOpen: true, member });
     setEditName(member.name);
     setEditRole(isMemberAdmin(member) ? 'admin' : 'member');
+    setEditMemberType(member.memberType || member.member_type || 'permanent');
     setEditError('');
   };
 
@@ -217,7 +220,7 @@ export function MembersScreen({
       return;
     }
 
-    onEditMember(editModal.member.id, trimmed);
+    onEditMember(editModal.member.id, trimmed, editMemberType);
 
     // If role changed in edit modal, trigger role update
     if (!isKavipriyan(editModal.member) && onToggleAdminRole) {
@@ -659,6 +662,14 @@ export function MembersScreen({
                         </span>
                       )}
 
+                      {/* Temporary Member Badge */}
+                      {(member.memberType === 'temporary' || member.member_type === 'temporary') && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#B8871E] dark:text-[#ECBD56] border border-[#ECBD56]/40 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Temporary
+                        </span>
+                      )}
+
                       {/* 4. Active Status Indicator */}
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 ${
@@ -848,6 +859,43 @@ export function MembersScreen({
             onChange={(e) => setNewCode(e.target.value)}
             helperText="Short identification tag for badges and queue tables"
           />
+
+          {/* Member Type Selector (Permanent or Temporary) */}
+          <div className="space-y-1.5 pt-1">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
+              Member Type
+            </label>
+            <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
+              <button
+                type="button"
+                onClick={() => setNewMemberType('permanent')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  newMemberType === 'permanent'
+                    ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] shadow-2xs'
+                    : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                }`}
+              >
+                <span>Permanent</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewMemberType('temporary')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  newMemberType === 'temporary'
+                    ? 'bg-[#ECBD56] text-[#111216] font-extrabold shadow-2xs'
+                    : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Temporary</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-[#848A96] dark:text-[#64748B]">
+              {newMemberType === 'permanent'
+                ? 'Permanent member: Appended to the end of the rotation schedule and joins regular vessel wash turns.'
+                : 'Temporary member: Whenever marked present in attendance, automatically assigned as the vessel washer for that present date.'}
+            </p>
+          </div>
         </div>
       </Modal>
 
@@ -919,6 +967,45 @@ export function MembersScreen({
             <div className="p-3 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] border border-[#ECBD56]/40 text-xs text-[#845D08] dark:text-[#FBE6AB] font-semibold flex items-center gap-2">
               <Crown className="w-4 h-4 text-[#ECBD56]" />
               <span>Primary Administrator (Permanent Role)</span>
+            </div>
+          )}
+
+          {/* Member Type: Permanent vs Temporary */}
+          {editModal.member && !isKavipriyan(editModal.member) && (
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
+                Member Type
+              </label>
+              <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
+                <button
+                  type="button"
+                  onClick={() => setEditMemberType('permanent')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editMemberType === 'permanent'
+                      ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] shadow-2xs'
+                      : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                  }`}
+                >
+                  <span>Permanent</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMemberType('temporary')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editMemberType === 'temporary'
+                      ? 'bg-[#ECBD56] text-[#111216] font-extrabold shadow-2xs'
+                      : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Temporary</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-[#848A96] dark:text-[#64748B]">
+                {editMemberType === 'permanent'
+                  ? 'Permanent member: Follows regular rotation schedule at the end of the queue.'
+                  : 'Temporary member: Whenever marked present in attendance, automatically assigned as the vessel washer for that present date.'}
+              </p>
             </div>
           )}
         </div>

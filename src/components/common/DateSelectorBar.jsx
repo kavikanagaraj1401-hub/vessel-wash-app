@@ -11,24 +11,25 @@ export function DateSelectorBar({
   todayDateStr = getTodayDateStr(),
   availableDays = [],
 }) {
-  const currentIndex = availableDays.findIndex(d => d.date === selectedDateStr);
-  const hasPrev = currentIndex > 0;
-  const hasNext = currentIndex >= 0 && currentIndex < availableDays.length - 1;
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      onSelectDate(availableDays[currentIndex - 1].date);
-    } else {
-      const cur = new Date(selectedDateStr);
-      cur.setDate(cur.getDate() - 1);
-      const prevDate = cur.toISOString().split('T')[0];
-      onSelectDate(prevDate);
+  // Ensure selected date is never before today
+  React.useEffect(() => {
+    if (selectedDateStr < todayDateStr && onSelectDate) {
+      onSelectDate(todayDateStr);
     }
-  };
+  }, [selectedDateStr, todayDateStr, onSelectDate]);
+
+  // Restrict available days to today and future dates only
+  const currentOrFutureDays = React.useMemo(() => {
+    const filtered = (availableDays || []).filter(d => d.date >= todayDateStr);
+    return filtered.length > 0 ? filtered : [{ date: todayDateStr, dayOfWeek: '', dayNumber: parseInt(todayDateStr.split('-')[2], 10) }];
+  }, [availableDays, todayDateStr]);
+
+  const currentIndex = currentOrFutureDays.findIndex(d => d.date === selectedDateStr);
+  const safeIndex = currentIndex >= 0 ? currentIndex : 0;
 
   const handleNext = () => {
-    if (currentIndex >= 0 && currentIndex < availableDays.length - 1) {
-      onSelectDate(availableDays[currentIndex + 1].date);
+    if (currentIndex >= 0 && currentIndex < currentOrFutureDays.length - 1) {
+      onSelectDate(currentOrFutureDays[currentIndex + 1].date);
     } else {
       const cur = new Date(selectedDateStr);
       cur.setDate(cur.getDate() + 1);
@@ -38,14 +39,12 @@ export function DateSelectorBar({
   };
 
   const isToday = selectedDateStr === todayDateStr;
-  const isFuture = selectedDateStr > todayDateStr;
 
-  // Window of 7 days around selected date for the pill strip
-  const safeIndex = currentIndex >= 0 ? currentIndex : 0;
-  const startIdx = Math.max(0, Math.min(safeIndex - 3, Math.max(0, availableDays.length - 7)));
-  const visibleDays = availableDays.slice(startIdx, startIdx + 7);
+  // Window of 7 days starting from today onwards for the strip
+  const startIdx = Math.max(0, Math.min(safeIndex, Math.max(0, currentOrFutureDays.length - 7)));
+  const visibleDays = currentOrFutureDays.slice(startIdx, startIdx + 7);
 
-  const currentDayObj = availableDays[currentIndex] || {};
+  const currentDayObj = currentOrFutureDays[currentIndex] || {};
   const dayOfWeek = currentDayObj.dayOfWeek || '';
 
   const [currentTime, setCurrentTime] = React.useState(() => {
@@ -59,24 +58,30 @@ export function DateSelectorBar({
     return () => clearInterval(timer);
   }, []);
 
-  const minDate = '2026-01-01';
+  const minDate = todayDateStr;
   const maxDate = availableDays[availableDays.length - 1]?.date || '2035-12-31';
 
   return (
     <div className="bg-white dark:bg-[#171F2C] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] p-3 shadow-xs space-y-2.5">
-      {/* Top row: Date Switcher Controls */}
+      {/* Top row: Date Switcher Controls (No previous day button to disallow navigating to past dates) */}
       <div className="flex items-center justify-between gap-2">
-        {/* Previous Day Button */}
-        <button
-          type="button"
-          onClick={handlePrev}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active-scale transition-colors border border-[#DDD9D0] dark:border-[#2A364B] flex-shrink-0 cursor-pointer"
-          title="Previous day"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+        {/* Left spacer / Today indicator */}
+        <div className="w-8 flex items-center justify-center flex-shrink-0">
+          {isToday ? (
+            <span className="w-2.5 h-2.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80]" title="Live Today" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => onSelectDate && onSelectDate(todayDateStr)}
+              className="text-[#ECBD56] hover:text-[#DEAA3E] text-xs font-bold cursor-pointer"
+              title="Return to Today"
+            >
+              Today
+            </button>
+          )}
+        </div>
 
-        {/* Center: Selected Date + Live Time (No Live Today card) */}
+        {/* Center: Selected Date + Live Time */}
         <div className="flex flex-col items-center justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap justify-center text-center">
             <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] tracking-tight">
@@ -106,7 +111,7 @@ export function DateSelectorBar({
         </button>
       </div>
 
-      {/* Middle row: Quick Jump Input + Return to Today */}
+      {/* Middle row: Quick Jump Input (Restricted to today onwards) */}
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
         <div className="flex items-center gap-1.5 text-xs text-[#4E525D] dark:text-[#9BA5B7]">
           <Calendar className="w-3.5 h-3.5 text-[#ECBD56]" />
@@ -118,14 +123,15 @@ export function DateSelectorBar({
             max={maxDate}
             onChange={(e) => {
               if (e.target.value) {
-                onSelectDate(e.target.value);
+                const target = e.target.value < todayDateStr ? todayDateStr : e.target.value;
+                onSelectDate(target);
               }
             }}
             className="text-[11px] font-semibold bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] rounded-lg px-2 py-0.5 outline-none focus:border-[#ECBD56] cursor-pointer"
           />
         </div>
 
-        {/* Jump to Today Button */}
+        {/* Return to Today Button */}
         {!isToday && (
           <button
             type="button"
@@ -139,7 +145,7 @@ export function DateSelectorBar({
         )}
       </div>
 
-      {/* Horizontal mini date chips for rapid 1-tap testing */}
+      {/* Horizontal date chips (Today and upcoming dates only) */}
       <div className="grid grid-cols-7 gap-1 pt-1 border-t border-[#DDD9D0]/50 dark:border-[#2A364B]/50">
         {visibleDays.map(day => {
           const isSelected = day.date === selectedDateStr;
