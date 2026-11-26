@@ -12,7 +12,7 @@ import { BillScreen } from './screens/BillScreen';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { extractNameFromEmail, extractUsername, isKavipriyanEmail, getNextMemberSequence } from './logic/authUtils';
 
-import { storage, INITIAL_MEMBERS } from './logic/storage';
+import { storage, INITIAL_MEMBERS, INITIAL_ATTENDANCE_LOGS } from './logic/storage';
 import { logActivityAction as defaultLogActivityAction, safeLogActivity } from './logic/activityLogger';
 import {
   computeMonthRotation,
@@ -155,6 +155,16 @@ export default function App() {
     // Skip 2026-11-24 (pause/no meal day)
     loaded = loaded.filter(l => l.date !== '2026-11-24');
 
+    // Ensure all baseline historical wash records from INITIAL_ATTENDANCE_LOGS are present
+    const existingKeys = new Set(loaded.map(l => l.id || `${l.date}-${l.meal}-${l.memberId}`));
+    INITIAL_ATTENDANCE_LOGS.forEach(l => {
+      const key = l.id || `${l.date}-${l.meal}-${l.memberId}`;
+      if (!existingKeys.has(key) && l.date !== '2026-11-24') {
+        loaded.push(l);
+        existingKeys.add(key);
+      }
+    });
+
     const hasNov18 = loaded.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
     if (!hasNov18) {
       loaded.push({
@@ -185,6 +195,22 @@ export default function App() {
         markedAt: '2026-11-19T21:30:00.000Z',
         remarks: 'Washed by Marudhu',
         markedBy: 'Marudhu',
+      });
+    }
+    const hasNov23 = loaded.some(l => l.date === '2026-11-23' && l.meal === 'dinner');
+    if (!hasNov23) {
+      loaded.push({
+        id: 'att-2026-11-23-dinner-1',
+        slotId: '2026-11-23-dinner-1',
+        date: '2026-11-23',
+        meal: 'dinner',
+        slotIndex: 1,
+        memberId: 'm3',
+        memberName: 'Perumal',
+        status: 'present',
+        markedAt: '2026-11-23T21:30:00.000Z',
+        remarks: 'Washed by Perumal',
+        markedBy: 'Perumal',
       });
     }
     // Nov 25 wash entry: only seed as historical past record if strictly in past
@@ -532,7 +558,15 @@ export default function App() {
           });
         }
 
-        // 3. Existing local logs fallback
+        // 3. Fallback from baseline INITIAL_ATTENDANCE_LOGS
+        INITIAL_ATTENDANCE_LOGS.forEach(l => {
+          if (l && l.date && l.date !== '2026-11-24') {
+            const key = l.id || `${l.date}-${l.meal}-${l.memberId}`;
+            if (!logMap.has(key)) logMap.set(key, l);
+          }
+        });
+
+        // 4. Existing local logs fallback
         (storage.getAttendanceLogs() || []).forEach(l => {
           if (l && l.date && l.date !== '2026-11-24') {
             const key = l.id || `${l.date}-${l.meal}-${l.memberId}`;
@@ -574,6 +608,22 @@ export default function App() {
             markedBy: 'Marudhu',
           });
         }
+        const hasNov23 = logsToSave.some(l => l.date === '2026-11-23' && l.meal === 'dinner');
+        if (!hasNov23) {
+          logsToSave.push({
+            id: 'att-2026-11-23-dinner-1',
+            slotId: '2026-11-23-dinner-1',
+            date: '2026-11-23',
+            meal: 'dinner',
+            slotIndex: 1,
+            memberId: 'm3',
+            memberName: 'Perumal',
+            status: 'present',
+            markedAt: '2026-11-23T21:30:00.000Z',
+            remarks: 'Washed by Perumal',
+            markedBy: 'Perumal',
+          });
+        }
         if (actualTodayDateStr > '2026-11-25') {
           const hasNov25 = logsToSave.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
           if (!hasNov25) {
@@ -596,6 +646,30 @@ export default function App() {
         setAttendanceLogs(logsToSave);
         storage.saveAttendanceLogs(logsToSave);
         supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
+
+        // Ensure daysConfig harmonizes with all verified wash dates so meal is marked provided
+        setDaysConfig(prev => {
+          const logDates = new Set(logsToSave.map(l => `${l.date}_${l.meal}`));
+          let changed = false;
+          const updated = prev.map(d => {
+            const hasLunchLog = logDates.has(`${d.date}_lunch`);
+            const hasDinnerLog = logDates.has(`${d.date}_dinner`);
+            if ((hasLunchLog && !d.lunchProvided) || (hasDinnerLog && !d.dinnerProvided)) {
+              changed = true;
+              return {
+                ...d,
+                lunchProvided: d.lunchProvided || hasLunchLog,
+                dinnerProvided: d.dinnerProvided || hasDinnerLog,
+              };
+            }
+            return d;
+          });
+          if (changed) {
+            storage.saveDaysConfig(updated);
+            supabaseService.saveApplicationRules({ daysConfig: updated }).catch(() => {});
+          }
+          return changed ? updated : prev;
+        });
 
         // Merge local bills with remote bills so offline/newly-created bills are never lost
         const localBills = storage.getReimbursementBills() || [];
@@ -1107,28 +1181,33 @@ export default function App() {
 
   const handleUpdateEaters = (meal, eaterIds) => {
     lastLocalEditTimeRef.current = Date.now();
-    const updatedDays = daysConfig.map(day => {
-      if (day.date !== selectedDateStr) return day;
-      return {
-        ...day,
-        [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: eaterIds,
-      };
+    const eatersKey = meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters';
+
+    setDaysConfig(prev => {
+      const updatedDays = prev.map(day => {
+        if (day.date !== selectedDateStr) return day;
+        return {
+          ...day,
+          [eatersKey]: eaterIds,
+        };
+      });
+      storage.saveDaysConfig(updatedDays);
+
+      const currentDay = updatedDays.find(d => d.date === selectedDateStr);
+      const isProvided = meal === 'lunch' ? Boolean(currentDay?.lunchProvided) : Boolean(currentDay?.dinnerProvided);
+      const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
+
+      debouncedSyncAttendanceAndWasher(selectedDateStr, meal, isProvided, eaterIds, washersCount, updatedDays);
+
+      return updatedDays;
     });
-    setDaysConfig(updatedDays);
-    storage.saveDaysConfig(updatedDays);
-
-    const currentDay = updatedDays.find(d => d.date === selectedDateStr);
-    const isProvided = meal === 'lunch' ? Boolean(currentDay?.lunchProvided) : Boolean(currentDay?.dinnerProvided);
-    const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
-
-    debouncedSyncAttendanceAndWasher(selectedDateStr, meal, isProvided, eaterIds, washersCount, updatedDays);
 
     const mealTitle = meal === 'lunch' ? 'Lunch' : 'Dinner';
     logUserActivity(
       'EATERS_UPDATE',
       'eaters',
       `Updated ${mealTitle} Eaters (${eaterIds.length} members)`,
-      `${mealTitle} eaters list updated to ${eaterIds.length} members by ${currentMember.name}.`,
+      `${mealTitle} eaters list updated to ${eaterIds.length} members by ${currentMember?.name || 'User'}.`,
       selectedDateStr
     );
   };
@@ -1136,22 +1215,26 @@ export default function App() {
   const handleToggleMealProvided = (meal, provided) => {
     lastLocalEditTimeRef.current = Date.now();
     const eatersKey = meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters';
-    const updatedDays = daysConfig.map(day => {
-      if (day.date !== selectedDateStr) return day;
-      return {
-        ...day,
-        [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: provided,
-        [eatersKey]: [],
-      };
+
+    setDaysConfig(prev => {
+      const updatedDays = prev.map(day => {
+        if (day.date !== selectedDateStr) return day;
+        return {
+          ...day,
+          [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: Boolean(provided),
+          [eatersKey]: [],
+        };
+      });
+      storage.saveDaysConfig(updatedDays);
+
+      const currentDay = updatedDays.find(d => d.date === selectedDateStr);
+      const eaterIds = [];
+      const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
+
+      debouncedSyncAttendanceAndWasher(selectedDateStr, meal, Boolean(provided), eaterIds, washersCount, updatedDays);
+
+      return updatedDays;
     });
-    setDaysConfig(updatedDays);
-    storage.saveDaysConfig(updatedDays);
-
-    const currentDay = updatedDays.find(d => d.date === selectedDateStr);
-    const eaterIds = [];
-    const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
-
-    debouncedSyncAttendanceAndWasher(selectedDateStr, meal, provided, eaterIds, washersCount, updatedDays);
 
     const mealTitle = meal === 'lunch' ? 'Lunch' : 'Dinner';
     logUserActivity(
@@ -1165,27 +1248,30 @@ export default function App() {
 
   const handleToggleLunchWashers = (washersCount) => {
     lastLocalEditTimeRef.current = Date.now();
-    const updatedDays = daysConfig.map(day => {
-      if (day.date !== selectedDateStr) return day;
-      return {
-        ...day,
-        lunchWashers: washersCount,
-      };
+    setDaysConfig(prev => {
+      const updatedDays = prev.map(day => {
+        if (day.date !== selectedDateStr) return day;
+        return {
+          ...day,
+          lunchWashers: washersCount,
+        };
+      });
+      storage.saveDaysConfig(updatedDays);
+
+      const currentDay = updatedDays.find(d => d.date === selectedDateStr);
+      const isProvided = Boolean(currentDay?.lunchProvided);
+      const eaterIds = currentDay?.lunchEaters || [];
+
+      debouncedSyncAttendanceAndWasher(selectedDateStr, 'lunch', isProvided, eaterIds, washersCount, updatedDays);
+
+      return updatedDays;
     });
-    setDaysConfig(updatedDays);
-    storage.saveDaysConfig(updatedDays);
-
-    const currentDay = updatedDays.find(d => d.date === selectedDateStr);
-    const isProvided = Boolean(currentDay?.lunchProvided);
-    const eaterIds = currentDay?.lunchEaters || [];
-
-    debouncedSyncAttendanceAndWasher(selectedDateStr, 'lunch', isProvided, eaterIds, washersCount, updatedDays);
 
     logUserActivity(
       'MEAL_TOGGLE',
       'meal_status',
       `Lunch Washer Count: ${washersCount}`,
-      `Lunch washer requirement changed to ${washersCount} person(s) by ${currentMember.name}.`,
+      `Lunch washer requirement changed to ${washersCount} person(s) by ${currentMember?.name || 'User'}.`,
       selectedDateStr
     );
   };

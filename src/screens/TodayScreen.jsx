@@ -38,8 +38,11 @@ export function TodayScreen({
   onToggleLunchWashers,
   onResetAttendanceForSlot,
 }) {
-  // Selected meal session: defaults cleanly to 'lunch'
-  const [selectedMeal, setSelectedMeal] = useState('lunch');
+  // Selected meal session: defaults smartly based on time of day (Lunch 06:00-15:59, Dinner 16:00-05:59)
+  const [selectedMeal, setSelectedMeal] = useState(() => {
+    const currentHour = new Date().getHours();
+    return (currentHour >= 6 && currentHour < 16) ? 'lunch' : 'dinner';
+  });
 
   const handleSelectMeal = (meal) => {
     setSelectedMeal(meal);
@@ -75,8 +78,8 @@ export function TodayScreen({
     todayConfig?.date,
     todayConfig?.lunchProvided,
     todayConfig?.dinnerProvided,
-    todayConfig?.lunchEaters,
-    todayConfig?.dinnerEaters,
+    JSON.stringify(todayConfig?.lunchEaters),
+    JSON.stringify(todayConfig?.dinnerEaters),
   ]);
 
   const currentEaters = sessionEaters[selectedMeal] || [];
@@ -101,10 +104,7 @@ export function TodayScreen({
     if (onToggleMealProvided) {
       onToggleMealProvided(selectedMeal, provided);
     }
-    if (onUpdateEaters) {
-      onUpdateEaters(selectedMeal, []);
-    }
-  }, [selectedMeal, onToggleMealProvided, onUpdateEaters]);
+  }, [selectedMeal, onToggleMealProvided]);
 
   // Dynamic recalculation handler on attendance toggle
   const handleToggleEater = useCallback((memberId, e) => {
@@ -112,24 +112,22 @@ export function TodayScreen({
       e.preventDefault();
       e.stopPropagation();
     }
-    setSessionEaters((prev) => {
-      const currentList = prev[selectedMeal] || [];
-      const updatedSet = new Set(currentList);
-      if (updatedSet.has(memberId)) {
-        updatedSet.delete(memberId);
-      } else {
-        updatedSet.add(memberId);
-      }
-      const updatedArray = Array.from(updatedSet);
-      if (onUpdateEaters) {
-        onUpdateEaters(selectedMeal, updatedArray);
-      }
-      return {
-        ...prev,
-        [selectedMeal]: updatedArray,
-      };
-    });
-  }, [selectedMeal, onUpdateEaters]);
+    const currentList = sessionEaters[selectedMeal] || [];
+    const updatedSet = new Set(currentList);
+    if (updatedSet.has(memberId)) {
+      updatedSet.delete(memberId);
+    } else {
+      updatedSet.add(memberId);
+    }
+    const updatedArray = Array.from(updatedSet);
+    setSessionEaters((prev) => ({
+      ...prev,
+      [selectedMeal]: updatedArray,
+    }));
+    if (onUpdateEaters) {
+      onUpdateEaters(selectedMeal, updatedArray);
+    }
+  }, [selectedMeal, sessionEaters, onUpdateEaters]);
 
   const handleSelectAllEaters = useCallback((e) => {
     if (e) e.preventDefault();

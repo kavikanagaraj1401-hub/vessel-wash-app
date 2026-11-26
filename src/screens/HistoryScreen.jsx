@@ -68,7 +68,7 @@ function HistoryScreenContent({
   }, [attendanceLogs, todayDateStr]);
 
   // Build unified date-by-date timeline logs (excluding future dates, ensuring continuous coverage up to today)
-  const timelineDates = useMemo(() => {
+  const allTimelineDates = useMemo(() => {
     const safeDaysConfig = Array.isArray(daysConfig) ? daysConfig : [];
     const safeComputedDays = Array.isArray(computedDays) ? computedDays : [];
     const computedMap = new Map(safeComputedDays.filter(Boolean).map(d => [d.date, d]));
@@ -76,10 +76,35 @@ function HistoryScreenContent({
     const targetTodayStr = todayDateStr || getTodayDateStr();
     const startDateStr = '2026-09-01';
 
-    // 1. Collect all dates continuously from startDateStr up to targetTodayStr
+    // 1. Collect all active dates up to targetTodayStr
     const allDatesSet = new Set();
 
-    let curr = new Date(`${startDateStr}T00:00:00`);
+    // Always include today
+    allDatesSet.add(targetTodayStr);
+
+    // Include all dates in daysConfig or attendanceLogs where food was provided or verified wash occurred
+    safeDaysConfig.forEach(d => {
+      if (d && d.date && d.date <= targetTodayStr && d.date >= startDateStr) {
+        if (
+          d.lunchProvided ||
+          d.dinnerProvided ||
+          (Array.isArray(d.lunchEaters) && d.lunchEaters.length > 0) ||
+          (Array.isArray(d.dinnerEaters) && d.dinnerEaters.length > 0)
+        ) {
+          allDatesSet.add(d.date);
+        }
+      }
+    });
+
+    (attendanceLogs || []).forEach(l => {
+      if (l && l.date && l.date <= targetTodayStr && l.date >= startDateStr) {
+        allDatesSet.add(l.date);
+      }
+    });
+
+    // Include continuous active schedule dates from November 18 resumption up to today
+    const resumptionStart = '2026-11-18';
+    let curr = new Date(`${resumptionStart}T00:00:00`);
     const end = new Date(`${targetTodayStr}T00:00:00`);
     while (curr <= end) {
       const y = curr.getFullYear();
@@ -88,18 +113,6 @@ function HistoryScreenContent({
       allDatesSet.add(`${y}-${m}-${d}`);
       curr.setDate(curr.getDate() + 1);
     }
-
-    // Also include any dates in daysConfig or attendanceLogs up to targetTodayStr
-    safeDaysConfig.forEach(d => {
-      if (d && d.date && d.date <= targetTodayStr && d.date >= startDateStr) {
-        allDatesSet.add(d.date);
-      }
-    });
-    (attendanceLogs || []).forEach(l => {
-      if (l && l.date && l.date <= targetTodayStr && l.date >= startDateStr) {
-        allDatesSet.add(l.date);
-      }
-    });
 
     const dates = Array.from(allDatesSet).map(dateKey => {
       const day = daysMap.get(dateKey) || {
@@ -135,12 +148,12 @@ function HistoryScreenContent({
         .filter(Boolean);
 
       // Meal Availability / Confirmation:
-      // Food is confirmed if verified wash log exists, or if lunchProvided is set with eaters
+      // Food is confirmed if verified wash log exists, or if lunchProvided / dinnerProvided is true in config
       const isLunchFoodConfirmed = Boolean(
-        verifiedLunchLogs.length > 0 || (day.lunchProvided && lunchEatersList.length > 0)
+        verifiedLunchLogs.length > 0 || day.lunchProvided
       );
       const isDinnerFoodConfirmed = Boolean(
-        verifiedDinnerLogs.length > 0 || (day.dinnerProvided && dinnerEatersList.length > 0)
+        verifiedDinnerLogs.length > 0 || day.dinnerProvided
       );
 
       // Lunch Washers & Verified Status
@@ -167,19 +180,28 @@ function HistoryScreenContent({
         const lunchSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'lunch') : [];
         let assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
 
-        // Defensive fallback: if today's row was deleted or slots missing, dynamically calculate from attending members and queue
-        if (assigned.length === 0 && lunchEatersList.length > 0 && Array.isArray(members) && members.length > 0) {
+        // Dynamic fallback: compute from queue and attending members or active members
+        if (assigned.length === 0 && Array.isArray(members) && members.length > 0) {
           const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
-          const { assignedId } = assignSlot(queue, lunchEatersList, members);
-          const assignedMem = memberMap.get(assignedId);
-          if (assignedMem) {
-            assigned = [{
-              id: `${dateKey}-lunch-1`,
-              meal: 'lunch',
-              slotIndex: 1,
-              assignedMemberId: assignedId,
-              assignedMemberName: assignedMem.name,
-            }];
+          const eligibleEaters = lunchEatersList.length > 0 ? lunchEatersList : queue;
+          const userChosenWashers = Number(day.lunchWashers) === 2 ? 2 : 1;
+          if (userChosenWashers === 2 && eligibleEaters.length >= 2) {
+            const { assigned1, assigned2 } = assignLunchPair(queue, eligibleEaters, members);
+            assigned = [
+              { id: `${dateKey}-lunch-1`, meal: 'lunch', slotIndex: 1, assignedMemberId: assigned1, assignedMemberName: memberMap.get(assigned1)?.name || 'Washer' },
+              { id: `${dateKey}-lunch-2`, meal: 'lunch', slotIndex: 2, assignedMemberId: assigned2, assignedMemberName: memberMap.get(assigned2)?.name || 'Washer' },
+            ].filter(s => s.assignedMemberId);
+          } else {
+            const { assignedId } = assignSlot(queue, eligibleEaters, members);
+            if (assignedId) {
+              assigned = [{
+                id: `${dateKey}-lunch-1`,
+                meal: 'lunch',
+                slotIndex: 1,
+                assignedMemberId: assignedId,
+                assignedMemberName: memberMap.get(assignedId)?.name || 'Washer',
+              }];
+            }
           }
         }
 
@@ -221,10 +243,11 @@ function HistoryScreenContent({
         const dinnerSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'dinner') : [];
         let dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
 
-        // Defensive fallback: if today's row was deleted or slots missing, dynamically calculate from attending members and queue
-        if (!dinnerSlot && dinnerEatersList.length > 0 && Array.isArray(members) && members.length > 0) {
+        // Dynamic fallback: compute from queue and attending members or active members
+        if (!dinnerSlot && Array.isArray(members) && members.length > 0) {
           const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
-          const { assignedId } = assignSlot(queue, dinnerEatersList, members);
+          const eligibleEaters = dinnerEatersList.length > 0 ? dinnerEatersList : queue;
+          const { assignedId } = assignSlot(queue, eligibleEaters, members);
           const assignedMem = memberMap.get(assignedId);
           if (assignedMem) {
             dinnerSlot = {
@@ -306,28 +329,31 @@ function HistoryScreenContent({
       };
     }).filter(Boolean);
 
-    // 2. Refined Filter Options & Logic:
-    let filtered = dates;
+    // Sort strictly descending order starting from today down into the past
+    return dates.sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
+  }, [daysConfig, computedDays, attendanceLogs, memberMap, todayDateStr]);
+
+  // Filtered timeline dates for the logs view
+  const timelineDates = useMemo(() => {
+    if (!allTimelineDates) return [];
     if (dateFilter === 'lunch') {
-      filtered = dates.filter(d => d?.isLunchAvail || d?.isLunchVerified || d?.isToday);
+      return allTimelineDates.filter(d => d?.isLunchAvail || d?.isLunchVerified);
     } else if (dateFilter === 'dinner') {
-      filtered = dates.filter(d => d?.isDinnerAvail || d?.isDinnerVerified || d?.isToday);
+      return allTimelineDates.filter(d => d?.isDinnerAvail || d?.isDinnerVerified);
     } else if (dateFilter === 'unmarked') {
-      filtered = dates.filter(d => d?.isPending);
+      return allTimelineDates.filter(d => d?.isPending);
     }
+    return allTimelineDates;
+  }, [allTimelineDates, dateFilter]);
 
-    // 3. Sort: Strictly descending order starting from today down into the past
-    return filtered.sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
-  }, [daysConfig, computedDays, attendanceLogs, memberMap, dateFilter, todayDateStr]);
-
-  // Overall totals (from validated timeline records)
+  // Overall totals (from validated timeline records across all dates, excluding today)
   const totalLunchWashes = useMemo(() => {
-    return (timelineDates || []).filter(d => d && d.isLunchVerified).length;
-  }, [timelineDates]);
+    return (allTimelineDates || []).filter(d => d && d.isLunchVerified && !d.isToday).length;
+  }, [allTimelineDates]);
 
   const totalDinnerWashes = useMemo(() => {
-    return (timelineDates || []).filter(d => d && d.isDinnerVerified).length;
-  }, [timelineDates]);
+    return (allTimelineDates || []).filter(d => d && d.isDinnerVerified && !d.isToday).length;
+  }, [allTimelineDates]);
 
   const totalWashes = totalLunchWashes + totalDinnerWashes;
 
