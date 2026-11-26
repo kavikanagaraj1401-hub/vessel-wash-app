@@ -99,7 +99,7 @@ export function TopAppBar({
       {/* Top Header: Strictly Static (shrink-0) */}
       <header className="shrink-0 z-40 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0] dark:border-[#2A364B] pt-safe shadow-2xs transition-colors duration-200">
         {/* Tier 1: App Title & Action Icons (Members, Theme Toggle & Burger Menu) */}
-        <div className="flex items-center justify-between px-4 h-14 gap-3">
+        <div className="flex items-center justify-between px-3 sm:px-4 h-14 gap-2 sm:gap-3">
           {/* App Brand & Logged-in Member Identity */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#EA580C] to-[#F59E0B] flex items-center justify-center text-white shadow-2xs flex-shrink-0 font-extrabold text-xs">
@@ -186,7 +186,7 @@ export function TopAppBar({
         </div>
 
         {/* Tier 2: Static Dedicated Date & Time Placement Bar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-[#F2F1ED]/80 dark:bg-[#0B0C0E]/80 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 bg-[#F2F1ED]/80 dark:bg-[#0B0C0E]/80 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
           <div className="flex items-center gap-2 text-[#111216] dark:text-[#F7F6F3] font-semibold truncate">
             <Calendar className="w-3.5 h-3.5 text-[#EA580C] flex-shrink-0" />
             <span className="truncate">{currentDateStr}</span>

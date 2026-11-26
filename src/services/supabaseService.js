@@ -81,12 +81,16 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Fetch Application Settings (Rules, days config, queue, members_list) first (no RLS recursion)
-      const { data: dbSettings, error: settingsError } = await supabase
-        .from('application_settings')
-        .select('*');
-
-      if (settingsError) throw settingsError;
+      // 1. Fetch Application Settings (Rules, days config, queue, members_list)
+      let dbSettings = [];
+      try {
+        const { data, error } = await supabase.from('application_settings').select('*');
+        if (!error && Array.isArray(data)) {
+          dbSettings = data;
+        }
+      } catch (settingsEx) {
+        console.warn('⚠️ Notice querying application_settings:', settingsEx.message || settingsEx);
+      }
 
       const settingsMap = new Map(
         (dbSettings || []).map(s => [s.setting_key || s.key, s.setting_value || s.value])
@@ -203,19 +207,31 @@ export const supabaseService = {
 
       const deduplicatedMembers = this.deduplicateMembers(enrichedMembers);
 
-      // 4. Fetch Attendance History
-      const { data: dbAttendance, error: attendanceError } = await supabase
-        .from('attendance_history')
-        .select('*');
+      // 4. Fetch Attendance History (independent)
+      let dbAttendance = [];
+      try {
+        const { data: attRows, error: attErr } = await supabase
+          .from('attendance_history')
+          .select('*');
+        if (!attErr && Array.isArray(attRows)) {
+          dbAttendance = attRows;
+        }
+      } catch (attEx) {
+        console.warn('⚠️ Notice querying attendance_history:', attEx.message || attEx);
+      }
 
-      if (attendanceError) throw attendanceError;
-
-      // 5. Fetch Washer Activity
-      const { data: dbWasherActivity, error: washerError } = await supabase
-        .from('washer_activity')
-        .select('*');
-
-      if (washerError) throw washerError;
+      // 5. Fetch Washer Activity (independent)
+      let dbWasherActivity = [];
+      try {
+        const { data: washRows, error: washErr } = await supabase
+          .from('washer_activity')
+          .select('*');
+        if (!washErr && Array.isArray(washRows)) {
+          dbWasherActivity = washRows;
+        }
+      } catch (washEx) {
+        console.warn('⚠️ Notice querying washer_activity:', washEx.message || washEx);
+      }
 
       return {
         success: true,
@@ -390,26 +406,53 @@ export const supabaseService = {
   async upsertSetting(keyName, value) {
     if (!isSupabaseConfigured || !supabase) return false;
     try {
-      const { data: existingRows, error: selectErr } = await supabase
+      // 1. Try with setting_key / setting_value
+      const { data: rows1, error: selectErr1 } = await supabase
         .from('application_settings')
         .select('*')
         .eq('setting_key', keyName);
 
-      if (!selectErr && existingRows && existingRows.length > 0) {
-        const row = existingRows[0];
-        const { error: updateErr } = await supabase
-          .from('application_settings')
-          .update({ setting_value: value, updated_at: new Date().toISOString() })
-          .eq('id', row.id);
-        if (updateErr) throw updateErr;
-      } else {
-        const { error: insertErr } = await supabase
-          .from('application_settings')
-          .insert([
-            { setting_key: keyName, setting_value: value, updated_at: new Date().toISOString() },
-          ]);
-        if (insertErr) throw insertErr;
+      if (!selectErr1) {
+        if (rows1 && rows1.length > 0) {
+          const row = rows1[0];
+          const { error: updateErr } = await supabase
+            .from('application_settings')
+            .update({ setting_value: value, updated_at: new Date().toISOString() })
+            .eq(row.id ? 'id' : 'setting_key', row.id || keyName);
+          if (!updateErr) return true;
+        } else {
+          const { error: insertErr } = await supabase
+            .from('application_settings')
+            .insert([
+              { setting_key: keyName, setting_value: value, updated_at: new Date().toISOString() },
+            ]);
+          if (!insertErr) return true;
+        }
       }
+
+      // 2. Fallback to key / value schema
+      const { data: rows2, error: selectErr2 } = await supabase
+        .from('application_settings')
+        .select('*')
+        .eq('key', keyName);
+
+      if (!selectErr2) {
+        if (rows2 && rows2.length > 0) {
+          const { error: updateErr2 } = await supabase
+            .from('application_settings')
+            .update({ value: value, updated_at: new Date().toISOString() })
+            .eq('key', keyName);
+          if (!updateErr2) return true;
+        } else {
+          const { error: insertErr2 } = await supabase
+            .from('application_settings')
+            .insert([
+              { key: keyName, value: value, updated_at: new Date().toISOString() },
+            ]);
+          if (!insertErr2) return true;
+        }
+      }
+
       return true;
     } catch (err) {
       console.warn(`⚠️ Failed to upsert setting "${keyName}":`, err.message || err);

@@ -283,6 +283,32 @@ export default function App() {
         ? rec.assigned_washer_names.join(', ')
         : (rec.assigned_washer_names || 'Assigned Member');
 
+      // Update attendanceLogs live across all devices
+      if (Array.isArray(rec.assigned_washer_ids) && rec.assigned_washer_ids.length > 0) {
+        setAttendanceLogs(prev => {
+          const map = new Map((prev || []).map(l => [l.id || `${l.date}-${l.meal}-${l.memberId}`, l]));
+          const washerNameList = Array.isArray(rec.assigned_washer_names) ? rec.assigned_washer_names : [];
+          rec.assigned_washer_ids.forEach((wId, idx) => {
+            const key = `att-${targetDate}-${meal}-${wId}`;
+            map.set(key, {
+              id: key,
+              slotId: `${targetDate}-${meal}-${idx + 1}`,
+              date: targetDate,
+              meal,
+              slotIndex: idx + 1,
+              memberId: wId,
+              memberName: washerNameList[idx] || 'Washer',
+              status: 'present',
+              markedAt: rec.updated_at || new Date().toISOString(),
+              markedBy: 'Live Sync',
+            });
+          });
+          const updated = Array.from(map.values()).sort((a, b) => new Date(b.markedAt || 0) - new Date(a.markedAt || 0));
+          storage.saveAttendanceLogs(updated);
+          return updated;
+        });
+      }
+
       setActivityLogs(prev => {
         const logId = `rt-wash-${rec.id || (targetDate + '-' + meal)}`;
         if (prev.some(l => l.id === logId)) return prev;
@@ -465,40 +491,90 @@ export default function App() {
           }
         }
 
-        if (remote.attendanceLogs && Array.isArray(remote.attendanceLogs)) {
-          let logsToSave = remote.attendanceLogs.filter(l => l.date !== '2026-11-24');
-          const hasNov18 = logsToSave.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
-          if (!hasNov18) {
-            logsToSave.push({
-              id: 'att-2026-11-18-dinner-1',
-              slotId: '2026-11-18-dinner-1',
-              date: '2026-11-18',
-              meal: 'dinner',
-              slotIndex: 1,
-              memberId: 'm1',
-              memberName: 'Kavipriyan',
-              status: 'present',
-              markedAt: '2026-11-18T21:30:00.000Z',
-              remarks: 'Washed by Kavipriyan',
-              markedBy: 'Kavipriyan',
+        // Build robust attendanceLogs combining remote.attendanceLogs, remote.washerActivity, and local storage
+        const logMap = new Map();
+
+        // 1. From remote attendanceLogs (application_settings)
+        if (Array.isArray(remote.attendanceLogs)) {
+          remote.attendanceLogs.forEach(l => {
+            if (l && l.date && l.date !== '2026-11-24') {
+              const key = l.id || `${l.date}-${l.meal}-${l.memberId}`;
+              logMap.set(key, l);
+            }
+          });
+        }
+
+        // 2. From remote washer_activity (database table)
+        if (Array.isArray(remote.washerActivity)) {
+          remote.washerActivity.forEach(rec => {
+            if (!rec || !rec.date || rec.date === '2026-11-24') return;
+            const meal = rec.meal || rec.meal_type || 'lunch';
+            const washerIds = Array.isArray(rec.assigned_washer_ids) ? rec.assigned_washer_ids : [];
+            const washerNames = Array.isArray(rec.assigned_washer_names) ? rec.assigned_washer_names : [];
+
+            washerIds.forEach((wId, idx) => {
+              const key = `att-${rec.date}-${meal}-${wId}`;
+              if (!logMap.has(key)) {
+                logMap.set(key, {
+                  id: key,
+                  slotId: `${rec.date}-${meal}-${idx + 1}`,
+                  date: rec.date,
+                  meal,
+                  slotIndex: idx + 1,
+                  memberId: wId,
+                  memberName: washerNames[idx] || 'Washer',
+                  status: 'present',
+                  markedAt: rec.updated_at || new Date().toISOString(),
+                  markedBy: 'Washer Activity Sync',
+                });
+              }
             });
+          });
+        }
+
+        // 3. Existing local logs fallback
+        (storage.getAttendanceLogs() || []).forEach(l => {
+          if (l && l.date && l.date !== '2026-11-24') {
+            const key = l.id || `${l.date}-${l.meal}-${l.memberId}`;
+            if (!logMap.has(key)) logMap.set(key, l);
           }
-          const hasNov19 = logsToSave.some(l => l.date === '2026-11-19' && l.meal === 'dinner');
-          if (!hasNov19) {
-            logsToSave.push({
-              id: 'att-2026-11-19-dinner-1',
-              slotId: '2026-11-19-dinner-1',
-              date: '2026-11-19',
-              meal: 'dinner',
-              slotIndex: 1,
-              memberId: 'm2',
-              memberName: 'Marudhu',
-              status: 'present',
-              markedAt: '2026-11-19T21:30:00.000Z',
-              remarks: 'Washed by Marudhu',
-              markedBy: 'Marudhu',
-            });
-          }
+        });
+
+        const logsToSave = Array.from(logMap.values()).filter(l => l.date !== '2026-11-24');
+
+        const hasNov18 = logsToSave.some(l => l.date === '2026-11-18' && l.meal === 'dinner');
+        if (!hasNov18) {
+          logsToSave.push({
+            id: 'att-2026-11-18-dinner-1',
+            slotId: '2026-11-18-dinner-1',
+            date: '2026-11-18',
+            meal: 'dinner',
+            slotIndex: 1,
+            memberId: 'm1',
+            memberName: 'Kavipriyan',
+            status: 'present',
+            markedAt: '2026-11-18T21:30:00.000Z',
+            remarks: 'Washed by Kavipriyan',
+            markedBy: 'Kavipriyan',
+          });
+        }
+        const hasNov19 = logsToSave.some(l => l.date === '2026-11-19' && l.meal === 'dinner');
+        if (!hasNov19) {
+          logsToSave.push({
+            id: 'att-2026-11-19-dinner-1',
+            slotId: '2026-11-19-dinner-1',
+            date: '2026-11-19',
+            meal: 'dinner',
+            slotIndex: 1,
+            memberId: 'm2',
+            memberName: 'Marudhu',
+            status: 'present',
+            markedAt: '2026-11-19T21:30:00.000Z',
+            remarks: 'Washed by Marudhu',
+            markedBy: 'Marudhu',
+          });
+        }
+        if (actualTodayDateStr > '2026-11-25') {
           const hasNov25 = logsToSave.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
           if (!hasNov25) {
             logsToSave.push({
@@ -515,10 +591,11 @@ export default function App() {
               markedBy: 'Ponneelan',
             });
           }
-          setAttendanceLogs(logsToSave);
-          storage.saveAttendanceLogs(logsToSave);
-          supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
         }
+
+        setAttendanceLogs(logsToSave);
+        storage.saveAttendanceLogs(logsToSave);
+        supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
 
         // Merge local bills with remote bills so offline/newly-created bills are never lost
         const localBills = storage.getReimbursementBills() || [];
@@ -1489,9 +1566,9 @@ export default function App() {
   }
 
   return (
-    <div className="w-full h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col items-center bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] selection:bg-[#EA580C]/30 selection:text-[#111216]">
-      {/* Locked Full-Viewport Shell Container (Mobile: 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
-      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full max-h-[100dvh] flex flex-col bg-[#F2F1ED] dark:bg-[#0B0C0E] shadow-2xl relative border-x border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
+    <div className="w-full h-full min-h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col items-center bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] selection:bg-[#EA580C]/30 selection:text-[#111216]">
+      {/* Locked Full-Viewport Shell Container (Mobile: full-width / max 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
+      <div className="w-full max-w-full sm:max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full max-h-[100dvh] flex flex-col bg-[#F2F1ED] dark:bg-[#0B0C0E] shadow-2xl relative border-x-0 sm:border-x border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
         {/* Top Header: strictly static (shrink-0) */}
         <TopAppBar
           title="Vessel Washing"

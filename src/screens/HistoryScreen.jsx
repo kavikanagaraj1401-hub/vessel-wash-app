@@ -70,36 +70,6 @@ function HistoryScreenContent({
     });
   }, [attendanceLogs, todayDateStr]);
 
-  // Overall totals (from validated records only)
-  const totalWashes = validAttendanceLogs.length;
-  const totalLunchWashes = validAttendanceLogs.filter(l => l?.meal === 'lunch').length;
-  const totalDinnerWashes = validAttendanceLogs.filter(l => l?.meal === 'dinner').length;
-
-  // Compile detailed report per member for the 'report' tab
-  const memberReports = useMemo(() => {
-    const safeMembers = Array.isArray(members) ? members.filter(Boolean) : [];
-    return safeMembers.map(member => {
-      if (!member || !member.id) return null;
-      const memberLogs = (validAttendanceLogs || [])
-        .filter(l => l && l.memberId === member.id)
-        .sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
-
-      const lunchCount = memberLogs.filter(l => l?.meal === 'lunch').length;
-      const dinnerCount = memberLogs.filter(l => l?.meal === 'dinner').length;
-      const totalCount = memberLogs.length;
-      const uniqueDates = Array.from(new Set(memberLogs.map(l => l?.date).filter(Boolean)));
-
-      return {
-        member,
-        totalCount,
-        lunchCount,
-        dinnerCount,
-        uniqueDaysCount: uniqueDates.length,
-        logs: memberLogs,
-      };
-    }).filter(Boolean).sort((a, b) => (b?.totalCount || 0) - (a?.totalCount || 0));
-  }, [members, validAttendanceLogs]);
-
   // Build unified date-by-date timeline logs (excluding future dates, ensuring continuous coverage up to today)
   const timelineDates = useMemo(() => {
     const safeDaysConfig = Array.isArray(daysConfig) ? daysConfig : [];
@@ -353,6 +323,117 @@ function HistoryScreenContent({
     return filtered.sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
   }, [daysConfig, computedDays, attendanceLogs, memberMap, dateFilter, todayDateStr]);
 
+  // Overall totals (from validated timeline records)
+  const totalLunchWashes = useMemo(() => {
+    return (timelineDates || []).filter(d => d && d.isLunchVerified).length;
+  }, [timelineDates]);
+
+  const totalDinnerWashes = useMemo(() => {
+    return (timelineDates || []).filter(d => d && d.isDinnerVerified).length;
+  }, [timelineDates]);
+
+  const totalWashes = totalLunchWashes + totalDinnerWashes;
+
+  // Compile detailed report per member for the 'report' tab (from all verified timeline dates)
+  const memberReports = useMemo(() => {
+    const safeMembers = Array.isArray(members) ? members.filter(Boolean) : [];
+    const targetTodayStr = todayDateStr || getTodayDateStr();
+
+    return safeMembers.map(member => {
+      if (!member || !member.id) return null;
+
+      const memberIdStr = String(member.id).toLowerCase();
+      const memberNameStr = String(member.name || '').toLowerCase().trim();
+      const memberCodeStr = String(member.code || '').toUpperCase().trim();
+
+      const isMemberMatch = (washer) => {
+        if (!washer) return false;
+        if (washer.id && String(washer.id).toLowerCase() === memberIdStr) return true;
+        if (washer.name && String(washer.name).toLowerCase().trim() === memberNameStr) return true;
+        if (washer.code && String(washer.code).toUpperCase().trim() === memberCodeStr) return true;
+        return false;
+      };
+
+      const memberLogMap = new Map();
+
+      // 1. Gather all verified washes from timelineDates (covers both manual logs and confirmed roster days)
+      (timelineDates || []).forEach(d => {
+        if (!d || d.date > targetTodayStr || d.date === '2026-11-24') return;
+
+        if (d.isLunchVerified && Array.isArray(d.lunchWashers)) {
+          d.lunchWashers.forEach(w => {
+            if (isMemberMatch(w)) {
+              const key = `${d.date}-lunch-${w.slotIndex || 1}`;
+              memberLogMap.set(key, {
+                id: w.logId || `wash-${d.date}-lunch-${w.id || member.id}`,
+                slotId: w.slotId,
+                date: d.date,
+                meal: 'lunch',
+                slotIndex: w.slotIndex || 1,
+                memberId: member.id,
+                memberName: member.name,
+                status: 'present',
+                markedAt: w.markedAt || `${d.date}T13:30:00.000Z`,
+              });
+            }
+          });
+        }
+
+        if (d.isDinnerVerified && Array.isArray(d.dinnerWashers)) {
+          d.dinnerWashers.forEach(w => {
+            if (isMemberMatch(w)) {
+              const key = `${d.date}-dinner-${w.slotIndex || 1}`;
+              memberLogMap.set(key, {
+                id: w.logId || `wash-${d.date}-dinner-${w.id || member.id}`,
+                slotId: w.slotId,
+                date: d.date,
+                meal: 'dinner',
+                slotIndex: w.slotIndex || 1,
+                memberId: member.id,
+                memberName: member.name,
+                status: 'present',
+                markedAt: w.markedAt || `${d.date}T21:30:00.000Z`,
+              });
+            }
+          });
+        }
+      });
+
+      // 2. Also check validAttendanceLogs directly
+      (validAttendanceLogs || []).forEach(l => {
+        if (!l || l.date > targetTodayStr || l.date === '2026-11-24') return;
+        if (
+          l.memberId === member.id ||
+          (l.memberName && l.memberName.toLowerCase().trim() === memberNameStr) ||
+          (l.code && l.code.toUpperCase().trim() === memberCodeStr)
+        ) {
+          const key = `${l.date}-${l.meal}-${l.slotIndex || 1}`;
+          if (!memberLogMap.has(key)) {
+            memberLogMap.set(key, l);
+          }
+        }
+      });
+
+      const memberLogs = Array.from(memberLogMap.values()).sort(
+        (a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime()
+      );
+
+      const lunchCount = memberLogs.filter(l => l?.meal === 'lunch').length;
+      const dinnerCount = memberLogs.filter(l => l?.meal === 'dinner').length;
+      const totalCount = memberLogs.length;
+      const uniqueDates = Array.from(new Set(memberLogs.map(l => l?.date).filter(Boolean)));
+
+      return {
+        member,
+        totalCount,
+        lunchCount,
+        dinnerCount,
+        uniqueDaysCount: uniqueDates.length,
+        logs: memberLogs,
+      };
+    }).filter(Boolean).sort((a, b) => (b?.totalCount || 0) - (a?.totalCount || 0));
+  }, [members, timelineDates, validAttendanceLogs, todayDateStr]);
+
   const toggleMemberExpand = (memberId) => {
     const next = new Set(expandedMembers);
     if (next.has(memberId)) {
@@ -407,7 +488,7 @@ function HistoryScreenContent({
   };
 
   return (
-    <div className="space-y-3.5 pb-6 sm:pb-8 px-4 pt-3 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-3.5 pb-8 sm:pb-12 px-3 sm:px-4 pt-3 w-full max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
@@ -487,18 +568,18 @@ function HistoryScreenContent({
       {activeSubTab === 'logs' && (
         <div className="space-y-3">
           {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
-              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="p-2 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs min-w-0">
+              <span className="text-[9.5px] sm:text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
+              <span className="text-base sm:text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#F59E0B]/40 dark:border-[#F59E0B]/30 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-[#D97706] dark:text-[#FBBF24] block truncate">Lunch</span>
-              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
+            <div className="p-2 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#F59E0B]/40 dark:border-[#F59E0B]/30 text-center shadow-2xs min-w-0">
+              <span className="text-[9.5px] sm:text-[10px] uppercase font-bold text-[#D97706] dark:text-[#FBBF24] block truncate">Lunch</span>
+              <span className="text-base sm:text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-indigo-400/40 dark:border-indigo-500/30 text-center shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-indigo-700 dark:text-[#C7D2FE] block truncate">Dinner</span>
-              <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
+            <div className="p-2 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-indigo-400/40 dark:border-indigo-500/30 text-center shadow-2xs min-w-0">
+              <span className="text-[9.5px] sm:text-[10px] uppercase font-bold text-indigo-700 dark:text-[#C7D2FE] block truncate">Dinner</span>
+              <span className="text-base sm:text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
             </div>
           </div>
 
@@ -523,7 +604,7 @@ function HistoryScreenContent({
                   key={f.id}
                   type="button"
                   onClick={() => setDateFilter(f.id)}
-                  className={`flex-1 basis-0 min-w-0 py-2 px-1 text-xs font-bold rounded-lg transition-all select-none truncate cursor-pointer text-center ${
+                  className={`flex-1 basis-0 min-w-0 py-2 px-1 text-[11px] sm:text-xs font-bold rounded-lg transition-all select-none truncate cursor-pointer text-center ${
                     isSelected
                       ? selectedStyle
                       : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] font-semibold'

@@ -61,14 +61,16 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
   .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
   }
   
-  /* Hide scrollbar for queue ribbon */
-  .no-scrollbar::-webkit-scrollbar {
+  /* Hide scrollbar for queue ribbon & tab bars */
+  .no-scrollbar::-webkit-scrollbar,
+  .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
-  .no-scrollbar {
+  .no-scrollbar,
+  .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }

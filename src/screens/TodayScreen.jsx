@@ -189,7 +189,7 @@ export function TodayScreen({
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
 
   return (
-    <div className="relative pb-6 sm:pb-8 px-4 pt-3 space-y-4">
+    <div className="relative pb-8 sm:pb-12 px-3 sm:px-4 pt-3 space-y-4">
       {/* Responsive 2-Card Layout: Desktop/Tablet Grid, Mobile Stack */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
         {/* ========================================================================= */}
@@ -289,7 +289,7 @@ export function TodayScreen({
           </div>
 
           {/* 2. Meal Status & Availability Toggle */}
-          <div className="p-3.5 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] flex items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span
@@ -322,7 +322,7 @@ export function TodayScreen({
             <button
               type="button"
               onClick={() => handleToggleSessionMeal(!isMealProvided)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all active-scale whitespace-nowrap shadow-2xs shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto px-3.5 py-2 sm:py-1.5 text-xs font-bold rounded-xl transition-all active-scale whitespace-nowrap shadow-2xs shrink-0 cursor-pointer text-center ${
                 isMealProvided
                   ? 'bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] hover:bg-[#F2F1ED] dark:hover:bg-[#202736]'
                   : 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white hover:opacity-95 shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
