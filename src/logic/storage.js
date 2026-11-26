@@ -331,6 +331,32 @@ export const INITIAL_ATTENDANCE_LOGS = [
     remarks: 'Washed by Perumal',
     markedBy: 'Perumal',
   },
+  {
+    id: 'att-2026-11-25-dinner-1',
+    slotId: '2026-11-25-dinner-1',
+    date: '2026-11-25',
+    meal: 'dinner',
+    slotIndex: 1,
+    memberId: 'm4',
+    memberName: 'Ponneelan',
+    status: 'present',
+    markedAt: '2026-11-25T21:30:00.000Z',
+    remarks: 'Washed by Ponneelan',
+    markedBy: 'Ponneelan',
+  },
+  {
+    id: 'att-2026-11-26-dinner-1',
+    slotId: '2026-11-26-dinner-1',
+    date: '2026-11-26',
+    meal: 'dinner',
+    slotIndex: 1,
+    memberId: 'm5',
+    memberName: 'Suryakumar',
+    status: 'present',
+    markedAt: '2026-11-26T21:30:00.000Z',
+    remarks: 'Washed by Suryakumar',
+    markedBy: 'Suryakumar',
+  },
 ];
 
 export const INITIAL_ACTIVITY_LOGS = [

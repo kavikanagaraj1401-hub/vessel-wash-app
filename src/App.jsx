@@ -624,7 +624,7 @@ export default function App() {
             markedBy: 'Perumal',
           });
         }
-        if (actualTodayDateStr > '2026-11-25') {
+        if (actualTodayDateStr >= '2026-11-25') {
           const hasNov25 = logsToSave.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
           if (!hasNov25) {
             logsToSave.push({
@@ -639,6 +639,24 @@ export default function App() {
               markedAt: '2026-11-25T21:30:00.000Z',
               remarks: 'Washed by Ponneelan',
               markedBy: 'Ponneelan',
+            });
+          }
+        }
+        if (actualTodayDateStr >= '2026-11-26') {
+          const hasNov26 = logsToSave.some(l => l.date === '2026-11-26' && l.meal === 'dinner');
+          if (!hasNov26) {
+            logsToSave.push({
+              id: 'att-2026-11-26-dinner-1',
+              slotId: '2026-11-26-dinner-1',
+              date: '2026-11-26',
+              meal: 'dinner',
+              slotIndex: 1,
+              memberId: 'm5',
+              memberName: 'Suryakumar',
+              status: 'present',
+              markedAt: '2026-11-26T21:30:00.000Z',
+              remarks: 'Washed by Suryakumar',
+              markedBy: 'Suryakumar',
             });
           }
         }
