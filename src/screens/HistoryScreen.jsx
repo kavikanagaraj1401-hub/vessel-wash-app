@@ -56,25 +56,19 @@ function HistoryScreenContent({
     [members]
   );
 
-  // Valid Attendance Logs: strictly verified completed washes where food availability was confirmed
+  // Valid Attendance Logs: verified completed washes recorded up to the current date
   const validAttendanceLogs = useMemo(() => {
-    const safeDaysConfig = Array.isArray(daysConfig) ? daysConfig : [];
-    const daysMap = new Map(safeDaysConfig.filter(Boolean).map(d => [d.date, d]));
     const safeAttendanceLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
+    const targetTodayStr = todayDateStr || getTodayDateStr();
 
     return safeAttendanceLogs.filter(log => {
       if (!log || log.status !== 'present' || !log.date) return false;
-      const day = daysMap.get(log.date);
-      if (!day) return false;
-      if (log.meal === 'lunch') {
-        return Boolean(day.lunchProvided && Array.isArray(day.lunchEaters) && day.lunchEaters.length > 0);
-      }
-      if (log.meal === 'dinner') {
-        return Boolean(day.dinnerProvided && Array.isArray(day.dinnerEaters) && day.dinnerEaters.length > 0);
-      }
-      return false;
+      // Skip paused date Nov 24, 2026
+      if (log.date === '2026-11-24') return false;
+      // Must be on or before current date
+      return log.date <= targetTodayStr;
     });
-  }, [attendanceLogs, daysConfig]);
+  }, [attendanceLogs, todayDateStr]);
 
   // Overall totals (from validated records only)
   const totalWashes = validAttendanceLogs.length;
@@ -106,29 +100,63 @@ function HistoryScreenContent({
     }).filter(Boolean).sort((a, b) => (b?.totalCount || 0) - (a?.totalCount || 0));
   }, [members, validAttendanceLogs]);
 
-  // Build unified date-by-date timeline logs (excluding future dates, up to today)
+  // Build unified date-by-date timeline logs (excluding future dates, ensuring continuous coverage up to today)
   const timelineDates = useMemo(() => {
-    if (!Array.isArray(daysConfig) || daysConfig.length === 0) return [];
-
+    const safeDaysConfig = Array.isArray(daysConfig) ? daysConfig : [];
     const safeComputedDays = Array.isArray(computedDays) ? computedDays : [];
     const computedMap = new Map(safeComputedDays.filter(Boolean).map(d => [d.date, d]));
+    const daysMap = new Map(safeDaysConfig.filter(Boolean).map(d => [d.date, d]));
     const targetTodayStr = todayDateStr || getTodayDateStr();
+    const startDateStr = '2026-09-01';
 
-    // 1. Completely hide or exclude future dates (starts at today and goes backward into past)
-    const historicalDays = daysConfig.filter(day => day && day.date && day.date <= targetTodayStr);
+    // 1. Collect all dates continuously from startDateStr up to targetTodayStr
+    const allDatesSet = new Set();
 
-    const dates = historicalDays.map(day => {
-      if (!day || !day.date) return null;
-      const compDay = computedMap.get(day.date) || day;
-      const isToday = day.date === targetTodayStr;
+    let curr = new Date(`${startDateStr}T00:00:00`);
+    const end = new Date(`${targetTodayStr}T00:00:00`);
+    while (curr <= end) {
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      allDatesSet.add(`${y}-${m}-${d}`);
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    // Also include any dates in daysConfig or attendanceLogs up to targetTodayStr
+    safeDaysConfig.forEach(d => {
+      if (d && d.date && d.date <= targetTodayStr && d.date >= startDateStr) {
+        allDatesSet.add(d.date);
+      }
+    });
+    (attendanceLogs || []).forEach(l => {
+      if (l && l.date && l.date <= targetTodayStr && l.date >= startDateStr) {
+        allDatesSet.add(l.date);
+      }
+    });
+
+    const dates = Array.from(allDatesSet).map(dateKey => {
+      const day = daysMap.get(dateKey) || {
+        date: dateKey,
+        dayNumber: parseInt(dateKey.split('-')[2], 10),
+        lunchProvided: false,
+        dinnerProvided: false,
+        lunchEaters: [],
+        dinnerEaters: [],
+      };
+      const compDay = computedMap.get(dateKey) || day;
+      const isToday = (dateKey === targetTodayStr);
 
       const lunchEatersList = Array.isArray(day.lunchEaters) ? day.lunchEaters : [];
       const dinnerEatersList = Array.isArray(day.dinnerEaters) ? day.dinnerEaters : [];
 
-      // Food is confirmed ONLY IF meal is provided AND eaters list has at least one member
-      const isLunchFoodConfirmed = Boolean(day.lunchProvided && lunchEatersList.length > 0);
-      const isDinnerFoodConfirmed = Boolean(day.dinnerProvided && dinnerEatersList.length > 0);
-      const hasAnyConfirmedMeal = isLunchFoodConfirmed || isDinnerFoodConfirmed;
+      // Safe attendance logs for this date
+      const safeLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
+      const verifiedLunchLogs = safeLogs.filter(
+        l => l && l.date === dateKey && l.meal === 'lunch' && l.status === 'present'
+      );
+      const verifiedDinnerLogs = safeLogs.filter(
+        l => l && l.date === dateKey && l.meal === 'dinner' && l.status === 'present'
+      );
 
       // Extract present members (eaters who ate)
       const lunchPresentMembers = lunchEatersList
@@ -139,39 +167,37 @@ function HistoryScreenContent({
         .map(id => memberMap.get(id))
         .filter(Boolean);
 
-      // Verified attendance records in attendanceLogs for this date (only if food was actually confirmed)
-      const safeLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
-      const verifiedLunch = isLunchFoodConfirmed
-        ? safeLogs.filter(
-            l => l && l.date === day.date && l.meal === 'lunch' && l.status === 'present'
-          )
-        : [];
-      const verifiedDinner = isDinnerFoodConfirmed
-        ? safeLogs.filter(
-            l => l && l.date === day.date && l.meal === 'dinner' && l.status === 'present'
-          )
-        : [];
+      // Meal Availability / Confirmation:
+      // Food is confirmed if verified wash log exists, or if lunchProvided is set with eaters
+      const isLunchFoodConfirmed = Boolean(
+        verifiedLunchLogs.length > 0 || (day.lunchProvided && lunchEatersList.length > 0)
+      );
+      const isDinnerFoodConfirmed = Boolean(
+        verifiedDinnerLogs.length > 0 || (day.dinnerProvided && dinnerEatersList.length > 0)
+      );
 
       // Lunch Washers & Verified Status
       let lunchWashers = [];
       let isLunchVerified = false;
+      let isLunchAvail = false;
 
-      if (isLunchFoodConfirmed) {
-        if (verifiedLunch.length > 0) {
-          isLunchVerified = true;
-          lunchWashers = verifiedLunch.map(l => ({
-            id: l?.memberId,
-            logId: l?.id || l?.slotId,
-            slotId: l?.slotId || l?.id,
-            name: l?.memberName || memberMap.get(l?.memberId)?.name || 'Washer',
-            slotIndex: l?.slotIndex || 1,
-            code: memberMap.get(l?.memberId)?.code || '',
-            verified: true,
-            markedBy: l?.markedBy,
-            markedAt: l?.markedAt,
-          }));
-        } else if (!isToday) {
-          // Past days: only if food was confirmed and slots assigned
+      if (verifiedLunchLogs.length > 0) {
+        isLunchVerified = true;
+        isLunchAvail = true;
+        lunchWashers = verifiedLunchLogs.map(l => ({
+          id: l?.memberId,
+          logId: l?.id || l?.slotId,
+          slotId: l?.slotId || l?.id,
+          name: l?.memberName || memberMap.get(l?.memberId)?.name || 'Washer',
+          slotIndex: l?.slotIndex || 1,
+          code: memberMap.get(l?.memberId)?.code || '',
+          verified: true,
+          markedBy: l?.markedBy,
+          markedAt: l?.markedAt,
+        }));
+      } else if (isLunchFoodConfirmed) {
+        isLunchAvail = true;
+        if (!isToday) {
           const lunchSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'lunch') : [];
           const assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
           if (assigned.length > 0) {
@@ -186,29 +212,46 @@ function HistoryScreenContent({
               verified: true,
             }));
           }
+        } else {
+          // Today: scheduled washer if assigned in slots
+          const lunchSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'lunch') : [];
+          const assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
+          if (assigned.length > 0) {
+            lunchWashers = assigned.map(s => ({
+              id: s.assignedMemberId,
+              logId: s.id,
+              slotId: s.id,
+              name: s.assignedMemberName,
+              slotIndex: s.slotIndex || 1,
+              code: memberMap.get(s.assignedMemberId)?.code || '',
+              verified: false,
+            }));
+          }
         }
       }
 
       // Dinner Washers & Verified Status
       let dinnerWashers = [];
       let isDinnerVerified = false;
+      let isDinnerAvail = false;
 
-      if (isDinnerFoodConfirmed) {
-        if (verifiedDinner.length > 0) {
-          isDinnerVerified = true;
-          dinnerWashers = verifiedDinner.map(l => ({
-            id: l?.memberId,
-            logId: l?.id || l?.slotId,
-            slotId: l?.slotId || l?.id,
-            name: l?.memberName || memberMap.get(l?.memberId)?.name || 'Washer',
-            slotIndex: l?.slotIndex || 1,
-            code: memberMap.get(l?.memberId)?.code || '',
-            verified: true,
-            markedBy: l?.markedBy,
-            markedAt: l?.markedAt,
-          }));
-        } else if (!isToday) {
-          // Past days: only if food was confirmed and slots assigned
+      if (verifiedDinnerLogs.length > 0) {
+        isDinnerVerified = true;
+        isDinnerAvail = true;
+        dinnerWashers = verifiedDinnerLogs.map(l => ({
+          id: l?.memberId,
+          logId: l?.id || l?.slotId,
+          slotId: l?.slotId || l?.id,
+          name: l?.memberName || memberMap.get(l?.memberId)?.name || 'Washer',
+          slotIndex: l?.slotIndex || 1,
+          code: memberMap.get(l?.memberId)?.code || '',
+          verified: true,
+          markedBy: l?.markedBy,
+          markedAt: l?.markedAt,
+        }));
+      } else if (isDinnerFoodConfirmed) {
+        isDinnerAvail = true;
+        if (!isToday) {
           const dinnerSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'dinner') : [];
           const dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
           if (dinnerSlot) {
@@ -223,28 +266,45 @@ function HistoryScreenContent({
               verified: true,
             }];
           }
+        } else {
+          // Today: scheduled dinner washer if assigned
+          const dinnerSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'dinner') : [];
+          const dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
+          if (dinnerSlot) {
+            dinnerWashers = [{
+              id: dinnerSlot.assignedMemberId,
+              logId: dinnerSlot.id,
+              slotId: dinnerSlot.id,
+              name: dinnerSlot.assignedMemberName,
+              slotIndex: dinnerSlot.slotIndex || 1,
+              code: memberMap.get(dinnerSlot.assignedMemberId)?.code || '',
+              verified: false,
+            }];
+          }
         }
       }
 
       // Ensure Nov 24, 2026 is NOT assigned to anyone (pause / skipped day)
-      if (day.date === '2026-11-24') {
+      if (dateKey === '2026-11-24') {
         lunchWashers = [];
         dinnerWashers = [];
         isLunchVerified = false;
         isDinnerVerified = false;
+        isLunchAvail = false;
+        isDinnerAvail = false;
       }
 
-      // Day Pending Status:
-      // If food availability has not been marked/confirmed, it is pending
-      const isPending = !hasAnyConfirmedMeal || (isLunchFoodConfirmed && !isLunchVerified) || (isDinnerFoodConfirmed && !isDinnerVerified);
+      const hasAnyConfirmedMeal = isLunchAvail || isDinnerAvail || isLunchVerified || isDinnerVerified;
+      const hasAnyMeal = hasAnyConfirmedMeal || isToday;
+      const isPending = !hasAnyConfirmedMeal || (isLunchAvail && !isLunchVerified) || (isDinnerAvail && !isDinnerVerified);
 
       // Safe date components parsing
-      const dateParts = String(day.date || '').split('-');
-      const dayNum = dateParts[2] || String(day.dayNumber || '01').padStart(2, '0');
+      const dateParts = String(dateKey || '').split('-');
+      const dayNum = dateParts[2] || '01';
       let weekdayName = '';
-      let fullDateStr = day.date;
+      let fullDateStr = dateKey;
       try {
-        const dateObj = new Date(`${day.date}T00:00:00`);
+        const dateObj = new Date(`${dateKey}T00:00:00`);
         if (!isNaN(dateObj.getTime())) {
           weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
           fullDateStr = dateObj.toLocaleDateString('en-US', {
@@ -258,14 +318,14 @@ function HistoryScreenContent({
       }
 
       return {
-        date: day.date,
+        date: dateKey,
         dayNum,
         weekdayName: weekdayName || 'Day',
-        fullDateStr: fullDateStr || day.date,
-        hasAnyMeal: hasAnyConfirmedMeal,
+        fullDateStr: fullDateStr || dateKey,
+        hasAnyMeal,
         hasAnyConfirmedMeal,
-        isLunchAvail: isLunchFoodConfirmed,
-        isDinnerAvail: isDinnerFoodConfirmed,
+        isLunchAvail,
+        isDinnerAvail,
         isLunchFoodConfirmed,
         isDinnerFoodConfirmed,
         lunchPresentMembers,
@@ -282,9 +342,9 @@ function HistoryScreenContent({
     // 2. Refined Filter Options & Logic:
     let filtered = dates;
     if (dateFilter === 'lunch') {
-      filtered = dates.filter(d => d?.isLunchFoodConfirmed);
+      filtered = dates.filter(d => d?.isLunchAvail || d?.isLunchVerified || d?.isToday);
     } else if (dateFilter === 'dinner') {
-      filtered = dates.filter(d => d?.isDinnerFoodConfirmed);
+      filtered = dates.filter(d => d?.isDinnerAvail || d?.isDinnerVerified || d?.isToday);
     } else if (dateFilter === 'unmarked') {
       filtered = dates.filter(d => d?.isPending);
     }
@@ -612,7 +672,11 @@ function HistoryScreenContent({
                               ? 'Lunch & Dinner held'
                               : isLunchAvail
                               ? 'Lunch only'
-                              : 'Dinner only'}
+                              : isDinnerAvail
+                              ? 'Dinner only'
+                              : isToday
+                              ? 'Food availability pending confirmation'
+                              : 'No meals held'}
                           </span>
                         </div>
                       </div>

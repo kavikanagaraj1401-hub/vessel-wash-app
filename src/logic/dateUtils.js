@@ -67,7 +67,7 @@ export function formatDayMonth(dateStr) {
 }
 
 /**
- * Ensures daysConfig includes all days up to the target date / target month.
+ * Ensures daysConfig includes all days from 2026-09-01 continuously up to the target date.
  * If target date is beyond existing config, dynamically appends missing days.
  * @param {Array<any>} existingDays
  * @param {string} targetDateStr
@@ -77,27 +77,24 @@ export function ensureDaysCoverDate(existingDays = [], targetDateStr) {
   if (!targetDateStr || !Array.isArray(existingDays)) return existingDays;
 
   const existingDates = new Set(existingDays.map(d => d.date));
-  if (existingDates.has(targetDateStr)) {
-    return existingDays;
-  }
-
-  const [tYear, tMonth] = targetDateStr.split('-').map(Number);
-  if (!tYear || !tMonth) return existingDays;
-
+  const startDateStr = '2026-09-01';
   const updated = [...existingDays];
-  const daysInMonth = new Date(tYear, tMonth, 0).getDate();
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dayStr = String(day).padStart(2, '0');
-    const mStr = String(tMonth).padStart(2, '0');
-    const dStr = `${tYear}-${mStr}-${dayStr}`;
+  let curr = new Date(`${startDateStr}T00:00:00`);
+  const end = new Date(`${targetDateStr}T00:00:00`);
+
+  let added = false;
+  while (curr <= end) {
+    const y = curr.getFullYear();
+    const m = String(curr.getMonth() + 1).padStart(2, '0');
+    const d = String(curr.getDate()).padStart(2, '0');
+    const dStr = `${y}-${m}-${d}`;
 
     if (!existingDates.has(dStr)) {
-      const dateObj = new Date(tYear, tMonth - 1, day);
       updated.push({
         date: dStr,
-        dayNumber: day,
-        dayOfWeek: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
+        dayNumber: curr.getDate(),
+        dayOfWeek: curr.toLocaleDateString('en-US', { weekday: 'short' }),
         lunchProvided: false,
         lunchWashers: 1,
         dinnerProvided: false,
@@ -105,10 +102,14 @@ export function ensureDaysCoverDate(existingDays = [], targetDateStr) {
         dinnerEaters: [],
       });
       existingDates.add(dStr);
+      added = true;
     }
+    curr.setDate(curr.getDate() + 1);
   }
 
-  updated.sort((a, b) => a.date.localeCompare(b.date));
+  if (added) {
+    updated.sort((a, b) => a.date.localeCompare(b.date));
+  }
   return updated;
 }
 
@@ -128,7 +129,8 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
   const updated = Array.isArray(existingDays) ? [...existingDays] : [];
 
   for (let year = startYear; year <= endYear; year++) {
-    for (let month = 1; month <= 12; month++) {
+    const firstMonth = (year === 2026) ? 9 : 1;
+    for (let month = firstMonth; month <= 12; month++) {
       const daysInMonth = new Date(year, month, 0).getDate();
       for (let day = 1; day <= daysInMonth; day++) {
         const mStr = String(month).padStart(2, '0');
