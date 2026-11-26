@@ -85,7 +85,7 @@ END $$;
 
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES (SAFE & IDEMPOTENT)
--- Permissive policies for client access
+-- Authenticated users (M1–M6+ and Admins) have full SELECT read access to wash history
 -- ==============================================================================
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.application_settings ENABLE ROW LEVEL SECURITY;
@@ -102,12 +102,78 @@ DROP POLICY IF EXISTS "Allow anonymous write access on application_settings" ON 
 CREATE POLICY "Allow anonymous read access on application_settings" ON public.application_settings FOR SELECT USING (true);
 CREATE POLICY "Allow anonymous write access on application_settings" ON public.application_settings FOR ALL USING (true);
 
+-- 1. ATTENDANCE_HISTORY RLS POLICIES (Full read access for all authenticated members)
+DROP POLICY IF EXISTS "Allow authenticated read access on attendance_history" ON public.attendance_history;
+CREATE POLICY "Allow authenticated read access on attendance_history" 
+  ON public.attendance_history 
+  FOR SELECT 
+  TO authenticated 
+  USING (auth.role() = 'authenticated');
+
 DROP POLICY IF EXISTS "Allow anonymous read access on attendance_history" ON public.attendance_history;
+CREATE POLICY "Allow anonymous read access on attendance_history" 
+  ON public.attendance_history 
+  FOR SELECT 
+  USING (true);
+
 DROP POLICY IF EXISTS "Allow anonymous write access on attendance_history" ON public.attendance_history;
-CREATE POLICY "Allow anonymous read access on attendance_history" ON public.attendance_history FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous write access on attendance_history" ON public.attendance_history FOR ALL USING (true);
+CREATE POLICY "Allow anonymous write access on attendance_history" 
+  ON public.attendance_history 
+  FOR ALL 
+  USING (true);
+
+-- 2. WASHER_ACTIVITY RLS POLICIES (Full read access for all authenticated members)
+DROP POLICY IF EXISTS "Allow authenticated read access on washer_activity" ON public.washer_activity;
+CREATE POLICY "Allow authenticated read access on washer_activity" 
+  ON public.washer_activity 
+  FOR SELECT 
+  TO authenticated 
+  USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Allow anonymous read access on washer_activity" ON public.washer_activity;
+CREATE POLICY "Allow anonymous read access on washer_activity" 
+  ON public.washer_activity 
+  FOR SELECT 
+  USING (true);
+
 DROP POLICY IF EXISTS "Allow anonymous write access on washer_activity" ON public.washer_activity;
-CREATE POLICY "Allow anonymous read access on washer_activity" ON public.washer_activity FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer_activity FOR ALL USING (true);
+CREATE POLICY "Allow anonymous write access on washer_activity" 
+  ON public.washer_activity 
+  FOR ALL 
+  USING (true);
+
+-- 3. WASH_HISTORY TABLE (DEDICATED WASH LOGS - FULL AUTHENTICATED READ ACCESS)
+CREATE TABLE IF NOT EXISTS public.wash_history (
+    id TEXT PRIMARY KEY,
+    date TEXT NOT NULL,
+    meal TEXT NOT NULL,
+    slot_index INTEGER DEFAULT 1,
+    member_id TEXT NOT NULL,
+    member_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'present',
+    marked_at TIMESTAMPTZ DEFAULT NOW(),
+    marked_by TEXT,
+    remarks TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.wash_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated read access on wash_history" ON public.wash_history;
+CREATE POLICY "Allow authenticated read access on wash_history" 
+  ON public.wash_history 
+  FOR SELECT 
+  TO authenticated 
+  USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Allow anonymous read access on wash_history" ON public.wash_history;
+CREATE POLICY "Allow anonymous read access on wash_history" 
+  ON public.wash_history 
+  FOR SELECT 
+  USING (true);
+
+DROP POLICY IF EXISTS "Allow write access on wash_history" ON public.wash_history;
+CREATE POLICY "Allow write access on wash_history" 
+  ON public.wash_history 
+  FOR ALL 
+  USING (true);

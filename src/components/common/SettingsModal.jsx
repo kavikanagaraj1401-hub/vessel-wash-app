@@ -181,14 +181,20 @@ DROP POLICY IF EXISTS "Allow anonymous write access on application_settings" ON 
 CREATE POLICY "Allow anonymous read access on application_settings" ON public.application_settings FOR SELECT USING (true);
 CREATE POLICY "Allow anonymous write access on application_settings" ON public.application_settings FOR ALL USING (true);
 
+-- ATTENDANCE_HISTORY RLS POLICIES (All authenticated members can read)
+DROP POLICY IF EXISTS "Allow authenticated read access on attendance_history" ON public.attendance_history;
+CREATE POLICY "Allow authenticated read access on attendance_history" ON public.attendance_history FOR SELECT TO authenticated USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Allow anonymous read access on attendance_history" ON public.attendance_history;
-DROP POLICY IF EXISTS "Allow anonymous write access on attendance_history" ON public.attendance_history;
 CREATE POLICY "Allow anonymous read access on attendance_history" ON public.attendance_history FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow anonymous write access on attendance_history" ON public.attendance_history;
 CREATE POLICY "Allow anonymous write access on attendance_history" ON public.attendance_history FOR ALL USING (true);
 
+-- WASHER_ACTIVITY RLS POLICIES (All authenticated members can read)
+DROP POLICY IF EXISTS "Allow authenticated read access on washer_activity" ON public.washer_activity;
+CREATE POLICY "Allow authenticated read access on washer_activity" ON public.washer_activity FOR SELECT TO authenticated USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Allow anonymous read access on washer_activity" ON public.washer_activity;
-DROP POLICY IF EXISTS "Allow anonymous write access on washer_activity" ON public.washer_activity;
 CREATE POLICY "Allow anonymous read access on washer_activity" ON public.washer_activity FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow anonymous write access on washer_activity" ON public.washer_activity;
 CREATE POLICY "Allow anonymous write access on washer_activity" ON public.washer_activity FOR ALL USING (true);
 
 -- 5. RPC FUNCTION: create_member_credential (Admin Member Credential Creation)

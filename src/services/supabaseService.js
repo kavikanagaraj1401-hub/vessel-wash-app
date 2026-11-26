@@ -848,6 +848,78 @@ export const supabaseService = {
   },
 
   /**
+   * Fetch complete wash history and attendance records for all authenticated users without role filtering.
+   * Enables read-only access for all standard members (M1 through M6+) and admins alike.
+   */
+  async fetchWashHistory() {
+    if (!isSupabaseConfigured || !supabase) return [];
+    try {
+      // 1. Try dedicated wash_history table if provisioned
+      const { data: washRows, error: washErr } = await supabase
+        .from('wash_history')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (!washErr && Array.isArray(washRows) && washRows.length > 0) {
+        return washRows;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      // 2. Query attendance_history table accessible by all authenticated users
+      const { data: attRows, error: attErr } = await supabase
+        .from('attendance_history')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (!attErr && Array.isArray(attRows)) {
+        return attRows;
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not fetch attendance_history:', err.message || err);
+    }
+
+    return [];
+  },
+
+  /**
+   * Delete a historical wash log by ID (Admin-only action).
+   */
+  async deleteAttendanceLog(logId) {
+    if (!isSupabaseConfigured || !supabase || !logId) return false;
+    try {
+      // 1. Update application_settings 'attendance_logs'
+      const { data: existingRows } = await supabase
+        .from('application_settings')
+        .select('*')
+        .eq('setting_key', 'attendance_logs');
+
+      if (existingRows && existingRows.length > 0) {
+        const row = existingRows[0];
+        const val = row.setting_value !== undefined ? row.setting_value : row.value;
+        if (Array.isArray(val)) {
+          const filtered = val.filter(l => l.id !== logId && l.slotId !== logId);
+          await this.upsertSetting('attendance_logs', filtered);
+        }
+      }
+
+      // 2. Also try deleting from dedicated wash_history if present
+      try {
+        await supabase.from('wash_history').delete().eq('id', logId);
+      } catch (wErr) {
+        // ignore
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('⚠️ Could not delete attendance log from Supabase:', err.message || err);
+      return false;
+    }
+  },
+
+  /**
    * Set up Supabase Realtime channel explicitly listening to changes on attendance_history, members, washer_activity, and application_settings.
    * Attaches session access token and handles teardown and automatic reconnection.
    */

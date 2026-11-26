@@ -228,7 +228,7 @@ export function TopAppBar({
                 <span className={`text-[10px] block truncate ${isAdmin ? 'text-white/80' : 'text-[#4E525D] dark:text-[#9BA5B7]'}`}>
                   {isAdmin
                     ? 'Full edit access: meals, attendance, Excel, members'
-                    : 'Meal status & attendance entry enabled'}
+                    : 'Wash history, meal status & attendance enabled'}
                 </span>
               </div>
             </div>

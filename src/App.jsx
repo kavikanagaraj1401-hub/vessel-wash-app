@@ -1009,6 +1009,25 @@ export default function App() {
     }
   };
 
+  const handleDeleteAttendanceLog = async (logId) => {
+    if (!isAdmin) return;
+    const existingLog = attendanceLogs.find(l => l.id === logId || l.slotId === logId);
+    const nextLogs = attendanceLogs.filter(l => l.id !== logId && l.slotId !== logId);
+    setAttendanceLogs(nextLogs);
+    storage.saveAttendanceLogs(nextLogs);
+    await supabaseService.deleteAttendanceLog(logId);
+
+    if (existingLog) {
+      logUserActivity(
+        'DELETE_WASH_LOG',
+        'attendance',
+        `Deleted Wash Log: ${existingLog.date} ${existingLog.meal?.toUpperCase()}`,
+        `Wash duty record for ${existingLog.memberName} (${existingLog.date} ${existingLog.meal}) was removed by ${currentMember?.name || 'Admin'}.`,
+        existingLog.date
+      );
+    }
+  };
+
   const handleUpdateEaters = (meal, eaterIds) => {
     lastLocalEditTimeRef.current = Date.now();
     const updatedDays = daysConfig.map(day => {
@@ -1552,6 +1571,10 @@ export default function App() {
               onSelectDate={handleSelectDate}
               onTabChange={handleTabChange}
               todayDateStr={actualTodayDateStr}
+              isAdmin={isAdmin}
+              currentMember={currentMember}
+              onDeleteWashLog={handleDeleteAttendanceLog}
+              onResetAttendanceForSlot={handleResetAttendanceForSlot}
             />
           )}
 
