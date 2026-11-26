@@ -25,6 +25,7 @@ import {
   Activity,
   Sun,
   Moon,
+  History,
 } from 'lucide-react';
 import { parseExcelTimetable } from '../../logic/excelImporter';
 import { MembersScreen } from '../../screens/MembersScreen';
@@ -41,6 +42,7 @@ import { useTheme } from '../../context/ThemeContext';
 export function SettingsModal({
   isOpen,
   onClose,
+  onTabChange,
   isAdmin = false,
   userName = 'Kavipriyan',
   userEmail = '',
@@ -64,10 +66,19 @@ export function SettingsModal({
 }) {
   const { theme, isDark, toggleTheme } = useTheme();
 
-  // WhatsApp-style navigation view: null = WhatsApp list; 'members' | 'activity' | 'rules' | 'excel'
+  // WhatsApp-style navigation view: null = WhatsApp list; 'members' | 'activity' | 'rules' | 'excel' | 'history'
   const [currentView, setCurrentView] = useState(null);
   const [rulesSubTab, setRulesSubTab] = useState('rules'); // 'rules' | 'schedule'
   const [resetConfirm, setResetConfirm] = useState(false);
+
+  // If user selects history in menu, cleanly route to the locked shell history tab so header & navbar remain visible
+  useEffect(() => {
+    if (currentView === 'history') {
+      onClose();
+      if (onTabChange) onTabChange('history');
+      setCurrentView(null);
+    }
+  }, [currentView, onClose, onTabChange]);
 
   // If user is not admin and tries to access excel, keep on main menu
   useEffect(() => {
@@ -593,6 +604,31 @@ $$;`;
                         </span>
                         <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
                           Live audit log of wash assignments, duties &amp; marks
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
+                  </button>
+
+                  {/* 3. Wash History (Cleanly routes to locked shell History view, preserving header & navbar) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (onTabChange) onTabChange('history');
+                    }}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] flex items-center justify-center shrink-0 border border-[#EA580C]/20 group-hover:scale-105 transition-transform">
+                        <History className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                          Wash History
+                        </span>
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          Date-by-date vessel washing timeline &amp; duty audit
                         </p>
                       </div>
                     </div>

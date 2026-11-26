@@ -1599,6 +1599,7 @@ export default function App() {
         <SettingsModal
           isOpen={settingsOpen}
           onClose={handleCloseSettings}
+          onTabChange={handleTabChange}
           isAdmin={isAdmin}
           userName={userName}
           userEmail={userEmail}
