@@ -292,7 +292,7 @@ export function HistoryScreen({
         <button
           type="button"
           onClick={handleCopyReport}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] text-xs font-bold bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] shadow-2xs active-scale hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] shadow-2xs active-scale hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-all cursor-pointer"
         >
           {copied ? <Check className="w-3.5 h-3.5 text-[#22AC77] dark:text-[#4ADE80]" /> : <Copy className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B]" />}
           <span>{copied ? 'Copied!' : 'Copy'}</span>
@@ -300,11 +300,11 @@ export function HistoryScreen({
       </div>
 
       {/* Top Segmented Sub-Tab Switcher (Grayscale styling for non-meal navigation) */}
-      <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#121620] rounded-[4px] border border-[#DDD9D0] dark:border-[#263042] gap-1">
+      <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#121620] rounded-xl border border-[#DDD9D0] dark:border-[#263042] gap-1">
         <button
           type="button"
           onClick={() => setActiveSubTab('logs')}
-          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-[4px] transition-all select-none cursor-pointer ${
+          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-lg transition-all select-none cursor-pointer ${
             activeSubTab === 'logs'
               ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs font-bold'
               : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] font-semibold'
@@ -317,7 +317,7 @@ export function HistoryScreen({
         <button
           type="button"
           onClick={() => setActiveSubTab('report')}
-          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-[4px] transition-all select-none cursor-pointer ${
+          className={`flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2 text-xs rounded-lg transition-all select-none cursor-pointer ${
             activeSubTab === 'report'
               ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs font-bold'
               : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] font-semibold'
@@ -333,22 +333,22 @@ export function HistoryScreen({
         <div className="space-y-3">
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 sm:p-3 rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#F59E0B]/40 dark:border-[#F59E0B]/30 text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#F59E0B]/40 dark:border-[#F59E0B]/30 text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[#D97706] dark:text-[#FBBF24] block truncate">Lunch</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[4px] bg-white dark:bg-[#171F2C] border border-indigo-400/40 dark:border-indigo-500/30 text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-indigo-400/40 dark:border-indigo-500/30 text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-indigo-700 dark:text-[#C7D2FE] block truncate">Dinner</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
             </div>
           </div>
 
           {/* Filter Tabs: Lunch afternoon theme, Dinner night theme, other tabs in clean grayscale */}
-          <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#121620] rounded-[4px] border border-[#DDD9D0] dark:border-[#263042] gap-1">
+          <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#121620] rounded-xl border border-[#DDD9D0] dark:border-[#263042] gap-1">
             {[
               { id: 'all', label: 'All Dates' },
               { id: 'lunch', label: 'Lunch' },
@@ -368,7 +368,7 @@ export function HistoryScreen({
                   key={f.id}
                   type="button"
                   onClick={() => setDateFilter(f.id)}
-                  className={`flex-1 basis-0 min-w-0 py-2 px-1 text-xs font-bold rounded-[4px] transition-all select-none truncate cursor-pointer text-center ${
+                  className={`flex-1 basis-0 min-w-0 py-2 px-1 text-xs font-bold rounded-lg transition-all select-none truncate cursor-pointer text-center ${
                     isSelected
                       ? selectedStyle
                       : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] font-semibold'
@@ -424,12 +424,12 @@ export function HistoryScreen({
                     <Card
                       key={date}
                       padding="sm"
-                      className="bg-white/60 dark:bg-[#171F2C]/60 border border-[#DDD9D0] dark:border-[#2A364B] transition-all hover:border-[#EA580C]/50 rounded-[4px]"
+                      className="bg-white/60 dark:bg-[#171F2C]/60 border border-[#DDD9D0] dark:border-[#2A364B] transition-all hover:border-[#EA580C]/50 rounded-2xl"
                     >
                       <div className="flex items-center justify-between">
                         {/* Date Left Badge */}
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] flex flex-col items-center justify-center font-bold">
+                          <div className="w-9 h-9 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] flex flex-col items-center justify-center font-bold">
                             <span className="text-[9px] uppercase leading-none font-semibold text-[#848A96] dark:text-[#64748B]">
                               {weekdayName}
                             </span>
@@ -444,7 +444,7 @@ export function HistoryScreen({
                                 {fullDateStr}
                               </span>
                               {isToday && (
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-[4px] bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30">
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30">
                                   Today
                                 </span>
                               )}
@@ -458,7 +458,7 @@ export function HistoryScreen({
 
                         {/* Unmarked Badge */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[4px] bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
                             Unmarked
                           </span>
                         </div>
@@ -474,7 +474,7 @@ export function HistoryScreen({
                   <Card
                     key={date}
                     padding="none"
-                    className={`overflow-hidden border rounded-[4px] transition-all shadow-2xs bg-white dark:bg-[#171F2C] ${
+                    className={`overflow-hidden border rounded-2xl transition-all shadow-2xs bg-white dark:bg-[#171F2C] ${
                       isToday
                         ? 'border-[#EA580C] dark:border-[#F59E0B] ring-1 ring-[#EA580C]/40'
                         : 'border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#EA580C]/40'
@@ -483,7 +483,7 @@ export function HistoryScreen({
                     {/* Date Card Header */}
                     <div className="p-3.5 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70 flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-[4px] bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40 flex flex-col items-center justify-center font-bold shadow-2xs">
+                        <div className="w-9 h-9 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40 flex flex-col items-center justify-center font-bold shadow-2xs">
                           <span className="text-[9px] uppercase leading-none font-semibold">
                             {weekdayName}
                           </span>
@@ -498,12 +498,12 @@ export function HistoryScreen({
                               {fullDateStr}
                             </h4>
                             {isToday && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-[4px] bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30">
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30">
                                 Today
                               </span>
                             )}
                             {isPending && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-[4px] bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 text-[#E0851A] dark:text-[#FF9F45] border border-[#E0851A]/30 dark:border-[#FF9F45]/40">
                                 Unmarked
                               </span>
                             )}
@@ -523,29 +523,29 @@ export function HistoryScreen({
                     <div className="p-3.5 space-y-3 bg-[#F2F1ED]/40 dark:bg-[#0B0C0E]/40">
                       {/* 1. LUNCH SECTION */}
                       {isLunchAvail ? (
-                        <div className="p-3 rounded-[4px] bg-[#FFFDF9] dark:bg-[#1A160F] border border-[#F59E0B]/40 shadow-2xs space-y-2.5">
+                        <div className="p-3 rounded-xl bg-[#FFFDF9] dark:bg-[#1A160F] border border-[#F59E0B]/40 shadow-2xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="p-1 rounded-[4px] bg-[#FF7A00]/15 border border-[#F59E0B]/40 text-[#D97706] dark:text-[#FBBF24]">
+                              <span className="p-1 rounded-lg bg-[#FF7A00]/15 border border-[#F59E0B]/40 text-[#D97706] dark:text-[#FBBF24]">
                                 <Sun className="w-3.5 h-3.5" />
                               </span>
                               <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
                                 Lunch
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-amber-500/10 dark:bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24] border border-amber-500/30">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 dark:bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24] border border-amber-500/30">
                               Available ({lunchWashers.length} {lunchWashers.length === 1 ? 'Washer' : 'Washers'})
                             </span>
                           </div>
 
                           {/* Washer Row */}
-                          <div className={`p-2 rounded-[4px] border flex items-center justify-between ${
+                          <div className={`p-2 rounded-xl border flex items-center justify-between ${
                             isLunchVerified
                               ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
                               : 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30'
                           }`}>
                             <div className="flex items-center gap-2">
-                              <div className={`w-5 h-5 rounded-[2px] flex items-center justify-center text-[10px] font-bold ${
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
                                 isLunchVerified ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]' : 'bg-amber-500/20 text-[#D97706] dark:text-[#FBBF24]'
                               }`}>
                                 🧼
@@ -563,7 +563,7 @@ export function HistoryScreen({
                                 </span>
                               </div>
                             </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                               isLunchVerified
                                 ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
                                 : 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24] border border-amber-500/30'
@@ -590,7 +590,7 @@ export function HistoryScreen({
                                   return (
                                     <span
                                       key={member.id}
-                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all ${
                                         isWasher
                                           ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] border border-[#F59E0B]/50 font-extrabold shadow-2xs'
                                           : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
@@ -598,7 +598,7 @@ export function HistoryScreen({
                                     >
                                       <span>{member.name}</span>
                                       {isWasher && (
-                                        <span className="text-[9px] font-bold px-1 rounded-[2px] bg-[#18181B]/15 text-[#18181B] ml-0.5">
+                                        <span className="text-[9px] font-bold px-1 rounded-md bg-[#18181B]/15 text-[#18181B] ml-0.5">
                                           Washer
                                         </span>
                                       )}
@@ -610,7 +610,7 @@ export function HistoryScreen({
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between text-xs text-[#848A96] dark:text-[#64748B]">
+                        <div className="p-2.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between text-xs text-[#848A96] dark:text-[#64748B]">
                           <div className="flex items-center gap-1.5">
                             <Sun className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B]" />
                             <span>Lunch: Not Available</span>
@@ -621,29 +621,29 @@ export function HistoryScreen({
 
                       {/* 2. DINNER SECTION */}
                       {isDinnerAvail ? (
-                        <div className="p-3 rounded-[4px] bg-[#FAFAFE] dark:bg-[#141226] border border-indigo-400/40 shadow-2xs space-y-2.5">
+                        <div className="p-3 rounded-xl bg-[#FAFAFE] dark:bg-[#141226] border border-indigo-400/40 shadow-2xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="p-1 rounded-[4px] bg-indigo-500/15 border border-indigo-400/40 text-indigo-600 dark:text-indigo-400">
+                              <span className="p-1 rounded-lg bg-indigo-500/15 border border-indigo-400/40 text-indigo-600 dark:text-indigo-400">
                                 <Moon className="w-3.5 h-3.5" />
                               </span>
                               <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
                                 Dinner
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border border-indigo-400/30">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border border-indigo-400/30">
                               Available (1 Washer)
                             </span>
                           </div>
 
                           {/* Washer Row */}
-                          <div className={`p-2 rounded-[4px] border flex items-center justify-between ${
+                          <div className={`p-2 rounded-xl border flex items-center justify-between ${
                             isDinnerVerified
                               ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
                               : 'bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-400/30'
                           }`}>
                             <div className="flex items-center gap-2">
-                              <div className={`w-5 h-5 rounded-[2px] flex items-center justify-center text-[10px] font-bold ${
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
                                 isDinnerVerified ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]' : 'bg-indigo-500/20 text-indigo-600 dark:text-[#C7D2FE]'
                               }`}>
                                 🧼
@@ -661,7 +661,7 @@ export function HistoryScreen({
                                 </span>
                               </div>
                             </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                               isDinnerVerified
                                 ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
                                 : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border border-indigo-400/30'
@@ -688,7 +688,7 @@ export function HistoryScreen({
                                   return (
                                     <span
                                       key={member.id}
-                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all ${
                                         isWasher
                                           ? 'bg-gradient-to-r from-[#1E1B4B] via-[#2E2768] to-[#4338CA] text-white border border-indigo-400/40 font-extrabold shadow-2xs'
                                           : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
@@ -696,7 +696,7 @@ export function HistoryScreen({
                                     >
                                       <span>{member.name}</span>
                                       {isWasher && (
-                                        <span className="text-[9px] font-bold px-1 rounded-[2px] bg-white/20 text-[#FDE68A] ml-0.5">
+                                        <span className="text-[9px] font-bold px-1 rounded-md bg-white/20 text-[#FDE68A] ml-0.5">
                                           Washer
                                         </span>
                                       )}
@@ -730,15 +730,15 @@ export function HistoryScreen({
         <div className="space-y-3">
           {/* Quick Metrics Header */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[#848A96] dark:text-[#64748B] block truncate">Total Washes</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#F59E0B]/40 dark:border-[#F59E0B]/30 text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-[#F59E0B]/40 dark:border-[#F59E0B]/30 text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[#D97706] dark:text-[#FBBF24] block truncate">Lunch</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalLunchWashes}</span>
             </div>
-            <div className="p-2.5 sm:p-3 rounded-[4px] bg-white dark:bg-[#171F2C] border border-indigo-400/40 dark:border-indigo-500/30 text-center shadow-2xs">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#171F2C] border border-indigo-400/40 dark:border-indigo-500/30 text-center shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-indigo-700 dark:text-[#C7D2FE] block truncate">Dinner</span>
               <span className="text-lg font-bold text-[#111216] dark:text-[#F7F6F3]">{totalDinnerWashes}</span>
             </div>
@@ -750,14 +750,14 @@ export function HistoryScreen({
               const isExpanded = expandedMembers.has(member.id);
 
               return (
-                <Card key={member.id} padding="none" className="overflow-hidden rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
+                <Card key={member.id} padding="none" className="overflow-hidden rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
                   {/* Member Summary Header Row */}
                   <div
                     onClick={() => toggleMemberExpand(member.id)}
                     className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#F2F1ED]/50 dark:hover:bg-[#1F2A3C]/50 transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-[4px] bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40 flex items-center justify-center font-bold text-xs shadow-2xs">
+                      <div className="w-8 h-8 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#ECBD56] border border-[#ECBD56]/40 flex items-center justify-center font-bold text-xs shadow-2xs">
                         {member.code}
                       </div>
                       <div>
@@ -805,7 +805,7 @@ export function HistoryScreen({
                             return (
                               <div
                                 key={log.id}
-                                className="flex items-center justify-between p-2.5 rounded-[4px] bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs"
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs"
                               >
                                 <div className="flex items-center gap-2">
                                   <Calendar className="w-3.5 h-3.5 text-[#848A96] dark:text-[#64748B] flex-shrink-0" />
@@ -826,7 +826,7 @@ export function HistoryScreen({
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]">
                                     Washed
                                   </span>
                                   <span className="text-[10px] text-[#848A96] dark:text-[#64748B]">

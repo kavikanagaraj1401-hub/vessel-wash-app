@@ -102,7 +102,7 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center font-bold rounded-[4px] border shadow-2xs ${config.bg} ${config.text} ${config.border} ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center font-bold rounded-lg border shadow-2xs ${config.bg} ${config.text} ${config.border} ${sizeStyles[size]} ${className}`}
     >
       {showIcon && IconComponent && <IconComponent className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.2} />}
       <span>{children || config.label}</span>

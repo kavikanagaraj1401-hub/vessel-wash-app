@@ -36,11 +36,11 @@ export function Modal({
 
       {/* Sheet Container */}
       <div
-        className={`relative w-full max-w-md bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-t-[4px] sm:rounded-[4px] shadow-2xl flex flex-col max-h-[85vh] z-10 transition-transform border-t sm:border border-[#DDD9D0] dark:border-[#2A364B] ${className}`}
+        className={`relative w-full max-w-md bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[85vh] z-10 transition-transform border-t sm:border border-[#DDD9D0] dark:border-[#2A364B] ${className}`}
       >
         {/* Mobile Drag Indicator Bar */}
         <div className="flex justify-center pt-2.5 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-[2px] bg-[#DDD9D0] dark:bg-[#2A364B]" />
+          <div className="w-10 h-1 rounded-full bg-[#DDD9D0] dark:bg-[#2A364B]" />
         </div>
 
         {/* Header */}
@@ -52,7 +52,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-[4px] text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

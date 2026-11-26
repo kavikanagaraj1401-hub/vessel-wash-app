@@ -36,7 +36,7 @@ export function TextInput({
           onChange={onChange}
           disabled={disabled}
           placeholder={placeholder}
-          className={`w-full min-h-[40px] px-3 text-xs bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] rounded-[4px] border transition-all outline-none
+          className={`w-full min-h-[40px] px-3 text-xs bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] rounded-xl border transition-all outline-none
             ${Icon ? 'pl-9' : ''}
             ${error
               ? 'border-[#D9483B] dark:border-[#FF5A4E] focus:ring-1 focus:ring-[#D9483B]'

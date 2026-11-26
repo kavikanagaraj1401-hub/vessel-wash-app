@@ -18,7 +18,7 @@ export function Button({
   type = 'button',
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active-scale disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-[4px] font-sans cursor-pointer';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active-scale disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-xl font-sans cursor-pointer';
 
   const sizeStyles = {
     sm: 'h-8 px-3 text-xs gap-1.5',

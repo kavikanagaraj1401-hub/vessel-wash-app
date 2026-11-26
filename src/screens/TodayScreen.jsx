@@ -201,11 +201,11 @@ export function TodayScreen({
         {/* ========================================================================= */}
         {/* CARD 1: MEAL & ATTENDANCE SETTINGS (7 COLS ON DESKTOP)                     */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-7 bg-white dark:bg-[#151922] border border-[#DDD9D0] dark:border-[#263042] rounded-[4px] p-4 sm:p-5 shadow-2xs space-y-4 transition-colors duration-200">
+        <div className="lg:col-span-7 bg-white dark:bg-[#151922] border border-[#DDD9D0] dark:border-[#263042] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 transition-colors duration-200">
           {/* Card Header */}
           <div className="flex items-center justify-between pb-3 border-b border-[#DDD9D0]/80 dark:border-[#263042]/80">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] flex items-center justify-center border border-[#EA580C]/20 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] flex items-center justify-center border border-[#EA580C]/20 shrink-0">
                 <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div>
@@ -217,7 +217,7 @@ export function TodayScreen({
                 </span>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
               Session
             </span>
           </div>
@@ -233,20 +233,20 @@ export function TodayScreen({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 p-1 bg-[#F2F1ED] dark:bg-[#11141B] rounded-[4px] border border-[#DDD9D0] dark:border-[#202736] gap-1">
+            <div className="grid grid-cols-2 p-1 bg-[#F2F1ED] dark:bg-[#11141B] rounded-xl border border-[#DDD9D0] dark:border-[#202736] gap-1">
               {/* Lunch Tab (Afternoon Theme: Warm Golden Sunlight) */}
               <button
                 type="button"
                 onClick={() => handleSelectMeal('lunch')}
                 aria-label="Select Lunch session"
-                className={`relative flex items-center justify-center gap-2 py-2 px-3 rounded-[4px] transition-all duration-200 select-none active-scale cursor-pointer ${
+                className={`relative flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all duration-200 select-none active-scale cursor-pointer ${
                   selectedMeal === 'lunch'
                     ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] font-extrabold shadow-sm border border-[#F59E0B]/50'
                     : 'bg-transparent text-[#52525B] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
                 <div
-                  className={`w-4.5 h-4.5 rounded-[4px] flex items-center justify-center ${
+                  className={`w-5 h-5 rounded-lg flex items-center justify-center ${
                     selectedMeal === 'lunch'
                       ? 'bg-[#18181B]/15 text-[#18181B]'
                       : 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24]'
@@ -268,14 +268,14 @@ export function TodayScreen({
                 type="button"
                 onClick={() => handleSelectMeal('dinner')}
                 aria-label="Select Dinner session"
-                className={`relative flex items-center justify-center gap-2 py-2 px-3 rounded-[4px] transition-all duration-200 select-none active-scale cursor-pointer ${
+                className={`relative flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all duration-200 select-none active-scale cursor-pointer ${
                   selectedMeal === 'dinner'
                     ? 'bg-gradient-to-r from-[#1E1B4B] via-[#2E2768] to-[#4338CA] text-white font-extrabold shadow-sm border border-indigo-400/40'
                     : 'bg-transparent text-[#52525B] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
                 <div
-                  className={`w-4.5 h-4.5 rounded-[4px] flex items-center justify-center ${
+                  className={`w-5 h-5 rounded-lg flex items-center justify-center ${
                     selectedMeal === 'dinner'
                       ? 'bg-white/20 text-[#FDE68A]'
                       : 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
@@ -295,7 +295,7 @@ export function TodayScreen({
           </div>
 
           {/* 2. Meal Status & Availability Toggle */}
-          <div className="p-3 rounded-[4px] bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] flex items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span
@@ -309,7 +309,7 @@ export function TodayScreen({
                   {selectedMeal === 'lunch' ? 'Lunch Status' : 'Dinner Status'}
                 </span>
                 <span
-                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-[4px] shrink-0 ${
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg shrink-0 ${
                     isMealProvided
                       ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#15803D] dark:text-[#4ADE80] border border-[#86EFAC] dark:border-[#166534]'
                       : 'bg-[#FEF2F2] dark:bg-[#321414] text-[#DC2626] dark:text-[#F87171] border border-[#FECACA] dark:border-[#7F1D1D]'
@@ -328,7 +328,7 @@ export function TodayScreen({
             <button
               type="button"
               onClick={() => onToggleMealProvided(selectedMeal, !isMealProvided)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-[4px] transition-all active-scale whitespace-nowrap shadow-2xs shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all active-scale whitespace-nowrap shadow-2xs shrink-0 cursor-pointer ${
                 isMealProvided
                   ? 'bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] hover:bg-[#F2F1ED] dark:hover:bg-[#202736]'
                   : 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white hover:opacity-95 shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
@@ -354,7 +354,7 @@ export function TodayScreen({
                 <button
                   type="button"
                   onClick={() => onToggleLunchWashers && onToggleLunchWashers(1)}
-                  className={`py-1.5 px-3 rounded-[4px] text-xs font-extrabold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
+                  className={`py-1.5 px-3 rounded-xl text-xs font-extrabold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
                     washersCount === 1
                       ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] border-transparent shadow-xs'
                       : 'bg-[#F2F1ED] dark:bg-[#1B212D] text-[#52525B] dark:text-[#94A3B8] border-[#DDD9D0] dark:border-[#263042] hover:bg-[#EAE8E2] dark:hover:bg-[#202736]'
@@ -366,7 +366,7 @@ export function TodayScreen({
                 <button
                   type="button"
                   onClick={() => onToggleLunchWashers && onToggleLunchWashers(2)}
-                  className={`py-1.5 px-3 rounded-[4px] text-xs font-extrabold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
+                  className={`py-1.5 px-3 rounded-xl text-xs font-extrabold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
                     washersCount === 2
                       ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] border-transparent shadow-xs'
                       : 'bg-[#F2F1ED] dark:bg-[#1B212D] text-[#52525B] dark:text-[#94A3B8] border-[#DDD9D0] dark:border-[#263042] hover:bg-[#EAE8E2] dark:hover:bg-[#202736]'
@@ -384,7 +384,7 @@ export function TodayScreen({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
                   <span>Who ate {selectedMeal}?</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                     selectedMeal === 'lunch'
                       ? 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24]'
                       : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
@@ -414,7 +414,7 @@ export function TodayScreen({
                 </div>
               </div>
 
-              {/* Members chip cloud with Colorful Afternoon (Lunch) vs Night (Dinner) Theme & 4px Radius */}
+              {/* Members chip cloud with Colorful Afternoon (Lunch) vs Night (Dinner) Theme & 12px Radius */}
               <div className="flex flex-wrap gap-1.5 items-center pt-0.5">
                 {activeMembers.map((member) => {
                   const ate = currentEaterSet.has(member.id);
@@ -430,14 +430,14 @@ export function TodayScreen({
                       key={member.id}
                       type="button"
                       onClick={(e) => handleToggleEater(member.id, e)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[4px] text-xs transition-all duration-150 active-scale select-none border cursor-pointer ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all duration-150 active-scale select-none border cursor-pointer ${
                         ate
                           ? selectedChipStyle
                           : 'bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#263042] hover:bg-[#EAE8E2] dark:hover:bg-[#222A3A]'
                       }`}
                     >
                       <span
-                        className={`w-4 h-4 rounded-[2px] flex items-center justify-center text-[9px] font-extrabold ${
+                        className={`w-4.5 h-4.5 rounded-lg flex items-center justify-center text-[9px] font-extrabold ${
                           ate
                             ? selectedMeal === 'lunch'
                               ? 'bg-[#18181B]/15 text-[#18181B]'
@@ -460,11 +460,11 @@ export function TodayScreen({
         {/* ========================================================================= */}
         {/* CARD 2: WASHER ASSIGNMENT & ROTATION QUEUE (5 COLS ON DESKTOP)            */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-5 bg-white dark:bg-[#151922] border border-[#DDD9D0] dark:border-[#263042] rounded-[4px] p-4 sm:p-5 shadow-2xs space-y-4 transition-colors duration-200">
+        <div className="lg:col-span-5 bg-white dark:bg-[#151922] border border-[#DDD9D0] dark:border-[#263042] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 transition-colors duration-200">
           {/* Card Header */}
           <div className="flex items-center justify-between pb-3 border-b border-[#DDD9D0]/80 dark:border-[#263042]/80">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-[4px] bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#16A34A] dark:text-[#4ADE80] border border-[#86EFAC]/40 dark:border-[#166534] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#16A34A] dark:text-[#4ADE80] border border-[#86EFAC]/40 dark:border-[#166534] flex items-center justify-center shrink-0">
                 <Users className="w-4 h-4" />
               </div>
               <div>
@@ -476,14 +476,14 @@ export function TodayScreen({
                 </span>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
               Queue
             </span>
           </div>
 
           {/* Washer Display States */}
           {!isMealProvided ? (
-            <div className="p-6 rounded-[4px] bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-dashed border-[#DDD9D0] dark:border-[#263042] text-center space-y-2">
+            <div className="p-6 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-dashed border-[#DDD9D0] dark:border-[#263042] text-center space-y-2">
               <UtensilsCrossed className="w-7 h-7 text-[#71717A] dark:text-[#9BA5B7] mx-auto opacity-50" />
               <h3 className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3]">
                 {selectedMeal === 'lunch' ? 'Lunch' : 'Dinner'} is Not Available
@@ -493,7 +493,7 @@ export function TodayScreen({
               </p>
             </div>
           ) : currentEaters.length === 0 ? (
-            <div className="p-5 rounded-[4px] bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-center space-y-1.5">
+            <div className="p-5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-center space-y-1.5">
               <AlertCircle className="w-6 h-6 text-[#D97706] dark:text-[#FBBF24] mx-auto" />
               <h3 className="text-xs font-extrabold text-[#D97706] dark:text-[#FBBF24]">
                 No member attendance marked yet
@@ -503,7 +503,7 @@ export function TodayScreen({
               </p>
             </div>
           ) : liveAssignedSlots.length === 0 || !liveAssignedSlots[0]?.assignedMemberId ? (
-            <div className="p-5 rounded-[4px] bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] text-center">
+            <div className="p-5 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] text-center">
               <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7]">
                 No eligible washer found for the selected attending members.
               </p>
@@ -518,7 +518,7 @@ export function TodayScreen({
                   <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider">
                     {selectedDateStr === currentDateStr ? "Today's Washer" : "Assigned Washer"}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
                     {liveAssignedSlots.length === 2 ? '2 Assigned' : '1 Assigned'}
                   </span>
                 </div>
@@ -531,7 +531,7 @@ export function TodayScreen({
                     return (
                       <div
                         key={slot.id}
-                        className={`p-3.5 sm:p-4 rounded-[4px] border shadow-2xs flex items-center justify-between gap-3 ${
+                        className={`p-3.5 sm:p-4 rounded-xl border shadow-2xs flex items-center justify-between gap-3 ${
                           isLunch
                             ? 'bg-gradient-to-br from-[#FFF9F0] via-white to-[#FFF3E0] dark:from-[#261B0B] dark:via-[#1E1609] dark:to-[#2B1D0B] border-[#F59E0B]/50'
                             : 'bg-gradient-to-br from-[#F5F3FF] via-white to-[#EDE9FE] dark:from-[#15122C] dark:via-[#120F26] dark:to-[#1B1736] border-indigo-400/35'
@@ -540,7 +540,7 @@ export function TodayScreen({
                         {/* Member Identity */}
                         <div className="flex items-center gap-3 min-w-0">
                           <div
-                            className={`w-11 h-11 rounded-[4px] font-black text-sm sm:text-base flex items-center justify-center shadow-xs shrink-0 ${
+                            className={`w-11 h-11 rounded-xl font-black text-sm sm:text-base flex items-center justify-center shadow-xs shrink-0 ${
                               isLunch
                                 ? 'bg-gradient-to-br from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B]'
                                 : 'bg-gradient-to-br from-[#1E1B4B] via-[#2E2768] to-[#4338CA] text-white'
@@ -550,7 +550,7 @@ export function TodayScreen({
                           </div>
                           <div className="min-w-0">
                             <span
-                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-[2px] border inline-block truncate uppercase tracking-wider ${
+                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border inline-block truncate uppercase tracking-wider ${
                                 isLunch
                                   ? 'bg-[#FF7A00]/10 text-[#C2410C] dark:text-[#FBBF24] border-[#F59E0B]/30'
                                   : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border-indigo-400/30'
@@ -575,7 +575,7 @@ export function TodayScreen({
                           <span className="text-[10px] text-[#71717A] dark:text-[#9BA5B7] block font-semibold">
                             Position
                           </span>
-                          <span className="text-xs font-extrabold px-2 py-0.5 rounded-[4px] bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] inline-block shadow-2xs">
+                          <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] inline-block shadow-2xs">
                             #{slot.slotIndex} in Turn
                           </span>
                         </div>
@@ -587,9 +587,9 @@ export function TodayScreen({
 
               {/* 2. UPCOMING WASHER IN QUEUE (Styled with Night/Dinner Theme) */}
               {nextMember && (
-                <div className="p-3.5 rounded-[4px] bg-gradient-to-br from-[#F5F3FF]/70 to-[#EDE9FE]/50 dark:from-[#15122C]/70 dark:to-[#1B1736]/50 border border-indigo-400/30 flex items-center justify-between gap-3 shadow-2xs">
+                <div className="p-3.5 rounded-xl bg-gradient-to-br from-[#F5F3FF]/70 to-[#EDE9FE]/50 dark:from-[#15122C]/70 dark:to-[#1B1736]/50 border border-indigo-400/30 flex items-center justify-between gap-3 shadow-2xs">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-[4px] bg-[#1E1B4B] text-white dark:bg-indigo-950/80 dark:text-[#C7D2FE] border border-indigo-400/40 font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#1E1B4B] text-white dark:bg-indigo-950/80 dark:text-[#C7D2FE] border border-indigo-400/40 font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0">
                       {nextMember.code}
                     </div>
                     <div className="min-w-0">
@@ -606,7 +606,7 @@ export function TodayScreen({
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-[4px] bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-indigo-400/30 inline-block">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-indigo-400/30 inline-block">
                       Up Next
                     </span>
                   </div>

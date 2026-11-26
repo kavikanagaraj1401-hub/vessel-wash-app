@@ -32,7 +32,7 @@ export function Card({
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-[4px] border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
+      className={`bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-2xl border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
       {...props}
     >
       {children}

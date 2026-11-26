@@ -159,6 +159,12 @@ export function MembersScreen({
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
   const [newMemberType, setNewMemberType] = useState('permanent'); // 'permanent' | 'temporary'
+  const [newRole, setNewRole] = useState('member'); // 'member' | 'admin'
+  const [addCreateCredentials, setAddCreateCredentials] = useState(false);
+  const [addEmail, setAddEmail] = useState('');
+  const [addUsername, setAddUsername] = useState('');
+  const [addPassword, setAddPassword] = useState('');
+  const [showAddPassword, setShowAddPassword] = useState(false);
   const [formError, setFormError] = useState('');
 
   // Edit Member Form state
@@ -172,11 +178,24 @@ export function MembersScreen({
     setNewName('');
     setNewCode(seq.code);
     setNewMemberType('permanent');
+    setNewRole('member');
+    setAddCreateCredentials(false);
+    setAddEmail('');
+    setAddUsername('');
+    setAddPassword(generateTemporaryPassword());
+    setShowAddPassword(false);
     setFormError('');
     setAddModalOpen(true);
   };
 
-  const handleSaveNewMember = () => {
+  const handleNameChangeForAdd = (val) => {
+    setNewName(val);
+    const suggestedUser = generateDefaultUsername(val);
+    setAddUsername(suggestedUser);
+    setAddEmail(suggestedUser ? `${suggestedUser}@vesselwash.app` : '');
+  };
+
+  const handleSaveNewMember = async () => {
     const trimmed = newName.trim();
     if (!trimmed) {
       setFormError('Member name is required.');
@@ -187,12 +206,45 @@ export function MembersScreen({
       return;
     }
 
-    onAddMember({
+    if (addCreateCredentials) {
+      const cleanEmail = addEmail.trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes('@')) {
+        setFormError('Please enter a valid email address for login credentials.');
+        return;
+      }
+      if (!addPassword || addPassword.length < 6) {
+        setFormError('Temporary password must be at least 6 characters.');
+        return;
+      }
+    }
+
+    const seq = getNextMemberSequence(members);
+    const assignedCode = newCode.trim() || seq.code;
+
+    await onAddMember({
       name: trimmed,
-      code: newCode.trim() || `M${members.length + 1}`,
+      code: assignedCode,
       status: 'active',
       memberType: newMemberType,
     });
+
+    if (newRole === 'admin' && onToggleAdminRole) {
+      onToggleAdminRole(seq.id, 'admin');
+    }
+
+    if (addCreateCredentials) {
+      try {
+        await supabaseService.adminCreateUser({
+          email: addEmail.trim().toLowerCase(),
+          password: addPassword,
+          fullName: trimmed,
+          role: newRole,
+        });
+        loadLoginStatus();
+      } catch (err) {
+        console.warn('Could not auto-create credentials during member addition:', err);
+      }
+    }
 
     setAddModalOpen(false);
   };
@@ -453,11 +505,11 @@ export function MembersScreen({
   return (
     <div className="space-y-4 pb-24 px-4 pt-2 max-w-4xl mx-auto">
       {/* 1. Header & Summary Section */}
-      <div className="bg-white dark:bg-[#171F2C] p-4 sm:p-5 rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs">
+      <div className="bg-white dark:bg-[#171F2C] p-4 sm:p-5 rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/20">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/20">
                 Roster &amp; Roles
               </span>
               <span className="text-xs text-[#848A96] dark:text-[#64748B]">&bull;</span>
@@ -477,13 +529,13 @@ export function MembersScreen({
                 size="sm"
                 icon={UserPlus}
                 onClick={handleOpenAdd}
-                className="shadow-sm font-semibold rounded-[4px]"
+                className="shadow-sm font-semibold rounded-xl"
               >
                 Add Member
               </Button>
             ) : (
               <div
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B] cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B] cursor-not-allowed"
                 title="Only Administrator can add or edit members"
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -495,17 +547,17 @@ export function MembersScreen({
 
         {/* Stats & Capacity Badges */}
         <div className="flex items-center gap-3 pt-3 flex-wrap text-xs text-[#4E525D] dark:text-[#9BA5B7]">
-          <div className="flex items-center gap-1.5 bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] px-2.5 py-1 rounded-[4px] border border-[#22AC77]/30 dark:border-[#4ADE80]/40 font-medium">
+          <div className="flex items-center gap-1.5 bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] px-2.5 py-1 rounded-xl border border-[#22AC77]/30 dark:border-[#4ADE80]/40 font-medium">
             <span className="w-2 h-2 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] animate-pulse"></span>
             <span>{activeCount} Active in rotation</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] px-2.5 py-1 rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] font-medium">
+          <div className="flex items-center gap-1.5 bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] px-2.5 py-1 rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] font-medium">
             <span>{inactiveCount} Inactive</span>
           </div>
 
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border font-medium ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-medium ${
               adminUserIds.length >= 2
                 ? 'bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border-[#EA580C]/30 shadow-2xs'
                 : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B]'
@@ -522,7 +574,7 @@ export function MembersScreen({
 
       {/* Non-Admin Notice Banner */}
       {!isAdmin && (
-        <div className="p-3.5 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 dark:border-[#F59E0B]/40 text-[#EA580C] dark:text-[#F59E0B] text-xs flex items-center gap-2.5 shadow-2xs">
+        <div className="p-3.5 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 dark:border-[#F59E0B]/40 text-[#EA580C] dark:text-[#F59E0B] text-xs flex items-center gap-2.5 shadow-2xs">
           <Lock className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B] shrink-0" />
           <span className="leading-snug">
             <strong>View-Only Mode:</strong> Member additions, credential assignments, role delegation, and removal are restricted to <strong>Kavipriyan (Primary Admin)</strong>.
@@ -540,21 +592,21 @@ export function MembersScreen({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, code (e.g. M1), or email..."
-            className="w-full h-10 pl-9 pr-9 text-xs bg-white dark:bg-[#171F2C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 shadow-2xs transition-all"
+            className="w-full h-10 pl-9 pr-9 text-xs bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 shadow-2xs transition-all"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] p-0.5 rounded-[4px] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors"
+              className="absolute right-2.5 top-2.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] p-0.5 rounded-lg hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Filter Pills - Clean Grayscale Non-Meal Tabs */}
-        <div className="flex items-center gap-1 bg-[#F2F1ED] dark:bg-[#121620] p-1 rounded-[4px] border border-[#DDD9D0] dark:border-[#263042] overflow-x-auto scrollbar-none">
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1 bg-[#F2F1ED] dark:bg-[#121620] p-1 rounded-xl border border-[#DDD9D0] dark:border-[#263042] overflow-x-auto scrollbar-none">
           {[
             { id: 'all', label: `All (${members.length})` },
             { id: 'active', label: `Active (${activeCount})` },
@@ -565,7 +617,7 @@ export function MembersScreen({
               key={tab.id}
               type="button"
               onClick={() => setActiveFilter(tab.id)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-[4px] transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 activeFilter === tab.id
                   ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs'
                   : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
@@ -579,7 +631,7 @@ export function MembersScreen({
 
       {/* 3. Member Cards List */}
       {filteredMembers.length === 0 ? (
-        <div className="text-center py-12 px-4 rounded-[4px] border border-dashed border-[#DDD9D0] dark:border-[#2A364B] bg-white/50 dark:bg-[#171F2C]/50">
+        <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-[#DDD9D0] dark:border-[#2A364B] bg-white/50 dark:bg-[#171F2C]/50">
           <Users className="w-8 h-8 text-[#848A96] dark:text-[#64748B] mx-auto mb-2" />
           <p className="text-sm font-semibold text-[#111216] dark:text-[#F7F6F3]">No members match your criteria</p>
           <p className="text-xs text-[#848A96] dark:text-[#64748B] mt-1 max-w-sm mx-auto">
@@ -616,18 +668,18 @@ export function MembersScreen({
             return (
               <div
                 key={member.id}
-                className={`group rounded-[4px] border transition-all ${
+                className={`group rounded-2xl border transition-all ${
                   isActive
                     ? 'bg-white dark:bg-[#171F2C] border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#EA580C]/40 dark:hover:border-[#F97316]/40 shadow-2xs hover:shadow-xs'
                     : 'bg-[#F2F1ED]/80 dark:bg-[#1F2A3C]/70 border-[#DDD9D0]/60 dark:border-[#2A364B]/60 opacity-80'
                 }`}
               >
-                <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   {/* Left: 1. Member ID, 2. Member Name, 3. Role Badge, 4. Member Active Status */}
-                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
                     {/* 1. Member ID Badge */}
                     <div
-                      className={`w-9 h-9 rounded-[4px] flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-2xs ${
                         isPrimary || isThisAdmin
                           ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border border-[#EA580C]'
                           : isActive
@@ -647,24 +699,24 @@ export function MembersScreen({
 
                       {/* 3. Role Badge */}
                       {isPrimary ? (
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border border-[#EA580C] inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border border-[#EA580C] inline-flex items-center gap-1 shadow-2xs shrink-0">
                           <Crown className="w-3 h-3 text-white fill-white" />
                           Primary Admin
                         </span>
                       ) : isThisAdmin ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30 inline-flex items-center gap-1 shadow-2xs shrink-0">
                           <ShieldCheck className="w-3 h-3 text-[#EA580C] dark:text-[#F59E0B]" />
                           Admin
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B] shrink-0">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B] shrink-0">
                           Member
                         </span>
                       )}
 
                       {/* Temporary Member Badge */}
                       {(member.memberType === 'temporary' || member.member_type === 'temporary') && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-[4px] bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F97316] border border-[#EA580C]/30 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F97316] border border-[#EA580C]/30 inline-flex items-center gap-1 shadow-2xs shrink-0">
                           <Sparkles className="w-2.5 h-2.5" />
                           Temporary
                         </span>
@@ -672,7 +724,7 @@ export function MembersScreen({
 
                       {/* 4. Active Status Indicator */}
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-[4px] inline-flex items-center gap-1 shrink-0 ${
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 shrink-0 ${
                           isActive
                             ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534]'
                             : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]'
@@ -688,7 +740,7 @@ export function MembersScreen({
                     </div>
                   </div>
 
-                  {/* Right: Clean, Structured Action Toolbar with Consistent 32px Button Targets */}
+                  {/* Right: Clean, Structured Action Toolbar with Consistent Touch Targets */}
                   <div className="flex items-center gap-1.5 shrink-0 justify-end flex-wrap sm:flex-nowrap pt-1 sm:pt-0 border-t sm:border-t-0 border-[#DDD9D0]/50 dark:border-[#2A364B]/50">
                     {/* Credential Action Button ("Generate" for new users, "Update" for existing users) */}
                     {isAdmin && (
@@ -696,7 +748,7 @@ export function MembersScreen({
                         <button
                           type="button"
                           onClick={() => handleOpenCreateCredentials(memberWithCreds)}
-                          className="h-8 px-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 rounded-[4px] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale shrink-0 whitespace-nowrap"
+                          className="h-9 px-3 text-xs font-bold text-white bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale shrink-0 whitespace-nowrap"
                           title="Generate credentials for new user"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
@@ -706,7 +758,7 @@ export function MembersScreen({
                         <button
                           type="button"
                           onClick={() => handleOpenResetPassword(memberWithCreds)}
-                          className="h-8 px-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 rounded-[4px] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale shrink-0 whitespace-nowrap"
+                          className="h-9 px-3 text-xs font-bold text-white bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active-scale shrink-0 whitespace-nowrap"
                           title="Update credentials for existing user"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
@@ -721,7 +773,7 @@ export function MembersScreen({
                         {/* Make Admin / Co-Admin */}
                         {isPrimary ? (
                           <div
-                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-transparent text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-40 shrink-0"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-transparent text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-40 shrink-0"
                             title="Primary Admin (Permanent)"
                           >
                             <Crown className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B] fill-current" />
@@ -736,7 +788,7 @@ export function MembersScreen({
                                 action: 'revoke',
                               })
                             }
-                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 transition-colors cursor-pointer shrink-0"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 transition-colors cursor-pointer shrink-0"
                             title="Remove Co-Admin privileges"
                           >
                             <ShieldAlert className="w-4 h-4" />
@@ -745,7 +797,7 @@ export function MembersScreen({
                           <button
                             type="button"
                             disabled
-                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-40 shrink-0"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-40 shrink-0"
                             title="Max 2 Admins reached. Remove Co-Admin to designate another."
                           >
                             <ShieldCheck className="w-4 h-4" />
@@ -760,7 +812,7 @@ export function MembersScreen({
                                 action: 'grant',
                               })
                             }
-                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#EA580C] dark:hover:text-[#F97316] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] transition-colors cursor-pointer shrink-0"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#EA580C] dark:hover:text-[#F97316] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] transition-colors cursor-pointer shrink-0"
                             title="Make Co-Admin"
                           >
                             <Shield className="w-4 h-4" />
@@ -771,7 +823,7 @@ export function MembersScreen({
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(member)}
-                          className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] transition-colors cursor-pointer shrink-0"
+                          className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] transition-colors cursor-pointer shrink-0"
                           title="Edit member"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -781,7 +833,7 @@ export function MembersScreen({
                         <button
                           type="button"
                           onClick={() => setDeactivateModal({ isOpen: true, member })}
-                          className={`w-8 h-8 flex items-center justify-center rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] transition-colors cursor-pointer shrink-0 ${
+                          className={`w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] transition-colors cursor-pointer shrink-0 ${
                             isActive
                               ? 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#EA580C] dark:hover:text-[#F97316] hover:bg-[#EA580C]/10'
                               : 'text-[#22AC77] dark:text-[#4ADE80] hover:bg-[#22AC77]/10'
@@ -796,14 +848,14 @@ export function MembersScreen({
                           <button
                             type="button"
                             onClick={() => handleOpenRemove(member)}
-                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#DC2626] dark:hover:text-[#EF4444] hover:bg-[#DC2626]/10 transition-colors cursor-pointer shrink-0"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#DC2626] dark:hover:text-[#EF4444] hover:bg-[#DC2626]/10 transition-colors cursor-pointer shrink-0"
                             title="Delete member"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         ) : (
                           <div
-                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-transparent text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-30 shrink-0"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-transparent text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-30 shrink-0"
                             title="Primary Admin cannot be deleted"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -823,76 +875,250 @@ export function MembersScreen({
       {/* MODALS                                                                    */}
       {/* ========================================================================= */}
 
-      {/* 1. ADD MEMBER MODAL */}
+      {/* 1. ADD MEMBER MODAL (Modernized, Uncluttered & Structured) */}
       <Modal
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         title="Add New Member"
-        subtitle="New members enter rotation following the 'never-washed first' scheduling rule."
+        subtitle="Configure member profile, rotation assignment, and login credentials"
+        className="max-w-lg"
         footer={
-          <>
+          <div className="flex items-center justify-end gap-2.5 w-full">
             <Button variant="secondary" size="sm" onClick={() => setAddModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSaveNewMember}>
+            <Button variant="primary" size="sm" icon={UserPlus} onClick={handleSaveNewMember}>
               Save Member
             </Button>
-          </>
+          </div>
         }
       >
-        <div className="space-y-3.5">
-          <TextInput
-            label="Member Full Name"
-            placeholder="e.g. Arun Kumar"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            error={formError}
-            required
-            autoFocus
-          />
-          <TextInput
-            label="Member Code"
-            placeholder="e.g. M16"
-            value={newCode}
-            onChange={(e) => setNewCode(e.target.value)}
-            helperText="Short identification tag for badges and queue tables"
-          />
+        <div className="space-y-4 p-1">
+          {formError && (
+            <div className="p-3.5 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2.5 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="font-medium">{formError}</span>
+            </div>
+          )}
 
-          {/* Member Type Selector (Permanent or Temporary) */}
-          <div className="space-y-1.5 pt-1">
-            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
-              Member Type
+          {/* Sequential ID preview banner */}
+          <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold flex items-center justify-center text-xs shadow-xs">
+                {newCode || 'M?'}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-[#848A96] dark:text-[#64748B] uppercase tracking-wider block">
+                  Automatic Rotation Tag
+                </span>
+                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                  Sequential Code: {newCode || 'Auto'}
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-[#EA580C]/10 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/20">
+              New Member
+            </span>
+          </div>
+
+          {/* Member Name Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1">
+              <span>Member Full Name</span>
+              <span className="text-[#DC2626] dark:text-[#EF4444]">*</span>
             </label>
-            <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B]">
+            <input
+              type="text"
+              required
+              autoFocus
+              value={newName}
+              onChange={(e) => handleNameChangeForAdd(e.target.value)}
+              placeholder="e.g. Arun Kumar"
+              className="w-full h-11 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] focus:ring-1 focus:ring-[#EA580C]/20 transition-all font-medium"
+            />
+          </div>
+
+          {/* Member Type: Temporary vs Permanent Segmented Cards */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
+              Rotation Assignment Type
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Permanent Member Card */}
               <button
                 type="button"
                 onClick={() => setNewMemberType('permanent')}
-                className={`flex-1 py-1.5 px-3 rounded-[4px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative ${
                   newMemberType === 'permanent'
-                    ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] shadow-2xs'
-                    : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                    ? 'bg-white dark:bg-[#171F2C] border-[#EA580C] dark:border-[#F59E0B] ring-2 ring-[#EA580C]/20 shadow-xs'
+                    : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
                 }`}
               >
-                <span>Permanent</span>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-[#111216] dark:text-[#F7F6F3]">
+                    <Users className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F59E0B]" />
+                    <span>Permanent</span>
+                  </div>
+                  {newMemberType === 'permanent' && (
+                    <span className="w-2 h-2 rounded-full bg-[#EA580C] dark:bg-[#F59E0B]" />
+                  )}
+                </div>
+                <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] leading-snug">
+                  Joins regular vessel wash rotation schedule at the end of queue.
+                </p>
               </button>
+
+              {/* Temporary Member Card */}
               <button
                 type="button"
                 onClick={() => setNewMemberType('temporary')}
-                className={`flex-1 py-1.5 px-3 rounded-[4px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative ${
                   newMemberType === 'temporary'
-                    ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold shadow-2xs'
-                    : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
+                    ? 'bg-white dark:bg-[#171F2C] border-[#EA580C] dark:border-[#F59E0B] ring-2 ring-[#EA580C]/20 shadow-xs'
+                    : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Temporary</span>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-[#EA580C] dark:text-[#F59E0B]">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Temporary</span>
+                  </div>
+                  {newMemberType === 'temporary' && (
+                    <span className="w-2 h-2 rounded-full bg-[#EA580C] dark:bg-[#F59E0B]" />
+                  )}
+                </div>
+                <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] leading-snug">
+                  Assigned as vessel washer for any date marked present in attendance.
+                </p>
               </button>
             </div>
-            <p className="text-[10px] text-[#848A96] dark:text-[#64748B]">
-              {newMemberType === 'permanent'
-                ? 'Permanent member: Appended to the end of the rotation schedule and joins regular vessel wash turns.'
-                : 'Temporary member: Whenever marked present in attendance, automatically assigned as the vessel washer for that present date.'}
-            </p>
+          </div>
+
+          {/* Account Role Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
+              Account Role
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setNewRole('member')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                  newRole === 'member'
+                    ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] border-[#EA580C] dark:border-[#F59E0B] shadow-2xs'
+                    : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
+                }`}
+              >
+                Standard Member
+              </button>
+              <button
+                type="button"
+                disabled={adminUserIds.length >= 2}
+                onClick={() => setNewRole('admin')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  adminUserIds.length >= 2
+                    ? 'opacity-40 cursor-not-allowed bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border-[#DDD9D0] dark:border-[#2A364B]'
+                    : newRole === 'admin'
+                    ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border-transparent shadow-xs'
+                    : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
+                }`}
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span>Co-Admin {adminUserIds.length >= 2 ? '(Limit reached)' : ''}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Inline Credential Setup Section */}
+          <div className="pt-2 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
+                  Assign Login Credentials
+                </span>
+                <span className="text-[11px] text-[#848A96] dark:text-[#64748B]">
+                  Optional: Register Supabase Auth account immediately
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={addCreateCredentials}
+                onClick={() => setAddCreateCredentials(!addCreateCredentials)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  addCreateCredentials ? 'bg-gradient-to-r from-[#EA580C] to-[#F59E0B]' : 'bg-[#DDD9D0] dark:bg-[#2A364B]'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+                    addCreateCredentials ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {addCreateCredentials && (
+              <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3 animate-fadeIn">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7]">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={addEmail}
+                      onChange={(e) => setAddEmail(e.target.value)}
+                      placeholder="name@vesselwash.app"
+                      className="w-full h-10 px-3 text-xs bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7]">
+                      Default Username
+                    </label>
+                    <input
+                      type="text"
+                      value={addUsername}
+                      onChange={(e) => setAddUsername(e.target.value)}
+                      placeholder="e.g. arun"
+                      className="w-full h-10 px-3 text-xs bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7]">
+                      Temporary Password (min 6 chars)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setAddPassword(generateTemporaryPassword())}
+                      className="text-[10px] font-bold text-[#EA580C] dark:text-[#F97316] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Randomize</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showAddPassword ? 'text' : 'password'}
+                      value={addPassword}
+                      onChange={(e) => setAddPassword(e.target.value)}
+                      placeholder="Temporary password"
+                      className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPassword(!showAddPassword)}
+                      className="absolute right-3 top-2.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] cursor-pointer"
+                    >
+                      {showAddPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Modal>
@@ -931,11 +1157,11 @@ export function MembersScreen({
           {editModal.member && !isKavipriyan(editModal.member) ? (
             <div className="space-y-1.5 pt-1">
               <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">Account Role</label>
-              <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B]">
+              <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
                 <button
                   type="button"
                   onClick={() => setEditRole('member')}
-                  className={`flex-1 py-1.5 px-3 rounded-[4px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     editRole === 'member'
                       ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] shadow-2xs'
                       : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
@@ -946,7 +1172,7 @@ export function MembersScreen({
                 <button
                   type="button"
                   onClick={() => setEditRole('admin')}
-                  className={`flex-1 py-1.5 px-3 rounded-[4px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     editRole === 'admin'
                       ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold shadow-2xs'
                       : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
@@ -962,7 +1188,7 @@ export function MembersScreen({
               </p>
             </div>
           ) : (
-            <div className="p-3 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 text-xs text-[#EA580C] dark:text-[#F59E0B] font-semibold flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 text-xs text-[#EA580C] dark:text-[#F59E0B] font-semibold flex items-center gap-2">
               <Crown className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B]" />
               <span>Primary Administrator (Permanent Role)</span>
             </div>
@@ -974,11 +1200,11 @@ export function MembersScreen({
               <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
                 Member Type
               </label>
-              <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B]">
+              <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
                 <button
                   type="button"
                   onClick={() => setEditMemberType('permanent')}
-                  className={`flex-1 py-1.5 px-3 rounded-[4px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     editMemberType === 'permanent'
                       ? 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] shadow-2xs'
                       : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
@@ -989,7 +1215,7 @@ export function MembersScreen({
                 <button
                   type="button"
                   onClick={() => setEditMemberType('temporary')}
-                  className={`flex-1 py-1.5 px-3 rounded-[4px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     editMemberType === 'temporary'
                       ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold shadow-2xs'
                       : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
@@ -1037,7 +1263,7 @@ export function MembersScreen({
           </>
         }
       >
-        <div className="flex items-start gap-3 p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs">
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs">
           <AlertTriangle className="w-5 h-5 text-[#EA580C] dark:text-[#F59E0B] shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-bold text-[#111216] dark:text-[#F7F6F3] text-sm">
@@ -1094,7 +1320,7 @@ export function MembersScreen({
           </>
         }
       >
-        <div className="flex items-start gap-3 p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs">
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs">
           {adminModal.action === 'grant' ? (
             <ShieldCheck className="w-5 h-5 text-[#EA580C] dark:text-[#F59E0B] shrink-0 mt-0.5" />
           ) : (
@@ -1146,7 +1372,7 @@ export function MembersScreen({
         }
       >
         <div className="space-y-3.5">
-          <div className="flex items-start gap-3 p-3.5 rounded-[4px] bg-[#DC2626]/10 dark:bg-[#EF4444]/15 border border-[#DC2626]/30 dark:border-[#EF4444]/40 text-xs text-[#DC2626] dark:text-[#EF4444]">
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[#DC2626]/10 dark:bg-[#EF4444]/15 border border-[#DC2626]/30 dark:border-[#EF4444]/40 text-xs text-[#DC2626] dark:text-[#EF4444]">
             <Trash2 className="w-5 h-5 text-[#DC2626] dark:text-[#EF4444] shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-bold text-sm">
@@ -1158,7 +1384,7 @@ export function MembersScreen({
             </div>
           </div>
 
-          <div className="p-3.5 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs space-y-2 text-[#4E525D] dark:text-[#9BA5B7]">
+          <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs space-y-2 text-[#4E525D] dark:text-[#9BA5B7]">
             <div className="flex items-center justify-between">
               <span className="font-medium text-[#848A96] dark:text-[#64748B]">Attendance Records:</span>
               <span className="font-bold text-[#111216] dark:text-[#F7F6F3]">Preserved in history</span>
@@ -1224,14 +1450,14 @@ export function MembersScreen({
         {credentialModal.step === 'form' ? (
           <div className="space-y-3.5 p-0.5">
             {credError && (
-              <div className="p-3 rounded-[4px] bg-[#DC2626]/10 dark:bg-[#EF4444]/15 border border-[#DC2626]/30 dark:border-[#EF4444]/40 text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2">
+              <div className="p-3 rounded-xl bg-[#DC2626]/10 dark:bg-[#EF4444]/15 border border-[#DC2626]/30 dark:border-[#EF4444]/40 text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-[#DC2626] dark:text-[#EF4444] shrink-0 mt-0.5" />
                 <span>{credError}</span>
               </div>
             )}
 
-            <div className="p-3 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+            <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold flex items-center justify-center text-xs shrink-0 shadow-2xs">
                 {credentialModal.member?.code || 'M'}
               </div>
               <div>
@@ -1285,7 +1511,7 @@ export function MembersScreen({
                   value={credPassword}
                   onChange={(e) => setCredPassword(e.target.value)}
                   placeholder="Enter or generate temporary password"
-                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white dark:bg-[#171F2C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20"
+                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20"
                 />
                 <button
                   type="button"
@@ -1303,7 +1529,7 @@ export function MembersScreen({
           </div>
         ) : (
           <div className="space-y-4 p-0.5">
-            <div className="p-3.5 rounded-[4px] bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 text-[#22AC77] dark:text-[#4ADE80] space-y-1 text-xs">
+            <div className="p-3.5 rounded-xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 text-[#22AC77] dark:text-[#4ADE80] space-y-1 text-xs">
               <span className="font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />
                 Account Created in Supabase Auth
@@ -1314,7 +1540,7 @@ export function MembersScreen({
               </p>
             </div>
 
-            <div className="p-4 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2.5 text-xs font-mono">
+            <div className="p-4 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2.5 text-xs font-mono">
               <div className="flex items-center justify-between pb-1 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
                 <span className="text-[#848A96] dark:text-[#64748B] font-sans text-[11px]">Member:</span>
                 <strong className="text-[#111216] dark:text-[#F7F6F3] font-sans">{credentialModal.member?.name}</strong>
@@ -1329,7 +1555,7 @@ export function MembersScreen({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[#848A96] dark:text-[#64748B] font-sans text-[11px]">Temporary Password:</span>
-                <span className="font-bold text-[#111216] dark:text-[#F7F6F3] bg-white dark:bg-[#171F2C] px-2 py-0.5 rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B]">
+                <span className="font-bold text-[#111216] dark:text-[#F7F6F3] bg-white dark:bg-[#171F2C] px-2 py-0.5 rounded-lg border border-[#DDD9D0] dark:border-[#2A364B]">
                   {credPassword}
                 </span>
               </div>
@@ -1340,7 +1566,7 @@ export function MembersScreen({
               onClick={() =>
                 handleCopyCredentials(credUsername, credEmail, credPassword, setCopiedCreds)
               }
-              className="w-full py-2.5 px-4 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {copiedCreds ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               <span>{copiedCreds ? 'Credentials Copied to Clipboard!' : 'Copy Credentials'}</span>
@@ -1394,13 +1620,13 @@ export function MembersScreen({
         {resetModal.step === 'form' ? (
           <div className="space-y-3.5 p-0.5">
             {resetError && (
-              <div className="p-3 rounded-[4px] bg-[#DC2626]/10 dark:bg-[#EF4444]/15 border border-[#DC2626]/30 dark:border-[#EF4444]/40 text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2">
+              <div className="p-3 rounded-xl bg-[#DC2626]/10 dark:bg-[#EF4444]/15 border border-[#DC2626]/30 dark:border-[#EF4444]/40 text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-[#DC2626] dark:text-[#EF4444] shrink-0 mt-0.5" />
                 <span>{resetError}</span>
               </div>
             )}
 
-            <div className="p-3 rounded-[4px] bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 text-xs space-y-1">
+            <div className="p-3 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 text-xs space-y-1">
               <span className="font-bold text-[#EA580C] dark:text-[#F59E0B] block">{resetModal.member?.name}</span>
               <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] font-mono block">
                 {resetModal.member?.email}
@@ -1430,7 +1656,7 @@ export function MembersScreen({
                   value={resetPasswordVal}
                   onChange={(e) => setResetPasswordVal(e.target.value)}
                   placeholder="Enter new password"
-                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white dark:bg-[#171F2C] rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20"
+                  className="w-full h-10 px-3 pr-10 text-xs font-mono font-semibold bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20"
                 />
                 <button
                   type="button"
@@ -1448,7 +1674,7 @@ export function MembersScreen({
           </div>
         ) : (
           <div className="space-y-4 p-0.5">
-            <div className="p-3.5 rounded-[4px] bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 text-[#22AC77] dark:text-[#4ADE80] space-y-1 text-xs">
+            <div className="p-3.5 rounded-xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 text-[#22AC77] dark:text-[#4ADE80] space-y-1 text-xs">
               <span className="font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />
                 Password Reset Successfully
@@ -1459,7 +1685,7 @@ export function MembersScreen({
               </p>
             </div>
 
-            <div className="p-4 rounded-[4px] bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2 text-xs font-mono">
+            <div className="p-4 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2 text-xs font-mono">
               <div className="flex items-center justify-between pb-1 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
                 <span className="text-[#848A96] dark:text-[#64748B] font-sans text-[11px]">Member:</span>
                 <strong className="text-[#111216] dark:text-[#F7F6F3] font-sans">{resetModal.member?.name}</strong>
@@ -1470,7 +1696,7 @@ export function MembersScreen({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[#848A96] dark:text-[#64748B] font-sans text-[11px]">New Password:</span>
-                <span className="font-bold text-[#111216] dark:text-[#F7F6F3] bg-white dark:bg-[#171F2C] px-2 py-0.5 rounded-[4px] border border-[#DDD9D0] dark:border-[#2A364B]">
+                <span className="font-bold text-[#111216] dark:text-[#F7F6F3] bg-white dark:bg-[#171F2C] px-2 py-0.5 rounded-lg border border-[#DDD9D0] dark:border-[#2A364B]">
                   {resetPasswordVal}
                 </span>
               </div>
@@ -1486,7 +1712,7 @@ export function MembersScreen({
                   setCopiedReset
                 )
               }
-              className="w-full py-2.5 px-4 rounded-[4px] bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {copiedReset ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               <span>{copiedReset ? 'New Password Copied!' : 'Copy New Password'}</span>
