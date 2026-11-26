@@ -891,40 +891,106 @@ export const supabaseService = {
   },
 
   /**
-   * Fetch complete wash history and attendance records for all authenticated users without role filtering.
-   * Enables read-only access for all standard members (M1 through M6+) and admins alike.
+   * Fetch complete wash history and attendance records from the working Supabase tables:
+   * 1. application_settings ('attendance_logs' and 'days_config')
+   * 2. washer_activity (date, meal, assigned_washer_ids, assigned_washer_names, updated_at)
+   * 3. attendance_history (date, meal, is_provided, eaters, washers_count, updated_at)
+   * Enables read-only historical wash access for all authenticated users without broken foreign-key joins or role filters.
    */
   async fetchWashHistory() {
     if (!isSupabaseConfigured || !supabase) return [];
     try {
-      // 1. Try dedicated wash_history table if provisioned
-      const { data: washRows, error: washErr } = await supabase
-        .from('wash_history')
-        .select('*')
-        .order('date', { ascending: false });
+      // Query the working tables concurrently
+      const [settingsRes, washRes, attRes] = await Promise.allSettled([
+        supabase
+          .from('application_settings')
+          .select('setting_key, setting_value')
+          .in('setting_key', ['attendance_logs', 'days_config']),
+        supabase
+          .from('washer_activity')
+          .select('id, date, meal, meal_type, assigned_washer_ids, assigned_washer_names, next_washer_id, next_washer_name, updated_at')
+          .order('date', { ascending: false }),
+        supabase
+          .from('attendance_history')
+          .select('id, date, meal, meal_type, is_provided, eaters, washers_count, updated_at')
+          .order('date', { ascending: false }),
+      ]);
 
-      if (!washErr && Array.isArray(washRows) && washRows.length > 0) {
-        return washRows;
+      const logMap = new Map();
+      let attendanceHistory = [];
+      let washerActivity = [];
+      let daysConfig = null;
+
+      // 1. Process application_settings ('attendance_logs' & 'days_config')
+      if (settingsRes.status === 'fulfilled' && !settingsRes.value.error && Array.isArray(settingsRes.value.data)) {
+        settingsRes.value.data.forEach(row => {
+          const key = row?.setting_key || row?.key;
+          const val = row?.setting_value !== undefined ? row.setting_value : row?.value;
+          if (key === 'attendance_logs' && Array.isArray(val)) {
+            val.forEach(l => {
+              if (l && l.date) {
+                const mapKey = l.id || `${l.date}-${l.meal}-${l.slotIndex || 1}-${l.memberId}`;
+                logMap.set(mapKey, l);
+              }
+            });
+          } else if (key === 'days_config' && Array.isArray(val)) {
+            daysConfig = val;
+          }
+        });
+      } else if (settingsRes.status === 'rejected' || settingsRes.value?.error) {
+        console.error('Supabase fetchWashHistory application_settings error:', settingsRes.reason || settingsRes.value?.error);
       }
-    } catch (e) {
-      // ignore
-    }
 
-    try {
-      // 2. Query attendance_history table accessible by all authenticated users
-      const { data: attRows, error: attErr } = await supabase
-        .from('attendance_history')
-        .select('*')
-        .order('date', { ascending: false });
+      // 2. Process washer_activity (database table)
+      if (washRes.status === 'fulfilled' && !washRes.value.error && Array.isArray(washRes.value.data)) {
+        washerActivity = washRes.value.data;
+        washRes.value.data.forEach(rec => {
+          if (!rec || !rec.date) return;
+          const meal = rec.meal || rec.meal_type || 'lunch';
+          const washerIds = Array.isArray(rec.assigned_washer_ids) ? rec.assigned_washer_ids : [];
+          const washerNames = Array.isArray(rec.assigned_washer_names) ? rec.assigned_washer_names : [];
 
-      if (!attErr && Array.isArray(attRows)) {
-        return attRows;
+          washerIds.forEach((wId, idx) => {
+            const key = `att-${rec.date}-${meal}-${wId}`;
+            if (!logMap.has(key)) {
+              logMap.set(key, {
+                id: key,
+                slotId: `${rec.date}-${meal}-${idx + 1}`,
+                date: rec.date,
+                meal,
+                slotIndex: idx + 1,
+                memberId: wId,
+                memberName: washerNames[idx] || 'Washer',
+                status: 'present',
+                markedAt: rec.updated_at || new Date().toISOString(),
+                markedBy: 'Washer Activity Sync',
+              });
+            }
+          });
+        });
+      } else if (washRes.status === 'rejected' || washRes.value?.error) {
+        console.error('Supabase fetchWashHistory washer_activity error:', washRes.reason || washRes.value?.error);
       }
+
+      // 3. Process attendance_history (database table)
+      if (attRes.status === 'fulfilled' && !attRes.value.error && Array.isArray(attRes.value.data)) {
+        attendanceHistory = attRes.value.data;
+      } else if (attRes.status === 'rejected' || attRes.value?.error) {
+        console.error('Supabase fetchWashHistory attendance_history error:', attRes.reason || attRes.value?.error);
+      }
+
+      const mergedLogs = Array.from(logMap.values());
+      // Attach metadata for flexibility whether caller treats as Array or inspects fields
+      mergedLogs.attendanceHistory = attendanceHistory;
+      mergedLogs.washerActivity = washerActivity;
+      mergedLogs.daysConfig = daysConfig;
+      mergedLogs.success = true;
+
+      return mergedLogs;
     } catch (err) {
-      console.warn('⚠️ Could not fetch attendance_history:', err.message || err);
+      console.error('Supabase fetchWashHistory fatal error:', err);
+      return [];
     }
-
-    return [];
   },
 
   /**
@@ -933,7 +999,7 @@ export const supabaseService = {
   async deleteAttendanceLog(logId) {
     if (!isSupabaseConfigured || !supabase || !logId) return false;
     try {
-      // 1. Update application_settings 'attendance_logs'
+      // Update application_settings 'attendance_logs'
       const { data: existingRows } = await supabase
         .from('application_settings')
         .select('*')
@@ -948,16 +1014,9 @@ export const supabaseService = {
         }
       }
 
-      // 2. Also try deleting from dedicated wash_history if present
-      try {
-        await supabase.from('wash_history').delete().eq('id', logId);
-      } catch (wErr) {
-        // ignore
-      }
-
       return true;
     } catch (err) {
-      console.warn('⚠️ Could not delete attendance log from Supabase:', err.message || err);
+      console.error('⚠️ Could not delete attendance log from Supabase:', err.message || err);
       return false;
     }
   },

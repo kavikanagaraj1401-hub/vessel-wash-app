@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { EmptyState } from '../components/common/EmptyState';
@@ -22,7 +22,8 @@ import {
   Lock,
 } from 'lucide-react';
 import { getTodayDateStr } from '../logic/dateUtils';
-import { assignSlot } from '../logic/rotationEngine';
+import { assignSlot, assignLunchPair } from '../logic/rotationEngine';
+import { supabaseService } from '../services/supabaseService';
 import { useTheme } from '../context/ThemeContext';
 
 function HistoryScreenContent({
@@ -39,6 +40,71 @@ function HistoryScreenContent({
 }) {
   const { brandClasses } = useTheme();
 
+  // Direct fetch state for working Supabase tables
+  const [remoteLogs, setRemoteLogs] = useState(null);
+  const [remoteDaysConfig, setRemoteDaysConfig] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Fetch wash records directly from working Supabase tables without broken foreign-key joins or role filters
+  useEffect(() => {
+    let isMounted = true;
+    async function loadWashHistory() {
+      setIsLoadingHistory(true);
+      try {
+        const result = await supabaseService.fetchWashHistory();
+        if (isMounted && Array.isArray(result) && result.length > 0) {
+          setRemoteLogs(result);
+          if (Array.isArray(result.daysConfig) && result.daysConfig.length > 0) {
+            setRemoteDaysConfig(result.daysConfig);
+          }
+        }
+      } catch (err) {
+        console.error('HistoryScreen: Failed to fetch wash history from working tables:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingHistory(false);
+        }
+      }
+    }
+
+    loadWashHistory();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Combined logs from props and remote fetch (deduplicated by unique ID / date-meal-slot-member key)
+  const effectiveAttendanceLogs = useMemo(() => {
+    const map = new Map();
+    // 1. Initial / prop logs
+    const propLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
+    propLogs.forEach(l => {
+      if (l && l.date) {
+        const key = l.id || `${l.date}-${l.meal || 'lunch'}-${l.slotIndex || 1}-${l.memberId || 'm'}`;
+        map.set(key, l);
+      }
+    });
+    // 2. Remote logs fetched directly from Supabase working tables
+    if (Array.isArray(remoteLogs)) {
+      remoteLogs.forEach(l => {
+        if (l && l.date) {
+          const key = l.id || `${l.date}-${l.meal || 'lunch'}-${l.slotIndex || 1}-${l.memberId || 'm'}`;
+          map.set(key, l);
+        }
+      });
+    }
+    return Array.from(map.values());
+  }, [attendanceLogs, remoteLogs]);
+
+  // Combined daysConfig
+  const effectiveDaysConfig = useMemo(() => {
+    if (Array.isArray(remoteDaysConfig) && remoteDaysConfig.length > 0) {
+      const map = new Map();
+      (Array.isArray(daysConfig) ? daysConfig : []).forEach(d => { if (d && d.date) map.set(d.date, d); });
+      remoteDaysConfig.forEach(d => { if (d && d.date) map.set(d.date, { ...map.get(d.date), ...d }); });
+      return Array.from(map.values());
+    }
+    return Array.isArray(daysConfig) ? daysConfig : [];
+  }, [daysConfig, remoteDaysConfig]);
+
   // Default to 'logs' (Timeline Logs) as requested
   const [activeSubTab, setActiveSubTab] = useState('logs'); // 'logs' | 'report'
   const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'lunch' | 'dinner' | 'unmarked'
@@ -53,9 +119,17 @@ function HistoryScreenContent({
     [members]
   );
 
+  // Safe helper to resolve member or provide robust fallback for deleted / unknown member IDs
+  const getSafeMember = (id, fallbackName = 'Washer') => {
+    if (!id) return { id: 'unknown', name: fallbackName, code: 'M' };
+    const found = memberMap.get(id);
+    if (found) return found;
+    return { id, name: fallbackName, code: 'M' };
+  };
+
   // Valid Attendance Logs: verified completed washes recorded up to the current date
   const validAttendanceLogs = useMemo(() => {
-    const safeAttendanceLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
+    const safeAttendanceLogs = Array.isArray(effectiveAttendanceLogs) ? effectiveAttendanceLogs : [];
     const targetTodayStr = todayDateStr || getTodayDateStr();
 
     return safeAttendanceLogs.filter(log => {
@@ -65,11 +139,11 @@ function HistoryScreenContent({
       // Must be on or before current date
       return log.date <= targetTodayStr;
     });
-  }, [attendanceLogs, todayDateStr]);
+  }, [effectiveAttendanceLogs, todayDateStr]);
 
   // Build unified date-by-date timeline logs (excluding future dates, ensuring continuous coverage up to today)
   const allTimelineDates = useMemo(() => {
-    const safeDaysConfig = Array.isArray(daysConfig) ? daysConfig : [];
+    const safeDaysConfig = Array.isArray(effectiveDaysConfig) ? effectiveDaysConfig : [];
     const safeComputedDays = Array.isArray(computedDays) ? computedDays : [];
     const computedMap = new Map(safeComputedDays.filter(Boolean).map(d => [d.date, d]));
     const daysMap = new Map(safeDaysConfig.filter(Boolean).map(d => [d.date, d]));
@@ -96,7 +170,7 @@ function HistoryScreenContent({
       }
     });
 
-    (attendanceLogs || []).forEach(l => {
+    (effectiveAttendanceLogs || []).forEach(l => {
       if (l && l.date && l.date <= targetTodayStr && l.date >= startDateStr) {
         allDatesSet.add(l.date);
       }
@@ -117,7 +191,7 @@ function HistoryScreenContent({
     const dates = Array.from(allDatesSet).map(dateKey => {
       const day = daysMap.get(dateKey) || {
         date: dateKey,
-        dayNumber: parseInt(dateKey.split('-')[2], 10),
+        dayNumber: parseInt(String(dateKey || '').split('-')[2] || '1', 10),
         lunchProvided: false,
         dinnerProvided: false,
         lunchEaters: [],
@@ -126,11 +200,11 @@ function HistoryScreenContent({
       const compDay = computedMap.get(dateKey) || day;
       const isToday = (dateKey === targetTodayStr);
 
-      const lunchEatersList = Array.isArray(day.lunchEaters) ? day.lunchEaters : [];
-      const dinnerEatersList = Array.isArray(day.dinnerEaters) ? day.dinnerEaters : [];
+      const lunchEatersList = Array.isArray(day?.lunchEaters) ? day.lunchEaters : [];
+      const dinnerEatersList = Array.isArray(day?.dinnerEaters) ? day.dinnerEaters : [];
 
       // Safe attendance logs for this date
-      const safeLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
+      const safeLogs = Array.isArray(effectiveAttendanceLogs) ? effectiveAttendanceLogs : [];
       const verifiedLunchLogs = safeLogs.filter(
         l => l && l.date === dateKey && l.meal === 'lunch' && l.status === 'present'
       );
@@ -138,13 +212,13 @@ function HistoryScreenContent({
         l => l && l.date === dateKey && l.meal === 'dinner' && l.status === 'present'
       );
 
-      // Extract present members (eaters who ate)
+      // Extract present members (eaters who ate) with null-safe lookup
       const lunchPresentMembers = lunchEatersList
-        .map(id => memberMap.get(id))
+        .map(id => getSafeMember(id))
         .filter(Boolean);
 
       const dinnerPresentMembers = dinnerEatersList
-        .map(id => memberMap.get(id))
+        .map(id => getSafeMember(id))
         .filter(Boolean);
 
       // Meal Availability / Confirmation:
@@ -165,12 +239,12 @@ function HistoryScreenContent({
         isLunchVerified = true;
         isLunchAvail = true;
         lunchWashers = verifiedLunchLogs.map(l => ({
-          id: l?.memberId,
-          logId: l?.id || l?.slotId,
-          slotId: l?.slotId || l?.id,
-          name: l?.memberName || memberMap.get(l?.memberId)?.name || 'Washer',
+          id: l?.memberId || 'washer',
+          logId: l?.id || l?.slotId || `log-${dateKey}-lunch-${Math.random()}`,
+          slotId: l?.slotId || l?.id || `slot-${dateKey}-lunch-1`,
+          name: l?.memberName || getSafeMember(l?.memberId)?.name || 'Washer',
           slotIndex: l?.slotIndex || 1,
-          code: memberMap.get(l?.memberId)?.code || '',
+          code: getSafeMember(l?.memberId)?.code || '',
           verified: true,
           markedBy: l?.markedBy,
           markedAt: l?.markedAt,
@@ -188,9 +262,9 @@ function HistoryScreenContent({
           if (userChosenWashers === 2 && eligibleEaters.length >= 2) {
             const { assigned1, assigned2 } = assignLunchPair(queue, eligibleEaters, members);
             assigned = [
-              { id: `${dateKey}-lunch-1`, meal: 'lunch', slotIndex: 1, assignedMemberId: assigned1, assignedMemberName: memberMap.get(assigned1)?.name || 'Washer' },
-              { id: `${dateKey}-lunch-2`, meal: 'lunch', slotIndex: 2, assignedMemberId: assigned2, assignedMemberName: memberMap.get(assigned2)?.name || 'Washer' },
-            ].filter(s => s.assignedMemberId);
+              { id: `${dateKey}-lunch-1`, meal: 'lunch', slotIndex: 1, assignedMemberId: assigned1, assignedMemberName: getSafeMember(assigned1)?.name || 'Washer' },
+              { id: `${dateKey}-lunch-2`, meal: 'lunch', slotIndex: 2, assignedMemberId: assigned2, assignedMemberName: getSafeMember(assigned2)?.name || 'Washer' },
+            ].filter(s => s && s.assignedMemberId);
           } else {
             const { assignedId } = assignSlot(queue, eligibleEaters, members);
             if (assignedId) {
@@ -199,7 +273,7 @@ function HistoryScreenContent({
                 meal: 'lunch',
                 slotIndex: 1,
                 assignedMemberId: assignedId,
-                assignedMemberName: memberMap.get(assignedId)?.name || 'Washer',
+                assignedMemberName: getSafeMember(assignedId)?.name || 'Washer',
               }];
             }
           }
@@ -208,12 +282,12 @@ function HistoryScreenContent({
         if (assigned.length > 0) {
           isLunchVerified = !isToday;
           lunchWashers = assigned.map(s => ({
-            id: s.assignedMemberId,
+            id: s.assignedMemberId || 'washer',
             logId: s.id,
             slotId: s.id,
-            name: s.assignedMemberName,
+            name: s.assignedMemberName || getSafeMember(s.assignedMemberId)?.name || 'Washer',
             slotIndex: s.slotIndex || 1,
-            code: memberMap.get(s.assignedMemberId)?.code || '',
+            code: getSafeMember(s.assignedMemberId)?.code || '',
             verified: !isToday,
           }));
         }
@@ -228,12 +302,12 @@ function HistoryScreenContent({
         isDinnerVerified = true;
         isDinnerAvail = true;
         dinnerWashers = verifiedDinnerLogs.map(l => ({
-          id: l?.memberId,
-          logId: l?.id || l?.slotId,
-          slotId: l?.slotId || l?.id,
-          name: l?.memberName || memberMap.get(l?.memberId)?.name || 'Washer',
+          id: l?.memberId || 'washer',
+          logId: l?.id || l?.slotId || `log-${dateKey}-dinner-${Math.random()}`,
+          slotId: l?.slotId || l?.id || `slot-${dateKey}-dinner-1`,
+          name: l?.memberName || getSafeMember(l?.memberId)?.name || 'Washer',
           slotIndex: l?.slotIndex || 1,
-          code: memberMap.get(l?.memberId)?.code || '',
+          code: getSafeMember(l?.memberId)?.code || '',
           verified: true,
           markedBy: l?.markedBy,
           markedAt: l?.markedAt,
@@ -248,14 +322,14 @@ function HistoryScreenContent({
           const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
           const eligibleEaters = dinnerEatersList.length > 0 ? dinnerEatersList : queue;
           const { assignedId } = assignSlot(queue, eligibleEaters, members);
-          const assignedMem = memberMap.get(assignedId);
-          if (assignedMem) {
+          const assignedMem = getSafeMember(assignedId);
+          if (assignedId && assignedMem) {
             dinnerSlot = {
               id: `${dateKey}-dinner-1`,
               meal: 'dinner',
               slotIndex: 1,
               assignedMemberId: assignedId,
-              assignedMemberName: assignedMem.name,
+              assignedMemberName: assignedMem.name || 'Washer',
             };
           }
         }
@@ -263,12 +337,12 @@ function HistoryScreenContent({
         if (dinnerSlot) {
           isDinnerVerified = !isToday;
           dinnerWashers = [{
-            id: dinnerSlot.assignedMemberId,
+            id: dinnerSlot.assignedMemberId || 'washer',
             logId: dinnerSlot.id,
             slotId: dinnerSlot.id,
-            name: dinnerSlot.assignedMemberName,
+            name: dinnerSlot.assignedMemberName || getSafeMember(dinnerSlot.assignedMemberId)?.name || 'Washer',
             slotIndex: dinnerSlot.slotIndex || 1,
-            code: memberMap.get(dinnerSlot.assignedMemberId)?.code || '',
+            code: getSafeMember(dinnerSlot.assignedMemberId)?.code || '',
             verified: !isToday,
           }];
         }
@@ -292,16 +366,18 @@ function HistoryScreenContent({
       const dateParts = String(dateKey || '').split('-');
       const dayNum = dateParts[2] || '01';
       let weekdayName = '';
-      let fullDateStr = dateKey;
+      let fullDateStr = String(dateKey || '');
       try {
-        const dateObj = new Date(`${dateKey}T00:00:00`);
-        if (!isNaN(dateObj.getTime())) {
-          weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-          fullDateStr = dateObj.toLocaleDateString('en-US', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          });
+        if (dateKey) {
+          const dateObj = new Date(`${dateKey}T00:00:00`);
+          if (!isNaN(dateObj.getTime())) {
+            weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+            fullDateStr = dateObj.toLocaleDateString('en-US', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            });
+          }
         }
       } catch {
         // graceful fallback
@@ -331,7 +407,7 @@ function HistoryScreenContent({
 
     // Sort strictly descending order starting from today down into the past
     return dates.sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
-  }, [daysConfig, computedDays, attendanceLogs, memberMap, todayDateStr]);
+  }, [effectiveDaysConfig, computedDays, effectiveAttendanceLogs, memberMap, todayDateStr]);
 
   // Filtered timeline dates for the logs view
   const timelineDates = useMemo(() => {
