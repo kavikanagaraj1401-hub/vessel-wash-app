@@ -35,7 +35,7 @@ export function TopAppBar({
   onSettingsClick,
   isLiveConnected = false,
 }) {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme, brandClasses } = useTheme();
   const [istTime, setIstTime] = useState('');
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -102,7 +102,7 @@ export function TopAppBar({
         <div className="flex items-center justify-between px-3 sm:px-4 h-14 gap-2 sm:gap-3">
           {/* App Brand & Logged-in Member Identity */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#EA580C] to-[#F59E0B] flex items-center justify-center text-white shadow-2xs flex-shrink-0 font-extrabold text-xs">
+            <div className={`w-9 h-9 rounded-full ${brandClasses?.primaryGradient || 'bg-gradient-to-r from-[#EA580C] to-[#F59E0B]'} flex items-center justify-center text-white shadow-2xs flex-shrink-0 font-extrabold text-xs transition-colors duration-200`}>
               {resolvedCode || 'VW'}
             </div>
             <div className="min-w-0">
@@ -111,7 +111,7 @@ export function TopAppBar({
                   {resolvedName}
                 </h1>
                 {resolvedCode && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1D15] text-[#C2410C] dark:text-[#FDBA74] text-[10px] font-extrabold border border-[#F97316]/30 shadow-2xs flex-shrink-0">
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded ${brandClasses?.badge || 'bg-[#FFF7ED] dark:bg-[#2A1D15] text-[#C2410C] dark:text-[#FDBA74] border border-[#F97316]/30'} text-[10px] font-extrabold shadow-2xs flex-shrink-0 transition-colors duration-200`}>
                     {resolvedCode}
                   </span>
                 )}

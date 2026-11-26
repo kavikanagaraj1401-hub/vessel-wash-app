@@ -1135,18 +1135,20 @@ export default function App() {
 
   const handleToggleMealProvided = (meal, provided) => {
     lastLocalEditTimeRef.current = Date.now();
+    const eatersKey = meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters';
     const updatedDays = daysConfig.map(day => {
       if (day.date !== selectedDateStr) return day;
       return {
         ...day,
         [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: provided,
+        [eatersKey]: [],
       };
     });
     setDaysConfig(updatedDays);
     storage.saveDaysConfig(updatedDays);
 
     const currentDay = updatedDays.find(d => d.date === selectedDateStr);
-    const eaterIds = meal === 'lunch' ? (currentDay?.lunchEaters || []) : (currentDay?.dinnerEaters || []);
+    const eaterIds = [];
     const washersCount = meal === 'lunch' ? (Number(currentDay?.lunchWashers) === 2 ? 2 : 1) : 1;
 
     debouncedSyncAttendanceAndWasher(selectedDateStr, meal, provided, eaterIds, washersCount, updatedDays);
@@ -1156,7 +1158,7 @@ export default function App() {
       'MEAL_TOGGLE',
       'meal_status',
       `${mealTitle} Set to ${provided ? 'Available' : 'Not Available'}`,
-      `${mealTitle} marked as ${provided ? 'Available / Cooked' : 'Not Available / Cancelled'} by ${currentMember.name}.`,
+      `${mealTitle} marked as ${provided ? 'Available / Cooked' : 'Not Available / Cancelled'} by ${currentMember?.name || 'User'}.`,
       selectedDateStr
     );
   };
@@ -1650,8 +1652,6 @@ export default function App() {
               todayDateStr={actualTodayDateStr}
               isAdmin={isAdmin}
               currentMember={currentMember}
-              onDeleteWashLog={handleDeleteAttendanceLog}
-              onResetAttendanceForSlot={handleResetAttendanceForSlot}
             />
           )}
 

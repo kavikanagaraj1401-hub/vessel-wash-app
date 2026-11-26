@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Sun,
   Moon,
@@ -17,7 +17,8 @@ import { getTodayDateStr } from '../logic/dateUtils';
  * - Distinct Afternoon Lunch vs Night Dinner visual themes
  * - Lunch attendance chips & washer cards styled with colourful afternoon theme
  * - Dinner attendance chips, washer cards & upcoming washer styled with night theme
- * - On page refresh: meal attendance resets on Home page alone so user selects again
+ * - Meal attendance and food availability state persists across bottom navbar menu switching
+ * - When food is toggled Not Available, attendees clear; when toggled back on, fresh selection is required
  */
 export function TodayScreen({
   currentDateStr = getTodayDateStr(),
@@ -37,7 +38,7 @@ export function TodayScreen({
   onToggleLunchWashers,
   onResetAttendanceForSlot,
 }) {
-  // Selected meal session: defaults cleanly to 'lunch' on fresh load / reload
+  // Selected meal session: defaults cleanly to 'lunch'
   const [selectedMeal, setSelectedMeal] = useState('lunch');
 
   const handleSelectMeal = (meal) => {
@@ -46,33 +47,64 @@ export function TodayScreen({
 
   const memberMap = useMemo(() => new Map(allMembers.map((m) => [m.id, m])), [allMembers]);
 
-  // Requirement 2: Clean, unpopulated fresh state by default on initial load and after every page refresh
-  // "Food Not Available" is marked/defaulted as inactive/fresh (not pre-filled from prior selections)
+  // Food Availability state persists from todayConfig across navigation
   const [sessionMealProvided, setSessionMealProvided] = useState(() => ({
-    lunch: false,
-    dinner: false,
+    lunch: Boolean(todayConfig?.lunchProvided),
+    dinner: Boolean(todayConfig?.dinnerProvided),
   }));
 
-  // Eaters list starts in clean, unpopulated fresh state on load / refresh
+  // Eaters list persists from todayConfig across navigation
   const [sessionEaters, setSessionEaters] = useState(() => ({
-    lunch: [],
-    dinner: [],
+    lunch: Array.isArray(todayConfig?.lunchEaters) ? todayConfig.lunchEaters : [],
+    dinner: Array.isArray(todayConfig?.dinnerEaters) ? todayConfig.dinnerEaters : [],
   }));
+
+  // Synchronize state when todayConfig changes (e.g., loaded from Supabase or switching tabs)
+  useEffect(() => {
+    if (todayConfig) {
+      setSessionMealProvided({
+        lunch: Boolean(todayConfig.lunchProvided),
+        dinner: Boolean(todayConfig.dinnerProvided),
+      });
+      setSessionEaters({
+        lunch: Array.isArray(todayConfig.lunchEaters) ? todayConfig.lunchEaters : [],
+        dinner: Array.isArray(todayConfig.dinnerEaters) ? todayConfig.dinnerEaters : [],
+      });
+    }
+  }, [
+    todayConfig?.date,
+    todayConfig?.lunchProvided,
+    todayConfig?.dinnerProvided,
+    todayConfig?.lunchEaters,
+    todayConfig?.dinnerEaters,
+  ]);
 
   const currentEaters = sessionEaters[selectedMeal] || [];
   const currentEaterSet = useMemo(() => new Set(currentEaters), [currentEaters]);
 
   const isMealProvided = Boolean(sessionMealProvided[selectedMeal]);
 
+  // Toggle food availability:
+  // - When marking Food Not Available (provided === false): clear selected attendees
+  // - When toggling Food Available back on (provided === true): require a fresh selection of attendees (start empty)
   const handleToggleSessionMeal = useCallback((provided) => {
     setSessionMealProvided((prev) => ({
       ...prev,
       [selectedMeal]: provided,
     }));
+    // Clear attendees both when toggling off and when toggling back on for fresh selection
+    setSessionEaters((prev) => ({
+      ...prev,
+      [selectedMeal]: [],
+    }));
+
     if (onToggleMealProvided) {
       onToggleMealProvided(selectedMeal, provided);
     }
-  }, [selectedMeal, onToggleMealProvided]);
+    if (onUpdateEaters) {
+      onUpdateEaters(selectedMeal, []);
+    }
+  }, [selectedMeal, onToggleMealProvided, onUpdateEaters]);
 
   // Dynamic recalculation handler on attendance toggle
   const handleToggleEater = useCallback((memberId, e) => {
@@ -588,13 +620,13 @@ export function TodayScreen({
                     </div>
                     <div className="min-w-0">
                       <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider block truncate">
-                        Next Washer (Upcoming)
+                        Next Washer (Upcoming / Tomorrow)
                       </span>
                       <h4 className="text-xs sm:text-sm font-extrabold text-[#111216] dark:text-[#F7F6F3] tracking-tight truncate leading-tight">
                         {nextMember.name}
                       </h4>
                       <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] block truncate">
-                        Next in rotation queue
+                        Next in rotation queue for tomorrow
                       </span>
                     </div>
                   </div>

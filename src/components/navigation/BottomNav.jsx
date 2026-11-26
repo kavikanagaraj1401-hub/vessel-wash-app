@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutGrid, Receipt, Users, History } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 /**
  * Modern Sleek Horizontal Dock Bottom Navigation Bar
@@ -7,8 +8,11 @@ import { LayoutGrid, Receipt, Users, History } from 'lucide-react';
  * - Minimalist thin-stroke icons stacked directly above crisp compact text labels
  * - High-contrast active vs. muted inactive states with no bulky top lines or cramped spacing
  * - Light and Dark mode WCAG contrast accessibility
+ * - Dynamic Day (Orange) vs Night (Blue) brand accent theme
  */
 export function BottomNav({ activeTab, onTabChange }) {
+  const { brandClasses } = useTheme();
+
   const tabs = [
     { id: 'today', label: 'Home', icon: LayoutGrid },
     { id: 'bill', label: 'Bill', icon: Receipt },
@@ -33,9 +37,9 @@ export function BottomNav({ activeTab, onTabChange }) {
               onClick={() => onTabChange(tab.id)}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 sm:px-1 h-full w-full select-none active-scale transition-all duration-150 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C]/40 ${
+              className={`flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 sm:px-1 h-full w-full select-none active-scale transition-all duration-150 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 ${
                 isActive
-                  ? 'text-[#EA580C] dark:text-[#F59E0B]'
+                  ? `${brandClasses?.activeText || 'text-[#EA580C] dark:text-[#F59E0B]'} ${brandClasses?.ring || 'focus-visible:ring-[#EA580C]/40'}`
                   : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
               }`}
             >
@@ -46,7 +50,7 @@ export function BottomNav({ activeTab, onTabChange }) {
               <span
                 className={`text-[9.5px] sm:text-[11px] tracking-tight leading-none mt-1 transition-all ${
                   isActive
-                    ? 'font-extrabold text-[#EA580C] dark:text-[#F59E0B]'
+                    ? `font-extrabold ${brandClasses?.activeText || 'text-[#EA580C] dark:text-[#F59E0B]'}`
                     : 'font-medium text-[#71717A] dark:text-[#94A3B8]'
                 }`}
               >

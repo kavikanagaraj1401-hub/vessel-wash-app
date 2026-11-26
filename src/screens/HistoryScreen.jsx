@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { EmptyState } from '../components/common/EmptyState';
-import { Modal } from '../components/common/Modal';
 import {
   History,
   Calendar,
@@ -19,12 +18,12 @@ import {
   UtensilsCrossed,
   Sparkles,
   ShieldCheck,
-  Trash2,
-  RotateCcw,
   Eye,
   Lock,
 } from 'lucide-react';
 import { getTodayDateStr } from '../logic/dateUtils';
+import { assignSlot } from '../logic/rotationEngine';
+import { useTheme } from '../context/ThemeContext';
 
 function HistoryScreenContent({
   attendanceLogs = [],
@@ -37,9 +36,9 @@ function HistoryScreenContent({
   todayDateStr = getTodayDateStr(),
   isAdmin = false,
   currentMember = null,
-  onDeleteWashLog = null,
-  onResetAttendanceForSlot = null,
 }) {
+  const { brandClasses } = useTheme();
+
   // Default to 'logs' (Timeline Logs) as requested
   const [activeSubTab, setActiveSubTab] = useState('logs'); // 'logs' | 'report'
   const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'lunch' | 'dinner' | 'unmarked'
@@ -47,8 +46,6 @@ function HistoryScreenContent({
   const [expandedMembers, setExpandedMembers] = useState(
     () => new Set((members || []).map(m => m?.id).filter(Boolean))
   );
-  const [deleteConfirmLog, setDeleteConfirmLog] = useState(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Map for quick member lookups with null-safe handling
   const memberMap = useMemo(
@@ -167,36 +164,36 @@ function HistoryScreenContent({
         }));
       } else if (isLunchFoodConfirmed) {
         isLunchAvail = true;
-        if (!isToday) {
-          const lunchSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'lunch') : [];
-          const assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
-          if (assigned.length > 0) {
-            isLunchVerified = true;
-            lunchWashers = assigned.map(s => ({
-              id: s.assignedMemberId,
-              logId: s.id,
-              slotId: s.id,
-              name: s.assignedMemberName,
-              slotIndex: s.slotIndex || 1,
-              code: memberMap.get(s.assignedMemberId)?.code || '',
-              verified: true,
-            }));
+        const lunchSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'lunch') : [];
+        let assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
+
+        // Defensive fallback: if today's row was deleted or slots missing, dynamically calculate from attending members and queue
+        if (assigned.length === 0 && lunchEatersList.length > 0 && Array.isArray(members) && members.length > 0) {
+          const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
+          const { assignedId } = assignSlot(queue, lunchEatersList, members);
+          const assignedMem = memberMap.get(assignedId);
+          if (assignedMem) {
+            assigned = [{
+              id: `${dateKey}-lunch-1`,
+              meal: 'lunch',
+              slotIndex: 1,
+              assignedMemberId: assignedId,
+              assignedMemberName: assignedMem.name,
+            }];
           }
-        } else {
-          // Today: scheduled washer if assigned in slots
-          const lunchSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'lunch') : [];
-          const assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
-          if (assigned.length > 0) {
-            lunchWashers = assigned.map(s => ({
-              id: s.assignedMemberId,
-              logId: s.id,
-              slotId: s.id,
-              name: s.assignedMemberName,
-              slotIndex: s.slotIndex || 1,
-              code: memberMap.get(s.assignedMemberId)?.code || '',
-              verified: false,
-            }));
-          }
+        }
+
+        if (assigned.length > 0) {
+          isLunchVerified = !isToday;
+          lunchWashers = assigned.map(s => ({
+            id: s.assignedMemberId,
+            logId: s.id,
+            slotId: s.id,
+            name: s.assignedMemberName,
+            slotIndex: s.slotIndex || 1,
+            code: memberMap.get(s.assignedMemberId)?.code || '',
+            verified: !isToday,
+          }));
         }
       }
 
@@ -221,36 +218,36 @@ function HistoryScreenContent({
         }));
       } else if (isDinnerFoodConfirmed) {
         isDinnerAvail = true;
-        if (!isToday) {
-          const dinnerSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'dinner') : [];
-          const dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
-          if (dinnerSlot) {
-            isDinnerVerified = true;
-            dinnerWashers = [{
-              id: dinnerSlot.assignedMemberId,
-              logId: dinnerSlot.id,
-              slotId: dinnerSlot.id,
-              name: dinnerSlot.assignedMemberName,
-              slotIndex: dinnerSlot.slotIndex || 1,
-              code: memberMap.get(dinnerSlot.assignedMemberId)?.code || '',
-              verified: true,
-            }];
+        const dinnerSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'dinner') : [];
+        let dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
+
+        // Defensive fallback: if today's row was deleted or slots missing, dynamically calculate from attending members and queue
+        if (!dinnerSlot && dinnerEatersList.length > 0 && Array.isArray(members) && members.length > 0) {
+          const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
+          const { assignedId } = assignSlot(queue, dinnerEatersList, members);
+          const assignedMem = memberMap.get(assignedId);
+          if (assignedMem) {
+            dinnerSlot = {
+              id: `${dateKey}-dinner-1`,
+              meal: 'dinner',
+              slotIndex: 1,
+              assignedMemberId: assignedId,
+              assignedMemberName: assignedMem.name,
+            };
           }
-        } else {
-          // Today: scheduled dinner washer if assigned
-          const dinnerSlots = Array.isArray(compDay?.slots) ? compDay.slots.filter(s => s && s.meal === 'dinner') : [];
-          const dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
-          if (dinnerSlot) {
-            dinnerWashers = [{
-              id: dinnerSlot.assignedMemberId,
-              logId: dinnerSlot.id,
-              slotId: dinnerSlot.id,
-              name: dinnerSlot.assignedMemberName,
-              slotIndex: dinnerSlot.slotIndex || 1,
-              code: memberMap.get(dinnerSlot.assignedMemberId)?.code || '',
-              verified: false,
-            }];
-          }
+        }
+
+        if (dinnerSlot) {
+          isDinnerVerified = !isToday;
+          dinnerWashers = [{
+            id: dinnerSlot.assignedMemberId,
+            logId: dinnerSlot.id,
+            slotId: dinnerSlot.id,
+            name: dinnerSlot.assignedMemberName,
+            slotIndex: dinnerSlot.slotIndex || 1,
+            code: memberMap.get(dinnerSlot.assignedMemberId)?.code || '',
+            verified: !isToday,
+          }];
         }
       }
 
@@ -493,34 +490,19 @@ function HistoryScreenContent({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#ECBD56]">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${brandClasses?.activeText || 'text-[#EA580C] dark:text-[#F59E0B]'}`}>
               Activity &amp; Audit History
             </span>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border shadow-2xs ${
-              isAdmin
-                ? 'admin-gradient text-white border-[#F59E0B]/50'
-                : 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border-[#22AC77]/30 dark:border-[#4ADE80]/30'
-            }`}>
-              {isAdmin ? (
-                <>
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Admin Access</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3 h-3" />
-                  <span>All Members (Read-Only)</span>
-                </>
-              )}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border shadow-2xs bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border-[#22AC77]/30 dark:border-[#4ADE80]/30">
+              <Eye className="w-3 h-3" />
+              <span>All Members (Read-Only)</span>
             </span>
           </div>
           <h2 className="text-xl font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3] mt-0.5">
             Timeline Logs
           </h2>
           <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">
-            {isAdmin
-              ? 'Complete audit record of vessel washers and attendance with admin manage capabilities'
-              : 'Complete live history of vessel washers and attendance accessible to all team members'}
+            Complete verified audit record of vessel washers and attendance for all team members (Read-Only).
           </p>
         </div>
 
@@ -680,7 +662,7 @@ function HistoryScreenContent({
                                 {fullDateStr}
                               </span>
                               {isToday && (
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30">
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${brandClasses?.badge || 'bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30'}`}>
                                   Today
                                 </span>
                               )}
@@ -712,8 +694,8 @@ function HistoryScreenContent({
                     padding="none"
                     className={`overflow-hidden border rounded-2xl transition-all shadow-2xs bg-white dark:bg-[#171F2C] ${
                       isToday
-                        ? 'border-[#EA580C] dark:border-[#F59E0B] ring-1 ring-[#EA580C]/40'
-                        : 'border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#EA580C]/40'
+                        ? `${brandClasses?.accentBorder || 'border-[#EA580C] dark:border-[#F59E0B]'} ring-1 ring-black/10 dark:ring-white/10`
+                        : 'border-[#DDD9D0] dark:border-[#2A364B] hover:border-black/20 dark:hover:border-white/20'
                     }`}
                   >
                     {/* Date Card Header */}
@@ -734,17 +716,27 @@ function HistoryScreenContent({
                               {fullDateStr}
                             </h4>
                             {isToday && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30">
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${brandClasses?.badge || 'bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30'}`}>
                                 Today
                               </span>
                             )}
-                            {isPending ? (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30 dark:border-[#F59E0B]/40">
-                                {isToday ? (hasAnyConfirmedMeal ? 'Pending (Wash In Progress)' : 'Pending / Food Not Marked') : 'Unmarked'}
+                            {isToday ? (
+                              hasAnyConfirmedMeal ? (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/30 dark:border-[#4ADE80]/40">
+                                  Current Washer
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/30 dark:border-[#F59E0B]/40">
+                                  Pending / Food Not Marked
+                                </span>
+                              )
+                            ) : hasAnyConfirmedMeal ? (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/30 dark:border-[#4ADE80]/40">
+                                Washed ✓
                               </span>
                             ) : (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] border border-[#22AC77]/30 dark:border-[#4ADE80]/40">
-                                Completed ✓
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]">
+                                Food Not Marked
                               </span>
                             )}
                           </div>
@@ -784,58 +776,49 @@ function HistoryScreenContent({
 
                           {/* Washer Row */}
                           <div className={`p-2 rounded-xl border flex items-center justify-between ${
-                            isLunchVerified
-                              ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
-                              : 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30'
+                            isToday
+                              ? (isLunchFoodConfirmed
+                                  ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
+                                  : 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30')
+                              : (isLunchVerified || isLunchAvail
+                                  ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
+                                  : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B]')
                           }`}>
                             <div className="flex items-center gap-2">
                               <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
-                                isLunchVerified ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]' : 'bg-amber-500/20 text-[#D97706] dark:text-[#FBBF24]'
+                                (isToday ? isLunchFoodConfirmed : (isLunchVerified || isLunchAvail))
+                                  ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                  : 'bg-amber-500/20 text-[#D97706] dark:text-[#FBBF24]'
                               }`}>
                                 🧼
                               </div>
                               <div>
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#111216] dark:text-[#F7F6F3] block leading-none">
-                                  Washed Vessels:
+                                  {isToday ? 'Current Washer:' : 'Washed Vessels:'}
                                 </span>
                                 <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] mt-0.5 block">
-                                  {lunchWashers && lunchWashers.length > 0 && isLunchVerified
+                                  {lunchWashers && lunchWashers.length > 0
                                     ? lunchWashers.map(w => `${w?.name || 'Washer'}${w?.markedBy ? ` (${w.markedBy})` : ''}`).join(' & ')
                                     : isToday
-                                    ? (isLunchFoodConfirmed ? 'Pending (Wash in progress today)' : 'Pending / Food Not Marked')
+                                    ? (isLunchFoodConfirmed ? 'Current Washer Duty Assigned' : 'Pending / Food Not Marked')
                                     : 'None recorded'}
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                                isLunchVerified
-                                  ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
-                                  : 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24] border border-amber-500/30'
+                                isToday
+                                  ? (isLunchFoodConfirmed
+                                      ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                      : 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24] border border-amber-500/30')
+                                  : (isLunchVerified || isLunchAvail
+                                      ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                      : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]')
                               }`}>
-                                {isLunchVerified ? 'Washed ✓' : (isToday ? (isLunchFoodConfirmed ? 'Pending' : 'Food Not Marked') : 'Unmarked')}
+                                {isToday
+                                  ? (isLunchFoodConfirmed ? 'Current Washer' : 'Food Not Marked')
+                                  : (isLunchVerified || isLunchAvail ? 'Washed ✓' : 'Food Not Marked')}
                               </span>
-
-                              {/* Administrative Action (Admin Only): Delete / Reset Wash Record */}
-                              {isAdmin && isLunchVerified && onDeleteWashLog && lunchWashers && lunchWashers.length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirmLog({
-                                      logId: lunchWashers[0]?.logId || lunchWashers[0]?.slotId,
-                                      washerName: (lunchWashers || []).map(w => w?.name || '').filter(Boolean).join(' & '),
-                                      date,
-                                      meal: 'lunch',
-                                    });
-                                  }}
-                                  title="Admin: Delete / Reset wash record"
-                                  className="p-1 rounded-lg text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 dark:hover:bg-[#FF5A4E]/15 transition-colors cursor-pointer"
-                                  aria-label="Delete wash record"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
                             </div>
                           </div>
 
@@ -908,58 +891,49 @@ function HistoryScreenContent({
 
                           {/* Washer Row */}
                           <div className={`p-2 rounded-xl border flex items-center justify-between ${
-                            isDinnerVerified
-                              ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
-                              : 'bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-400/30'
+                            isToday
+                              ? (isDinnerFoodConfirmed
+                                  ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
+                                  : 'bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-400/30')
+                              : (isDinnerVerified || isDinnerAvail
+                                  ? 'bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border-[#22AC77]/30 dark:border-[#4ADE80]/40'
+                                  : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B]')
                           }`}>
                             <div className="flex items-center gap-2">
                               <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
-                                isDinnerVerified ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]' : 'bg-indigo-500/20 text-indigo-600 dark:text-[#C7D2FE]'
+                                (isToday ? isDinnerFoodConfirmed : (isDinnerVerified || isDinnerAvail))
+                                  ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                  : 'bg-indigo-500/20 text-indigo-600 dark:text-[#C7D2FE]'
                               }`}>
                                 🧼
                               </div>
                               <div>
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#111216] dark:text-[#F7F6F3] block leading-none">
-                                  Washed Vessels:
+                                  {isToday ? 'Current Washer:' : 'Washed Vessels:'}
                                 </span>
                                 <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] mt-0.5 block">
-                                  {dinnerWashers && dinnerWashers.length > 0 && isDinnerVerified
+                                  {dinnerWashers && dinnerWashers.length > 0
                                     ? dinnerWashers.map(w => `${w?.name || 'Washer'}${w?.markedBy ? ` (${w.markedBy})` : ''}`).join(', ')
                                     : isToday
-                                    ? (isDinnerFoodConfirmed ? 'Pending (Wash in progress today)' : 'Pending / Food Not Marked')
+                                    ? (isDinnerFoodConfirmed ? 'Current Washer Duty Assigned' : 'Pending / Food Not Marked')
                                     : 'None recorded'}
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                                isDinnerVerified
-                                  ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
-                                  : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border border-indigo-400/30'
+                                isToday
+                                  ? (isDinnerFoodConfirmed
+                                      ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                      : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border border-indigo-400/30')
+                                  : (isDinnerVerified || isDinnerAvail
+                                      ? 'bg-[#22AC77] dark:bg-[#4ADE80] text-white dark:text-[#111216]'
+                                      : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border border-[#DDD9D0] dark:border-[#2A364B]')
                               }`}>
-                                {isDinnerVerified ? 'Washed ✓' : (isToday ? (isDinnerFoodConfirmed ? 'Pending' : 'Food Not Marked') : 'Unmarked')}
+                                {isToday
+                                  ? (isDinnerFoodConfirmed ? 'Current Washer' : 'Food Not Marked')
+                                  : (isDinnerVerified || isDinnerAvail ? 'Washed ✓' : 'Food Not Marked')}
                               </span>
-
-                              {/* Administrative Action (Admin Only): Delete / Reset Wash Record */}
-                              {isAdmin && isDinnerVerified && onDeleteWashLog && dinnerWashers && dinnerWashers.length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirmLog({
-                                      logId: dinnerWashers[0]?.logId || dinnerWashers[0]?.slotId,
-                                      washerName: (dinnerWashers || []).map(w => w?.name || '').filter(Boolean).join(', '),
-                                      date,
-                                      meal: 'dinner',
-                                    });
-                                  }}
-                                  title="Admin: Delete / Reset wash record"
-                                  className="p-1 rounded-lg text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 dark:hover:bg-[#FF5A4E]/15 transition-colors cursor-pointer"
-                                  aria-label="Delete wash record"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
                             </div>
                           </div>
 
@@ -1147,25 +1121,6 @@ function HistoryScreenContent({
                                         {timeStr}
                                       </span>
                                     ) : null}
-                                    {isAdmin && onDeleteWashLog && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeleteConfirmLog({
-                                            logId: log.id || log.slotId,
-                                            washerName: member.name,
-                                            date: log.date,
-                                            meal: log.meal,
-                                          });
-                                        }}
-                                        title="Admin: Delete / Reset this wash record"
-                                        className="p-1 rounded-lg text-[#D9483B] dark:text-[#FF5A4E] hover:bg-[#D9483B]/10 dark:hover:bg-[#FF5A4E]/15 transition-colors cursor-pointer ml-1"
-                                        aria-label="Delete wash record"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
                                   </div>
                                 </div>
                               );
@@ -1180,66 +1135,6 @@ function HistoryScreenContent({
             )}
           </div>
         </div>
-      )}
-
-      {/* Admin Delete Wash Log Confirmation Modal */}
-      {isAdmin && deleteConfirmLog && (
-        <Modal
-          isOpen={Boolean(deleteConfirmLog)}
-          onClose={() => setDeleteConfirmLog(null)}
-          title="Delete Historical Wash Log"
-          subtitle="Admin action to remove verified vessel wash log."
-        >
-          <div className="space-y-4 p-1">
-            <div className="p-3.5 rounded-xl bg-[#D9483B]/10 dark:bg-[#FF5A4E]/15 border border-[#D9483B]/30 dark:border-[#FF5A4E]/30 text-xs text-[#111216] dark:text-[#F7F6F3] space-y-1.5">
-              <p className="font-semibold text-[#D9483B] dark:text-[#FF5A4E]">
-                Are you sure you want to delete this completed wash record?
-              </p>
-              <div className="space-y-0.5 text-[11px] text-[#4E525D] dark:text-[#9BA5B7]">
-                <p><strong>Date:</strong> {deleteConfirmLog.date}</p>
-                <p><strong>Meal:</strong> <span className="capitalize">{deleteConfirmLog.meal}</span></p>
-                <p><strong>Washer:</strong> {deleteConfirmLog.washerName}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmLog(null)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] hover:bg-[#DDD9D0] dark:hover:bg-[#2A364B] transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={async () => {
-                  if (!onDeleteWashLog || !deleteConfirmLog) return;
-                  setDeleting(true);
-                  try {
-                    await onDeleteWashLog(deleteConfirmLog.logId);
-                    setDeleteConfirmLog(null);
-                  } finally {
-                    setDeleting(false);
-                  }
-                }}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#D9483B] hover:bg-[#B9382C] text-white shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                {deleting ? (
-                  <>
-                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Record</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   );

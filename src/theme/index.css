@@ -43,17 +43,29 @@
 }
 
 @layer utilities {
-  /* Admin Gradient Specification: v2 Warm Coral-to-Amber Gradient */
-  .admin-gradient {
-    background: linear-gradient(135deg, #EA580C 0%, #F59E0B 100%);
+  /* Dynamic Brand Accents: Daytime (Orange/Amber) vs Nighttime (Blue/Cyan/Indigo) */
+  :root {
+    --brand-day-gradient: linear-gradient(135deg, #EA580C 0%, #F59E0B 100%);
+    --brand-day-subtle: linear-gradient(135deg, rgba(234, 88, 12, 0.16) 0%, rgba(245, 158, 11, 0.08) 100%);
+    --brand-night-gradient: linear-gradient(135deg, #1D4ED8 0%, #06B6D4 100%);
+    --brand-night-subtle: linear-gradient(135deg, rgba(29, 78, 216, 0.16) 0%, rgba(6, 182, 212, 0.08) 100%);
+
+    --brand-gradient: var(--brand-day-gradient);
+    --brand-subtle: var(--brand-day-subtle);
   }
 
-  .admin-gradient-subtle {
-    background: linear-gradient(135deg, rgba(234, 88, 12, 0.16) 0%, rgba(245, 158, 11, 0.08) 100%);
+  html[data-brand="night"], html.brand-night {
+    --brand-gradient: var(--brand-night-gradient);
+    --brand-subtle: var(--brand-night-subtle);
   }
 
-  .dark .admin-gradient-subtle {
-    background: linear-gradient(135deg, rgba(234, 88, 12, 0.22) 0%, rgba(245, 158, 11, 0.12) 100%);
+  /* Admin & Brand Gradient Utility */
+  .admin-gradient, .brand-gradient {
+    background: var(--brand-gradient);
+  }
+
+  .admin-gradient-subtle, .brand-gradient-subtle {
+    background: var(--brand-subtle);
   }
 
   /* Safe area padding for mobile notches and home indicators */
