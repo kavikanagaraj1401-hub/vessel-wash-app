@@ -189,7 +189,7 @@ export function TodayScreen({
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
 
   return (
-    <div className="relative min-h-[calc(100vh-140px)] pb-28 px-4 pt-3 space-y-4">
+    <div className="relative pb-6 sm:pb-8 px-4 pt-3 space-y-4">
       {/* Responsive 2-Card Layout: Desktop/Tablet Grid, Mobile Stack */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
         {/* ========================================================================= */}

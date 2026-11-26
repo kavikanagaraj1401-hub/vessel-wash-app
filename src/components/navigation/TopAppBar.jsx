@@ -96,8 +96,8 @@ export function TopAppBar({
 
   return (
     <>
-      {/* Static Non-Scrolling Sticky Header Bar */}
-      <header className="sticky top-0 z-40 flex-shrink-0 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0] dark:border-[#2A364B] pt-safe shadow-2xs transition-colors duration-200">
+      {/* Top Header: Strictly Static (shrink-0) */}
+      <header className="shrink-0 z-40 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0] dark:border-[#2A364B] pt-safe shadow-2xs transition-colors duration-200">
         {/* Tier 1: App Title & Action Icons (Members, Theme Toggle & Burger Menu) */}
         <div className="flex items-center justify-between px-4 h-14 gap-3">
           {/* App Brand & Logged-in Member Identity */}

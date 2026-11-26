@@ -1294,7 +1294,7 @@ export function BillScreen({
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-140px)] pb-28 px-4 pt-3 space-y-4">
+    <div className="relative pb-6 sm:pb-8 px-4 pt-3 space-y-4">
       {/* Hidden Offscreen Thermal Receipt for High-Resolution PNG Capture */}
       <div
         style={{

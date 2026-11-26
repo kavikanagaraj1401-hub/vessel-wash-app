@@ -19,7 +19,7 @@ export function BottomNav({ activeTab, onTabChange }) {
   return (
     <nav
       aria-label="Bottom Navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 w-full bg-white/95 dark:bg-[#121620]/95 backdrop-blur-md border-t border-[#DDD9D0]/70 dark:border-[#263042]/70 pb-safe shadow-[0_-2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] select-none transition-colors duration-200"
+      className="shrink-0 z-30 w-full bg-white/95 dark:bg-[#121620]/95 backdrop-blur-md border-t border-[#DDD9D0]/70 dark:border-[#263042]/70 pb-safe shadow-[0_-2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] select-none transition-colors duration-200"
     >
       <div className="w-full max-w-lg mx-auto grid grid-cols-4 h-16 px-2">
         {tabs.map((tab) => {

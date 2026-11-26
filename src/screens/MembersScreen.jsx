@@ -503,7 +503,7 @@ export function MembersScreen({
   const adminCount = deduplicatedMembersList.filter((m) => isMemberAdmin(m)).length;
 
   return (
-    <div className="space-y-4 pb-24 px-4 pt-2 max-w-4xl mx-auto">
+    <div className="space-y-4 pb-6 sm:pb-8 px-4 pt-2 max-w-4xl mx-auto">
       {/* 1. Header & Summary Section */}
       <div className="bg-white dark:bg-[#171F2C] p-4 sm:p-5 rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">

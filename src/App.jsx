@@ -187,21 +187,27 @@ export default function App() {
         markedBy: 'Marudhu',
       });
     }
-    const hasNov25 = loaded.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
-    if (!hasNov25) {
-      loaded.push({
-        id: 'att-2026-11-25-dinner-1',
-        slotId: '2026-11-25-dinner-1',
-        date: '2026-11-25',
-        meal: 'dinner',
-        slotIndex: 1,
-        memberId: 'm4',
-        memberName: 'Ponneelan',
-        status: 'present',
-        markedAt: '2026-11-25T21:30:00.000Z',
-        remarks: 'Washed by Ponneelan',
-        markedBy: 'Ponneelan',
-      });
+    // Nov 25 wash entry: only seed as historical past record if strictly in past
+    if (actualTodayDateStr > '2026-11-25') {
+      const hasNov25 = loaded.some(l => l.date === '2026-11-25' && l.meal === 'dinner');
+      if (!hasNov25) {
+        loaded.push({
+          id: 'att-2026-11-25-dinner-1',
+          slotId: '2026-11-25-dinner-1',
+          date: '2026-11-25',
+          meal: 'dinner',
+          slotIndex: 1,
+          memberId: 'm4',
+          memberName: 'Ponneelan',
+          status: 'present',
+          markedAt: '2026-11-25T21:30:00.000Z',
+          remarks: 'Washed by Ponneelan',
+          markedBy: 'Ponneelan',
+        });
+      }
+    } else {
+      // Never allow an unconfirmed pre-seeded log for today
+      loaded = loaded.filter(l => l.date !== actualTodayDateStr || l.manuallyMarked === true);
     }
     storage.saveAttendanceLogs(loaded);
     return loaded;
@@ -1464,10 +1470,10 @@ export default function App() {
   }
 
   return (
-    <div className="w-full h-screen h-[100dvh] bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] flex justify-center selection:bg-[#ECBD56]/30 selection:text-[#111216] overflow-hidden transition-colors duration-200">
-      {/* Responsive Container (Mobile: 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
-      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full flex flex-col bg-[#F2F1ED] dark:bg-[#0B0C0E] shadow-2xl relative border-x border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden transition-all duration-200">
-        {/* Static Top App Bar & Date Bar */}
+    <div className="w-full h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col items-center bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] selection:bg-[#EA580C]/30 selection:text-[#111216]">
+      {/* Locked Full-Viewport Shell Container (Mobile: 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
+      <div className="w-full max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full max-h-[100dvh] flex flex-col bg-[#F2F1ED] dark:bg-[#0B0C0E] shadow-2xl relative border-x border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
+        {/* Top Header: strictly static (shrink-0) */}
         <TopAppBar
           title="Vessel Washing"
           currentDateStr={formatHeaderDate(actualTodayDateStr)}
@@ -1484,8 +1490,8 @@ export default function App() {
           isLiveConnected={isSupabaseConfigured}
         />
 
-        {/* Main Content Area (Scrolls independently between static header and bottom bar) */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+        {/* Middle Content Area (Confine all vertical scrolling exclusively here) */}
+        <main className="flex-1 overflow-y-auto overscroll-contain w-full min-h-0">
           {activeTab === 'today' && (
             <TodayScreen
               currentDateStr={actualTodayDateStr}

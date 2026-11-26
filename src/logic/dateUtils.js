@@ -183,9 +183,9 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     nov24.dinnerEaters = [];
   }
 
-  // Nov 25, 2026 (yesterday): Vessel washed by Ponnelan
+  // Nov 25, 2026: only set as historical anchor if strictly before today
   const nov25 = updated.find(d => d.date === '2026-11-25');
-  if (nov25) {
+  if (nov25 && targetDateStr && targetDateStr > '2026-11-25') {
     nov25.dinnerProvided = true;
     if (!nov25.dinnerEaters || nov25.dinnerEaters.length === 0) {
       nov25.dinnerEaters = allEaters;
