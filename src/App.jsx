@@ -30,9 +30,90 @@ import { notificationService } from './services/notificationService';
 import { supabaseService } from './services/supabaseService';
 import { isSupabaseConfigured } from './services/supabaseClient';
 
+const VALID_TABS = ['today', 'members', 'bill', 'history', 'activity'];
+
+function getInitialNavState() {
+  try {
+    const rawHash = (window.location.hash || '').replace(/^#\/?/, '').toLowerCase().trim();
+    if (rawHash === 'settings') {
+      const savedTab = sessionStorage.getItem('vw_active_tab');
+      return {
+        tab: VALID_TABS.includes(savedTab) ? savedTab : 'today',
+        settings: true,
+      };
+    }
+    if (VALID_TABS.includes(rawHash)) {
+      return { tab: rawHash, settings: false };
+    }
+    const saved = sessionStorage.getItem('vw_active_tab');
+    if (VALID_TABS.includes(saved)) {
+      return { tab: saved, settings: false };
+    }
+  } catch {
+    // ignore
+  }
+  return { tab: 'today', settings: false };
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('today'); // 'today' | 'members' | 'bill' | 'history' | 'activity'
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const initialNav = useMemo(() => getInitialNavState(), []);
+  const [activeTab, setActiveTab] = useState(initialNav.tab); // 'today' | 'members' | 'bill' | 'history' | 'activity'
+  const [settingsOpen, setSettingsOpen] = useState(initialNav.settings);
+
+  const handleTabChange = useCallback((tab) => {
+    if (!VALID_TABS.includes(tab)) return;
+    setActiveTab(tab);
+    setSettingsOpen(false);
+    try {
+      sessionStorage.setItem('vw_active_tab', tab);
+      window.history.replaceState(null, '', `#${tab}`);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleOpenSettings = useCallback(() => {
+    setSettingsOpen(true);
+    try {
+      window.history.replaceState(null, '', '#settings');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    setSettingsOpen(false);
+    try {
+      const currentTab = sessionStorage.getItem('vw_active_tab') || activeTab || 'today';
+      window.history.replaceState(null, '', `#${currentTab}`);
+    } catch {
+      // ignore
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    try {
+      if (!window.location.hash) {
+        window.history.replaceState(null, '', settingsOpen ? '#settings' : `#${activeTab}`);
+      }
+    } catch {}
+
+    const onHashChange = () => {
+      const rawHash = (window.location.hash || '').replace(/^#\/?/, '').toLowerCase().trim();
+      if (rawHash === 'settings') {
+        setSettingsOpen(true);
+      } else if (VALID_TABS.includes(rawHash)) {
+        setActiveTab(rawHash);
+        setSettingsOpen(false);
+        try {
+          sessionStorage.setItem('vw_active_tab', rawHash);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [activeTab, settingsOpen]);
 
   // Dynamic Live Today date (resolves to user's real current date, e.g. 2026-09-23)
   const actualTodayDateStr = useMemo(() => getTodayDateStr(), []);
@@ -1399,12 +1480,12 @@ export default function App() {
           onToggleAdminMode={handleToggleAdminMode}
           allMembers={members}
           adminUserIds={adminUserIds}
-          onSettingsClick={() => setSettingsOpen(true)}
+          onSettingsClick={handleOpenSettings}
           isLiveConnected={isSupabaseConfigured}
         />
 
         {/* Main Content Area (Scrolls independently between static header and bottom bar) */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full pb-4 sm:pb-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
           {activeTab === 'today' && (
             <TodayScreen
               currentDateStr={actualTodayDateStr}
@@ -1463,7 +1544,7 @@ export default function App() {
               computedDays={computedDays}
               selectedDateStr={selectedDateStr}
               onSelectDate={handleSelectDate}
-              onTabChange={setActiveTab}
+              onTabChange={handleTabChange}
               todayDateStr={actualTodayDateStr}
             />
           )}
@@ -1481,14 +1562,14 @@ export default function App() {
         {/* Bottom Navigation */}
         <BottomNav
           activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onTabChange={handleTabChange}
+          onOpenSettings={handleOpenSettings}
         />
 
         {/* Settings & Management Hub */}
         <SettingsModal
           isOpen={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
+          onClose={handleCloseSettings}
           isAdmin={isAdmin}
           userName={userName}
           userEmail={userEmail}

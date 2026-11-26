@@ -192,15 +192,6 @@ export function ensureMultiYearCoverage(existingDays = [], targetDateStr) {
     }
   }
 
-  // Ensure Nov 26, 2026 (today) has dinner marked available for Suryakumar's turn
-  const nov26 = updated.find(d => d.date === '2026-11-26');
-  if (nov26) {
-    nov26.dinnerProvided = true;
-    if (!nov26.dinnerEaters || nov26.dinnerEaters.length === 0) {
-      nov26.dinnerEaters = allEaters;
-    }
-  }
-
   updated.sort((a, b) => a.date.localeCompare(b.date));
   return updated;
 }

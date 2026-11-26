@@ -37,37 +37,23 @@ export function TodayScreen({
   onToggleLunchWashers,
   onResetAttendanceForSlot,
 }) {
-  // Persistent selected meal session: 'lunch' | 'dinner'
-  const [selectedMeal, setSelectedMeal] = useState(() => {
-    try {
-      return localStorage.getItem('vw_selected_meal') || 'lunch';
-    } catch {
-      return 'lunch';
-    }
-  });
+  // Selected meal session: defaults cleanly to 'lunch' on fresh load / reload
+  const [selectedMeal, setSelectedMeal] = useState('lunch');
 
   const handleSelectMeal = (meal) => {
     setSelectedMeal(meal);
-    try {
-      localStorage.setItem('vw_selected_meal', meal);
-    } catch {
-      // ignore
-    }
   };
-
-  // Auto-switch to dinner if lunch is not provided but dinner is provided
-  React.useEffect(() => {
-    if (todayConfig) {
-      if (!todayConfig.lunchProvided && todayConfig.dinnerProvided && selectedMeal === 'lunch') {
-        setSelectedMeal('dinner');
-      }
-    }
-  }, [todayConfig?.date, todayConfig?.lunchProvided, todayConfig?.dinnerProvided, selectedMeal]);
 
   const memberMap = useMemo(() => new Map(allMembers.map((m) => [m.id, m])), [allMembers]);
 
-  // Requirement 4: On Home page meal attendance card alone, reset/refresh selected person state on page refresh
-  // Starts with empty selection so user selects again after refresh
+  // Requirement 2: Clean, unpopulated fresh state by default on initial load and after every page refresh
+  // "Food Not Available" is marked/defaulted as inactive/fresh (not pre-filled from prior selections)
+  const [sessionMealProvided, setSessionMealProvided] = useState(() => ({
+    lunch: false,
+    dinner: false,
+  }));
+
+  // Eaters list starts in clean, unpopulated fresh state on load / refresh
   const [sessionEaters, setSessionEaters] = useState(() => ({
     lunch: [],
     dinner: [],
@@ -75,6 +61,18 @@ export function TodayScreen({
 
   const currentEaters = sessionEaters[selectedMeal] || [];
   const currentEaterSet = useMemo(() => new Set(currentEaters), [currentEaters]);
+
+  const isMealProvided = Boolean(sessionMealProvided[selectedMeal]);
+
+  const handleToggleSessionMeal = useCallback((provided) => {
+    setSessionMealProvided((prev) => ({
+      ...prev,
+      [selectedMeal]: provided,
+    }));
+    if (onToggleMealProvided) {
+      onToggleMealProvided(selectedMeal, provided);
+    }
+  }, [selectedMeal, onToggleMealProvided]);
 
   // Dynamic recalculation handler on attendance toggle
   const handleToggleEater = useCallback((memberId, e) => {
@@ -123,10 +121,6 @@ export function TodayScreen({
       onUpdateEaters(selectedMeal, []);
     }
   }, [selectedMeal, onUpdateEaters]);
-
-  const isMealProvided = selectedMeal === 'lunch'
-    ? Boolean(todayConfig?.lunchProvided)
-    : Boolean(todayConfig?.dinnerProvided);
 
   // Simplified lunch washer requirement (Single vs Multiple)
   const userChosenWashers = Number(todayConfig?.lunchWashers) === 2 ? 2 : 1;
@@ -195,7 +189,7 @@ export function TodayScreen({
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
 
   return (
-    <div className="w-full max-w-full p-3 sm:p-5 space-y-4">
+    <div className="relative min-h-[calc(100vh-140px)] pb-28 px-4 pt-3 space-y-4">
       {/* Responsive 2-Card Layout: Desktop/Tablet Grid, Mobile Stack */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
         {/* ========================================================================= */}
@@ -255,7 +249,7 @@ export function TodayScreen({
                   <Sun className="w-3.5 h-3.5" strokeWidth={selectedMeal === 'lunch' ? 2.5 : 2} />
                 </div>
                 <span className="text-xs tracking-tight font-extrabold">Lunch</span>
-                {todayConfig?.lunchProvided && (
+                {sessionMealProvided.lunch && (
                   <span
                     className="w-1.5 h-1.5 rounded-full bg-[#16A34A] dark:bg-[#4ADE80]"
                     title="Lunch Available"
@@ -284,7 +278,7 @@ export function TodayScreen({
                   <Moon className="w-3.5 h-3.5" strokeWidth={selectedMeal === 'dinner' ? 2.5 : 2} />
                 </div>
                 <span className="text-xs tracking-tight font-extrabold">Dinner</span>
-                {todayConfig?.dinnerProvided && (
+                {sessionMealProvided.dinner && (
                   <span
                     className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"
                     title="Dinner Available"
@@ -306,7 +300,7 @@ export function TodayScreen({
                   }`}
                 />
                 <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] truncate">
-                  {selectedMeal === 'lunch' ? 'Lunch Status' : 'Dinner Status'}
+                  {selectedMeal === 'lunch' ? 'Lunch Food Status' : 'Dinner Food Status'}
                 </span>
                 <span
                   className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg shrink-0 ${
@@ -315,27 +309,27 @@ export function TodayScreen({
                       : 'bg-[#FEF2F2] dark:bg-[#321414] text-[#DC2626] dark:text-[#F87171] border border-[#FECACA] dark:border-[#7F1D1D]'
                   }`}
                 >
-                  {isMealProvided ? 'Available ✓' : 'Not Available'}
+                  {isMealProvided ? 'Food Available ✓' : 'Food Not Available'}
                 </span>
               </div>
               <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block truncate mt-0.5 font-medium">
                 {isMealProvided
                   ? 'Meal active — washing duty in effect'
-                  : 'Meal inactive — no washing duty'}
+                  : 'Food not available / not cooked — duty inactive'}
               </span>
             </div>
 
             <button
               type="button"
-              onClick={() => onToggleMealProvided(selectedMeal, !isMealProvided)}
+              onClick={() => handleToggleSessionMeal(!isMealProvided)}
               className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all active-scale whitespace-nowrap shadow-2xs shrink-0 cursor-pointer ${
                 isMealProvided
                   ? 'bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] hover:bg-[#F2F1ED] dark:hover:bg-[#202736]'
                   : 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white hover:opacity-95 shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
               }`}
-              title={isMealProvided ? 'Click to mark not available' : 'Click to mark available'}
+              title={isMealProvided ? 'Click to mark Food Not Available' : 'Click to mark Food Available'}
             >
-              {isMealProvided ? 'Set Not Available' : 'Mark Available ✓'}
+              {isMealProvided ? 'Set Food Not Available' : 'Mark Food Available ✓'}
             </button>
           </div>
 
@@ -489,7 +483,7 @@ export function TodayScreen({
                 {selectedMeal === 'lunch' ? 'Lunch' : 'Dinner'} is Not Available
               </h3>
               <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] max-w-xs mx-auto">
-                Tap <strong>"Mark Available"</strong> in session settings to activate duty and view the assigned washer.
+                Tap <strong>"Mark Food Available"</strong> in session settings to activate duty and view the assigned washer.
               </p>
             </div>
           ) : currentEaters.length === 0 ? (

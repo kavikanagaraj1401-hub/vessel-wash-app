@@ -96,13 +96,13 @@ export function TopAppBar({
 
   return (
     <>
-      {/* Static Non-Scrolling Header Bar */}
-      <header className="flex-shrink-0 z-40 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0] dark:border-[#2A364B] pt-safe shadow-2xs transition-colors duration-200">
+      {/* Static Non-Scrolling Sticky Header Bar */}
+      <header className="sticky top-0 z-40 flex-shrink-0 bg-white dark:bg-[#171F2C] border-b border-[#DDD9D0] dark:border-[#2A364B] pt-safe shadow-2xs transition-colors duration-200">
         {/* Tier 1: App Title & Action Icons (Members, Theme Toggle & Burger Menu) */}
         <div className="flex items-center justify-between px-4 h-14 gap-3">
           {/* App Brand & Logged-in Member Identity */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-[#ECBD56] flex items-center justify-center text-[#111216] shadow-2xs flex-shrink-0 font-extrabold text-xs">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#EA580C] to-[#F59E0B] flex items-center justify-center text-white shadow-2xs flex-shrink-0 font-extrabold text-xs">
               {resolvedCode || 'VW'}
             </div>
             <div className="min-w-0">
@@ -111,7 +111,7 @@ export function TopAppBar({
                   {resolvedName}
                 </h1>
                 {resolvedCode && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] text-[10px] font-extrabold border border-[#ECBD56]/40 shadow-2xs flex-shrink-0">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1D15] text-[#C2410C] dark:text-[#FDBA74] text-[10px] font-extrabold border border-[#F97316]/30 shadow-2xs flex-shrink-0">
                     {resolvedCode}
                   </span>
                 )}
@@ -149,7 +149,7 @@ export function TopAppBar({
               className="w-9 h-9 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] flex items-center justify-center border border-[#DDD9D0] dark:border-[#2A364B] active-scale transition-all cursor-pointer"
             >
               {isDark ? (
-                <Sun className="w-4 h-4 text-[#ECBD56]" strokeWidth={2.2} />
+                <Sun className="w-4 h-4 text-[#F59E0B]" strokeWidth={2.2} />
               ) : (
                 <Moon className="w-4 h-4 text-[#111216]" strokeWidth={2.2} />
               )}
@@ -163,7 +163,7 @@ export function TopAppBar({
               title={`Logged in as ${resolvedName} (${resolvedCode}) - ${userEmail || 'Active session'}`}
               className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs select-none active-scale transition-all cursor-pointer ${
                 isAdmin
-                  ? 'admin-gradient text-white border border-[#ECBD56] ring-2 ring-[#ECBD56]/40 shadow-xs'
+                  ? 'admin-gradient text-white border border-[#F59E0B] ring-2 ring-[#F97316]/40 shadow-xs'
                   : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
               }`}
             >
@@ -188,13 +188,13 @@ export function TopAppBar({
         {/* Tier 2: Static Dedicated Date & Time Placement Bar */}
         <div className="flex items-center justify-between px-4 py-2 bg-[#F2F1ED]/80 dark:bg-[#0B0C0E]/80 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
           <div className="flex items-center gap-2 text-[#111216] dark:text-[#F7F6F3] font-semibold truncate">
-            <Calendar className="w-3.5 h-3.5 text-[#ECBD56] flex-shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-[#EA580C] flex-shrink-0" />
             <span className="truncate">{currentDateStr}</span>
           </div>
 
           {istTime && (
             <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] font-bold text-[10px] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs flex-shrink-0">
-              <Clock className="w-2.5 h-2.5 text-[#ECBD56]" />
+              <Clock className="w-2.5 h-2.5 text-[#F59E0B]" />
               <span>{istTime}</span>
             </div>
           )}
@@ -212,12 +212,12 @@ export function TopAppBar({
           {/* Admin Role Status Card */}
           <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
             isAdmin
-              ? 'admin-gradient text-white border-[#ECBD56]/60 shadow-xs'
+              ? 'admin-gradient text-white border-[#F97316]/60 shadow-xs'
               : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] border-[#DDD9D0] dark:border-[#2A364B]'
           }`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isAdmin ? 'bg-[#ECBD56] text-[#111216] font-bold' : 'bg-[#DDD9D0] dark:bg-[#2A364B] text-[#4E525D] dark:text-[#9BA5B7]'
+                isAdmin ? 'bg-gradient-to-r from-[#EA580C] to-[#F59E0B] text-white font-bold' : 'bg-[#DDD9D0] dark:bg-[#2A364B] text-[#4E525D] dark:text-[#9BA5B7]'
               }`}>
                 {isAdmin ? <ShieldCheck className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
               </div>
@@ -249,7 +249,7 @@ export function TopAppBar({
                   setPinError('');
                   setPinInput('');
                 }}
-                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] flex-shrink-0 shadow-2xs active-scale cursor-pointer"
+                className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-gradient-to-r from-[#EA580C] to-[#F59E0B] text-white hover:opacity-95 flex-shrink-0 shadow-2xs active-scale cursor-pointer"
               >
                 Unlock Admin
               </button>
@@ -282,7 +282,7 @@ export function TopAppBar({
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
                           isPrimary || isThisAdmin
-                            ? 'admin-gradient text-white border border-[#ECBD56]/40 shadow-2xs'
+                            ? 'admin-gradient text-white border border-[#F97316]/40 shadow-2xs'
                             : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7]'
                         }`}
                       >
@@ -302,11 +302,11 @@ export function TopAppBar({
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {isPrimary ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/60">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#F97316]/60">
                           👑 Primary Admin
                         </span>
                       ) : isThisAdmin ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FCF7ED] dark:bg-[#272115] text-[#845D08] dark:text-[#FBE6AB] border border-[#ECBD56]/40">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFF7ED] dark:bg-[#2A1D15] text-[#C2410C] dark:text-[#FDBA74] border border-[#F97316]/30">
                           👑 Admin
                         </span>
                       ) : (
@@ -338,9 +338,9 @@ export function TopAppBar({
         subtitle="Enter the administrator passcode to unlock edit controls."
       >
         <div className="space-y-3 p-1">
-          <div className="p-3 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] border border-[#ECBD56]/40 flex items-start gap-2">
-            <KeyRound className="w-4 h-4 text-[#ECBD56] flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-[#845D08] dark:text-[#FBE6AB] leading-snug">
+          <div className="p-3 rounded-xl bg-[#FFF7ED] dark:bg-[#2A1D15] border border-[#F97316]/30 flex items-start gap-2">
+            <KeyRound className="w-4 h-4 text-[#EA580C] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#C2410C] dark:text-[#FDBA74] leading-snug">
               Administrative permissions allow modifying meal availability, washer requirements, Excel sync, and member additions. Default PIN is <strong>1401</strong>.
             </p>
           </div>
@@ -361,7 +361,7 @@ export function TopAppBar({
                 if (e.key === 'Enter') handleVerifyPin();
               }}
               placeholder="Enter passcode (1401)"
-              className="w-full h-11 px-4 text-sm font-bold tracking-widest text-center bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20"
+              className="w-full h-11 px-4 text-sm font-bold tracking-widest text-center bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-[#EA580C]/20"
               autoFocus
             />
             {pinError && (
@@ -383,7 +383,7 @@ export function TopAppBar({
             <button
               type="button"
               onClick={handleVerifyPin}
-              className="px-4 py-2 text-xs font-bold rounded-xl bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] hover:opacity-90 shadow-xs active-scale cursor-pointer"
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F59E0B] text-white hover:opacity-95 shadow-xs active-scale cursor-pointer"
             >
               Unlock Controls
             </button>
@@ -404,8 +404,8 @@ export function TopAppBar({
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-xs flex-shrink-0 ${
                 isAdmin
-                  ? 'admin-gradient text-white border border-[#ECBD56] ring-2 ring-[#ECBD56]/30'
-                  : 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216]'
+                  ? 'admin-gradient text-white border border-[#F59E0B] ring-2 ring-[#F97316]/30'
+                  : 'bg-gradient-to-r from-[#EA580C] to-[#F59E0B] text-white'
               }`}
             >
               {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
@@ -416,7 +416,7 @@ export function TopAppBar({
                   {userName}
                 </h3>
                 {isAdmin ? (
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 shadow-2xs">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#F97316]/80 shadow-2xs">
                     👑 Admin
                   </span>
                 ) : (
@@ -434,7 +434,7 @@ export function TopAppBar({
           {/* Role Description Card */}
           <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs space-y-1">
             <span className="font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#ECBD56]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#EA580C]" />
               Role &amp; Permissions
             </span>
             <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] leading-snug">
@@ -448,7 +448,7 @@ export function TopAppBar({
           <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-xs text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-[#ECBD56]" />
+                <KeyRound className="w-3.5 h-3.5 text-[#EA580C]" />
                 Account Security
               </span>
               <button
@@ -458,7 +458,7 @@ export function TopAppBar({
                   setPassError('');
                   setPassSuccess('');
                 }}
-                className="text-[11px] font-bold text-[#ECBD56] hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-[#EA580C] dark:text-[#F59E0B] hover:underline cursor-pointer"
               >
                 {changePassOpen ? 'Close' : 'Change Password'}
               </button>
@@ -528,7 +528,7 @@ export function TopAppBar({
                         if (passError) setPassError('');
                       }}
                       placeholder="Enter new password"
-                      className="w-full h-9 px-3 pr-9 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:bg-white dark:focus:bg-[#171F2C] focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+                      className="w-full h-9 px-3 pr-9 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:bg-white dark:focus:bg-[#171F2C] focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]"
                     />
                     <button
                       type="button"
@@ -556,7 +556,7 @@ export function TopAppBar({
                       if (passError) setPassError('');
                     }}
                     placeholder="Re-enter new password"
-                    className="w-full h-9 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:bg-white dark:focus:bg-[#171F2C] focus:border-[#ECBD56] focus:ring-1 focus:ring-[#ECBD56]"
+                    className="w-full h-9 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] focus:outline-none focus:bg-white dark:focus:bg-[#171F2C] focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]"
                   />
                 </div>
 
@@ -564,7 +564,7 @@ export function TopAppBar({
                   <button
                     type="submit"
                     disabled={passLoading}
-                    className="flex-1 h-9 rounded-xl bg-[#111216] dark:bg-[#ECBD56] hover:bg-black dark:hover:bg-[#DEAA3E] text-white dark:text-[#111216] text-xs font-bold transition-all flex items-center justify-center gap-1.5 active-scale cursor-pointer disabled:opacity-60"
+                    className="flex-1 h-9 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F59E0B] hover:opacity-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 active-scale cursor-pointer disabled:opacity-60"
                   >
                     {passLoading ? (
                       <>
