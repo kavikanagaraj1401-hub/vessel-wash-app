@@ -67,34 +67,32 @@ function HistoryScreenContent({
     async function loadWashHistory() {
       setIsLoadingHistory(true);
       try {
-        // Query washer_activity directly from the very beginning
-        const { data: activityRows, error: activityErr } = await supabase
-          .from('washer_activity')
-          .select('*')
-          .order('date', { ascending: false });
+        // Fetch working tables in parallel for fast History screen loading
+        const [activityRes, attRes, settingsRes] = await Promise.allSettled([
+          supabase.from('washer_activity').select('*').order('date', { ascending: false }),
+          supabase.from('attendance_history').select('*').order('date', { ascending: false }),
+          supabase
+            .from('application_settings')
+            .select('setting_key, setting_value')
+            .in('setting_key', ['attendance_logs', 'days_config']),
+        ]);
 
-        if (activityErr) {
-          console.error('HistoryScreen: Failed to fetch washer_activity directly:', activityErr.message || activityErr);
+        const activityRows = activityRes.status === 'fulfilled' && !activityRes.value.error
+          ? activityRes.value.data
+          : null;
+        if (activityRes.status === 'rejected' || activityRes.value?.error) {
+          console.error('HistoryScreen: Failed to fetch washer_activity directly:', activityRes.reason || activityRes.value?.error);
         }
 
-        // Also query attendance_history if needed
-        const { data: attRows, error: attErr } = await supabase
-          .from('attendance_history')
-          .select('*')
-          .order('date', { ascending: false });
-
-        if (attErr) {
-          console.error('HistoryScreen: Failed to fetch attendance_history:', attErr.message || attErr);
+        if (attRes.status === 'rejected' || attRes.value?.error) {
+          console.error('HistoryScreen: Failed to fetch attendance_history:', attRes.reason || attRes.value?.error);
         }
 
-        // Also query application_settings ('attendance_logs' and 'days_config')
-        const { data: settingsRows, error: settingsErr } = await supabase
-          .from('application_settings')
-          .select('setting_key, setting_value')
-          .in('setting_key', ['attendance_logs', 'days_config']);
-
-        if (settingsErr) {
-          console.error('HistoryScreen: Failed to fetch application_settings:', settingsErr.message || settingsErr);
+        const settingsRows = settingsRes.status === 'fulfilled' && !settingsRes.value.error
+          ? settingsRes.value.data
+          : null;
+        if (settingsRes.status === 'rejected' || settingsRes.value?.error) {
+          console.error('HistoryScreen: Failed to fetch application_settings:', settingsRes.reason || settingsRes.value?.error);
         }
 
         const logMap = new Map();
@@ -664,8 +662,8 @@ function HistoryScreenContent({
         if (!l || l.date > targetTodayStr || l.date === '2026-11-24') return;
         if (
           l.memberId === member.id ||
-          (l.memberName && l.memberName.toLowerCase().trim() === memberNameStr) ||
-          (l.code && l.code.toUpperCase().trim() === memberCodeStr)
+          (typeof l.memberName === 'string' && l.memberName.toLowerCase().trim() === memberNameStr) ||
+          (typeof l.code === 'string' && l.code.toUpperCase().trim() === memberCodeStr)
         ) {
           const key = `${l.date}-${l.meal}-${l.slotIndex || 1}`;
           if (!memberLogMap.has(key)) {
@@ -1429,6 +1427,11 @@ class HistoryErrorBoundary extends React.Component {
             <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-1.5 leading-relaxed">
               We encountered an unexpected issue while loading the historical records. Your data is safe.
             </p>
+            {this.state.error?.message && (
+              <p className="text-[11px] font-mono text-amber-700 dark:text-amber-300 mt-1.5 break-words">
+                {this.state.error.message}
+              </p>
+            )}
             <div className="mt-3 flex items-center gap-2">
               <button
                 type="button"
