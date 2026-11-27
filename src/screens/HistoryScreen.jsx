@@ -27,6 +27,161 @@ import { supabase } from '../services/supabaseClient';
 import { supabaseService } from '../services/supabaseService';
 import { useTheme } from '../context/ThemeContext';
 
+/**
+ * Universal safe string conversion.
+ * Defensively extracts text from strings, numbers, booleans, and objects with fallback.
+ */
+function safeString(val, fallback = '') {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') return val.trim();
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (typeof val === 'object') {
+    return safeString(val.name || val.full_name || val.id || val.title || '', fallback);
+  }
+  return fallback;
+}
+
+/**
+ * Universal safe date extraction strictly in YYYY-MM-DD format.
+ */
+function safeDateStr(rawDate, fallback = '') {
+  if (!rawDate) return fallback;
+  const str = safeString(rawDate);
+  if (!str) return fallback;
+  const match = str.match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : fallback;
+}
+
+/**
+ * Defensive normalizer for rows returned from washer_activity or attendance_history.
+ * Guarantees that missing/deleted fields never throw runtime TypeErrors.
+ */
+function normalizeActivityRow(row, memberMap, members = []) {
+  if (!row || typeof row !== 'object') return [];
+
+  const date = safeDateStr(row.date || row.marked_date || row.created_at);
+  if (!date || date === '2026-11-24') return [];
+
+  const rawMeal = safeString(row.meal_type || row.meal || 'dinner').toLowerCase();
+  const meal = rawMeal === 'lunch' ? 'lunch' : 'dinner';
+
+  // Defensive extraction of assigned_washer_ids
+  let rawIds = [];
+  if (Array.isArray(row.assigned_washer_ids)) {
+    rawIds = row.assigned_washer_ids;
+  } else if (typeof row.assigned_washer_ids === 'string') {
+    try {
+      const parsed = JSON.parse(row.assigned_washer_ids);
+      if (Array.isArray(parsed)) rawIds = parsed;
+      else if (parsed) rawIds = [parsed];
+    } catch {
+      rawIds = row.assigned_washer_ids.includes(',')
+        ? row.assigned_washer_ids.split(',').map(s => s.trim())
+        : [row.assigned_washer_ids.trim()];
+    }
+  } else if (row.assigned_member_id || row.member_id) {
+    rawIds = [row.assigned_member_id || row.member_id];
+  }
+
+  // Defensive extraction of assigned_washer_names
+  let rawNames = [];
+  if (Array.isArray(row.assigned_washer_names)) {
+    rawNames = row.assigned_washer_names;
+  } else if (typeof row.assigned_washer_names === 'string') {
+    try {
+      const parsed = JSON.parse(row.assigned_washer_names);
+      if (Array.isArray(parsed)) rawNames = parsed;
+      else if (parsed) rawNames = [parsed];
+    } catch {
+      rawNames = row.assigned_washer_names.includes(',')
+        ? row.assigned_washer_names.split(',').map(s => s.trim())
+        : [row.assigned_washer_names.trim()];
+    }
+  }
+
+  const washerIds = rawIds.map(id => safeString(id)).filter(Boolean);
+  const washerNames = rawNames.map(n => safeString(n));
+
+  const entriesCount = Math.max(washerIds.length, 1);
+  const results = [];
+
+  for (let idx = 0; idx < entriesCount; idx++) {
+    const rawId = washerIds[idx] || safeString(row.assigned_member_id || row.member_id || 'unknown');
+    const matchedMember = memberMap?.get?.(rawId) || (Array.isArray(members) ? members : []).find(
+      m => m && (safeString(m.id).toLowerCase() === rawId.toLowerCase() || safeString(m.name).toLowerCase() === rawId.toLowerCase())
+    );
+
+    const name = matchedMember?.name
+      ? safeString(matchedMember.name)
+      : (washerNames[idx] || (rawId === 'm5' ? 'Suryakumar' : (rawId === 'm4' ? 'Ponneelan' : 'Washer')));
+    const code = matchedMember?.code
+      ? safeString(matchedMember.code)
+      : (rawId === 'm5' ? 'M5' : (rawId === 'm4' ? 'M4' : 'M'));
+
+    const key = `act-${date}-${meal}-${rawId}-${idx + 1}`;
+    results.push({
+      id: safeString(row.id) || key,
+      slotId: `${date}-${meal}-${idx + 1}`,
+      date,
+      meal,
+      slotIndex: idx + 1,
+      memberId: rawId,
+      memberName: name,
+      code,
+      status: safeString(row.status || 'present').toLowerCase() || 'present',
+      markedAt: safeString(row.created_at || row.updated_at || `${date}T21:30:00.000Z`),
+      markedBy: safeString(row.marked_by || row.markedBy || 'Washer Activity Sync'),
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Defensive normalizer for attendance log items (from application_settings or props).
+ */
+function normalizeLogItem(l, memberMap, members = []) {
+  if (!l || typeof l !== 'object') return null;
+
+  const date = safeDateStr(l.date || l.marked_date || l.created_at);
+  if (!date || date === '2026-11-24') return null;
+
+  const rawMeal = safeString(l.meal || l.meal_type || 'lunch').toLowerCase();
+  const meal = rawMeal === 'dinner' ? 'dinner' : 'lunch';
+  const slotIndex = Number(l.slotIndex || l.slot_index || 1) || 1;
+  const rawId = safeString(l.memberId || l.member_id || 'unknown');
+
+  const matchedMember = memberMap?.get?.(rawId) || (Array.isArray(members) ? members : []).find(
+    m => m && (safeString(m.id).toLowerCase() === rawId.toLowerCase() || safeString(m.name).toLowerCase() === rawId.toLowerCase())
+  );
+
+  const memberName = matchedMember?.name
+    ? safeString(matchedMember.name)
+    : safeString(l.memberName || l.name || (rawId === 'm5' ? 'Suryakumar' : (rawId === 'm4' ? 'Ponneelan' : 'Washer')));
+
+  const code = matchedMember?.code
+    ? safeString(matchedMember.code)
+    : safeString(l.code || (rawId === 'm5' ? 'M5' : (rawId === 'm4' ? 'M4' : 'M')));
+
+  const id = safeString(l.id) || `log-${date}-${meal}-${slotIndex}-${rawId}`;
+  const slotId = safeString(l.slotId) || `${date}-${meal}-${slotIndex}`;
+
+  return {
+    id,
+    slotId,
+    date,
+    meal,
+    slotIndex,
+    memberId: rawId,
+    memberName,
+    code,
+    status: safeString(l.status || 'present').toLowerCase() || 'present',
+    markedAt: safeString(l.markedAt || l.marked_at || l.created_at || `${date}T12:00:00.000Z`),
+    markedBy: safeString(l.markedBy || l.marked_by || 'System'),
+    remarks: safeString(l.remarks || ''),
+  };
+}
+
 function HistoryScreenContent({
   attendanceLogs = [],
   members = [],
@@ -46,18 +201,50 @@ function HistoryScreenContent({
   const [remoteDaysConfig, setRemoteDaysConfig] = useState(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Safe members list
+  const memberList = useMemo(() => {
+    return Array.isArray(members) ? members.filter(Boolean) : [];
+  }, [members]);
+
   // Map for quick member lookups with null-safe handling
-  const memberMap = useMemo(
-    () => new Map((members || []).filter(Boolean).map(m => [m.id, m])),
-    [members]
-  );
+  const memberMap = useMemo(() => {
+    const map = new Map();
+    memberList.forEach(m => {
+      if (m && m.id) {
+        map.set(safeString(m.id), m);
+      }
+    });
+    return map;
+  }, [memberList]);
 
   // Safe helper to resolve member or provide robust fallback for deleted / unknown member IDs
-  const getSafeMember = (id, fallbackName = 'Washer') => {
-    if (!id) return { id: 'unknown', name: fallbackName, code: 'M' };
-    const found = memberMap.get(id);
+  const getSafeMember = (idOrObj, fallbackName = 'Washer') => {
+    if (!idOrObj) return { id: 'unknown', name: fallbackName, code: 'M' };
+    const cleanId = typeof idOrObj === 'object' && idOrObj !== null
+      ? safeString(idOrObj.id || idOrObj.memberId || idOrObj.member_id || 'unknown')
+      : safeString(idOrObj);
+
+    if (!cleanId || cleanId === 'unknown') {
+      const objName = (typeof idOrObj === 'object' && idOrObj?.name) ? safeString(idOrObj.name) : fallbackName;
+      const objCode = (typeof idOrObj === 'object' && idOrObj?.code) ? safeString(idOrObj.code) : 'M';
+      return { id: 'unknown', name: objName, code: objCode };
+    }
+
+    const found = memberMap.get(cleanId);
     if (found) return found;
-    return { id, name: fallbackName, code: 'M' };
+
+    // Case-insensitive lookup
+    const lowerId = cleanId.toLowerCase();
+    for (const [mId, m] of memberMap.entries()) {
+      if (mId.toLowerCase() === lowerId) return m;
+      if (m?.name && safeString(m.name).toLowerCase() === lowerId) return m;
+    }
+
+    return {
+      id: cleanId,
+      name: (typeof idOrObj === 'object' && idOrObj?.name) ? safeString(idOrObj.name) : fallbackName,
+      code: (typeof idOrObj === 'object' && idOrObj?.code) ? safeString(idOrObj.code) : 'M',
+    };
   };
 
   // 1. QUERY washer_activity DIRECTLY FROM THE VERY BEGINNING
@@ -84,6 +271,9 @@ function HistoryScreenContent({
           console.error('HistoryScreen: Failed to fetch washer_activity directly:', activityRes.reason || activityRes.value?.error);
         }
 
+        const attRows = attRes.status === 'fulfilled' && !attRes.value.error
+          ? attRes.value.data
+          : null;
         if (attRes.status === 'rejected' || attRes.value?.error) {
           console.error('HistoryScreen: Failed to fetch attendance_history:', attRes.reason || attRes.value?.error);
         }
@@ -101,12 +291,15 @@ function HistoryScreenContent({
         if (Array.isArray(settingsRows)) {
           settingsRows.forEach(row => {
             const key = row?.setting_key || row?.key;
-            const val = row?.setting_value !== undefined ? row.setting_value : row?.value;
+            let val = row?.setting_value !== undefined ? row.setting_value : row?.value;
+            if (typeof val === 'string') {
+              try { val = JSON.parse(val); } catch { val = []; }
+            }
             if (key === 'attendance_logs' && Array.isArray(val)) {
               val.forEach(l => {
-                if (l && l.date) {
-                  const mapKey = l.id || `${l.date}-${l.meal || 'lunch'}-${l.slotIndex || 1}-${l.memberId || 'm'}`;
-                  logMap.set(mapKey, l);
+                const normalized = normalizeLogItem(l, memberMap, memberList);
+                if (normalized && normalized.date) {
+                  logMap.set(normalized.id, normalized);
                 }
               });
             } else if (key === 'days_config' && Array.isArray(val)) {
@@ -115,40 +308,42 @@ function HistoryScreenContent({
           });
         }
 
-        // 2. Join/map member names safely in JavaScript using members state/table fallback
+        // 2. Normalize and join washer_activity records
         if (Array.isArray(activityRows)) {
           activityRows.forEach(row => {
-            if (!row || !row.date) return;
-            const meal = row.meal_type || row.meal || 'dinner';
-            const washerIds = Array.isArray(row.assigned_washer_ids) && row.assigned_washer_ids.length > 0
-              ? row.assigned_washer_ids
-              : [row.assigned_member_id || row.member_id].filter(Boolean);
-
-            const washerNames = Array.isArray(row.assigned_washer_names) ? row.assigned_washer_names : [];
-
-            washerIds.forEach((wId, idx) => {
-              // Join/map member names safely in JavaScript using the members state/table fallback so deleted or modified member IDs never throw
-              const matchedMember = memberMap.get(wId) || (members || []).find(m => m?.id === wId || m?.name?.toLowerCase() === String(wId).toLowerCase());
-              const washerName = matchedMember?.name || washerNames[idx] || (wId === 'm5' ? 'Suryakumar' : 'Washer');
-              const washerCode = matchedMember?.code || (wId === 'm5' ? 'M5' : 'M');
-
-              const key = `act-${row.date}-${meal}-${wId}`;
-              if (!logMap.has(key)) {
-                logMap.set(key, {
-                  id: row.id || key,
-                  slotId: `${row.date}-${meal}-${idx + 1}`,
-                  date: row.date,
-                  meal,
-                  slotIndex: idx + 1,
-                  memberId: wId,
-                  memberName: washerName,
-                  code: washerCode,
-                  status: 'present',
-                  markedAt: row.created_at || row.updated_at || `${row.date}T21:30:00.000Z`,
-                  markedBy: 'Washer Activity Sync',
-                });
+            const entries = normalizeActivityRow(row, memberMap, memberList);
+            entries.forEach(entry => {
+              if (entry && entry.date && !logMap.has(entry.id)) {
+                logMap.set(entry.id, entry);
               }
             });
+          });
+        }
+
+        // 3. Normalize and join attendance_history records
+        if (Array.isArray(attRows)) {
+          attRows.forEach(row => {
+            const safeDate = safeDateStr(row?.date);
+            if (!safeDate || safeDate === '2026-11-24') return;
+            const meal = (safeString(row?.meal || row?.meal_type || 'dinner').toLowerCase() === 'lunch') ? 'lunch' : 'dinner';
+            const mId = safeString(row?.member_id || row?.assigned_member_id || 'unknown');
+            const key = `atthist-${safeDate}-${meal}-${mId}`;
+            if (!logMap.has(key)) {
+              const safeM = getSafeMember(mId);
+              logMap.set(key, {
+                id: key,
+                slotId: `${safeDate}-${meal}-1`,
+                date: safeDate,
+                meal,
+                slotIndex: 1,
+                memberId: mId,
+                memberName: safeM.name,
+                code: safeM.code,
+                status: safeString(row?.status || 'present').toLowerCase() || 'present',
+                markedAt: safeString(row?.created_at || row?.updated_at || `${safeDate}T21:30:00.000Z`),
+                markedBy: 'Attendance History Sync',
+              });
+            }
           });
         }
 
@@ -166,7 +361,7 @@ function HistoryScreenContent({
 
     loadWashHistory();
     return () => { isMounted = false; };
-  }, [members, memberMap]);
+  }, [memberList, memberMap]);
 
   // Combined logs from props and remote fetch (deduplicated by unique ID / date-meal-slot-member key)
   const effectiveAttendanceLogs = useMemo(() => {
@@ -205,39 +400,57 @@ function HistoryScreenContent({
     ];
 
     baselineHistorical.forEach(l => {
-      map.set(l.id, l);
+      const norm = normalizeLogItem(l, memberMap, memberList);
+      if (norm) map.set(norm.id, norm);
     });
 
     // 1. Initial / prop logs
     const propLogs = Array.isArray(attendanceLogs) ? attendanceLogs : [];
     propLogs.forEach(l => {
-      if (l && l.date) {
-        const key = l.id || `${l.date}-${l.meal || 'lunch'}-${l.slotIndex || 1}-${l.memberId || 'm'}`;
-        map.set(key, l);
+      const norm = normalizeLogItem(l, memberMap, memberList);
+      if (norm && norm.date) {
+        const key = norm.id || `${norm.date}-${norm.meal}-${norm.slotIndex}-${norm.memberId}`;
+        map.set(key, norm);
       }
     });
 
     // 2. Remote logs fetched directly from washer_activity and application_settings
     if (Array.isArray(remoteLogs)) {
       remoteLogs.forEach(l => {
-        if (l && l.date) {
-          const key = l.id || `${l.date}-${l.meal || 'lunch'}-${l.slotIndex || 1}-${l.memberId || 'm'}`;
-          map.set(key, l);
+        const norm = normalizeLogItem(l, memberMap, memberList);
+        if (norm && norm.date) {
+          const key = norm.id || `${norm.date}-${norm.meal}-${norm.slotIndex}-${norm.memberId}`;
+          map.set(key, norm);
         }
       });
     }
     return Array.from(map.values());
-  }, [attendanceLogs, remoteLogs, members]);
+  }, [attendanceLogs, remoteLogs, memberList, memberMap]);
 
   // Combined daysConfig
   const effectiveDaysConfig = useMemo(() => {
-    if (Array.isArray(remoteDaysConfig) && remoteDaysConfig.length > 0) {
-      const map = new Map();
-      (Array.isArray(daysConfig) ? daysConfig : []).forEach(d => { if (d && d.date) map.set(d.date, d); });
-      remoteDaysConfig.forEach(d => { if (d && d.date) map.set(d.date, { ...map.get(d.date), ...d }); });
-      return Array.from(map.values());
-    }
-    return Array.isArray(daysConfig) ? daysConfig : [];
+    const rawConfigs = [];
+    if (Array.isArray(daysConfig)) rawConfigs.push(...daysConfig);
+    if (Array.isArray(remoteDaysConfig)) rawConfigs.push(...remoteDaysConfig);
+
+    const map = new Map();
+    rawConfigs.forEach(d => {
+      if (!d || typeof d !== 'object') return;
+      const date = safeDateStr(d.date);
+      if (!date) return;
+      const existing = map.get(date) || {};
+      map.set(date, {
+        ...existing,
+        ...d,
+        date,
+        lunchProvided: d.lunchProvided !== undefined ? Boolean(d.lunchProvided) : existing.lunchProvided,
+        dinnerProvided: d.dinnerProvided !== undefined ? Boolean(d.dinnerProvided) : existing.dinnerProvided,
+        lunchEaters: Array.isArray(d.lunchEaters) ? d.lunchEaters.filter(Boolean).map(id => safeString(id)) : (existing.lunchEaters || []),
+        dinnerEaters: Array.isArray(d.dinnerEaters) ? d.dinnerEaters.filter(Boolean).map(id => safeString(id)) : (existing.dinnerEaters || []),
+      });
+    });
+
+    return Array.from(map.values());
   }, [daysConfig, remoteDaysConfig]);
 
   // Default to 'logs' (Timeline Logs) as requested
@@ -245,13 +458,13 @@ function HistoryScreenContent({
   const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'lunch' | 'dinner' | 'unmarked'
   const [copied, setCopied] = useState(false);
   const [expandedMembers, setExpandedMembers] = useState(
-    () => new Set((members || []).map(m => m?.id).filter(Boolean))
+    () => new Set(memberList.map(m => safeString(m?.id)).filter(Boolean))
   );
 
   // Valid Attendance Logs: verified completed washes recorded up to the current date
   const validAttendanceLogs = useMemo(() => {
     const safeAttendanceLogs = Array.isArray(effectiveAttendanceLogs) ? effectiveAttendanceLogs : [];
-    const targetTodayStr = todayDateStr || getTodayDateStr();
+    const targetTodayStr = safeDateStr(todayDateStr || getTodayDateStr());
 
     return safeAttendanceLogs.filter(log => {
       if (!log || log.status !== 'present' || !log.date) return false;
@@ -266,71 +479,92 @@ function HistoryScreenContent({
   const allTimelineDates = useMemo(() => {
     const safeDaysConfig = Array.isArray(effectiveDaysConfig) ? effectiveDaysConfig : [];
     const safeComputedDays = Array.isArray(computedDays) ? computedDays : [];
-    const computedMap = new Map(safeComputedDays.filter(Boolean).map(d => [d.date, d]));
-    const daysMap = new Map(safeDaysConfig.filter(Boolean).map(d => [d.date, d]));
-    const targetTodayStr = todayDateStr || getTodayDateStr();
+    const computedMap = new Map();
+    safeComputedDays.forEach(d => {
+      const dStr = safeDateStr(d?.date);
+      if (dStr) computedMap.set(dStr, d);
+    });
+    const daysMap = new Map();
+    safeDaysConfig.forEach(d => {
+      const dStr = safeDateStr(d?.date);
+      if (dStr) daysMap.set(dStr, d);
+    });
+    const targetTodayStr = safeDateStr(todayDateStr || getTodayDateStr());
     const startDateStr = '2026-09-01';
 
     // 1. Collect all active dates up to targetTodayStr
     const allDatesSet = new Set();
 
     // Always include today
-    allDatesSet.add(targetTodayStr);
+    if (targetTodayStr) {
+      allDatesSet.add(targetTodayStr);
+    }
 
     // Include all dates in daysConfig or attendanceLogs where food was provided or verified wash occurred
     safeDaysConfig.forEach(d => {
-      if (d && d.date && d.date <= targetTodayStr && d.date >= startDateStr) {
+      const dDate = safeDateStr(d?.date);
+      if (dDate && dDate <= targetTodayStr && dDate >= startDateStr) {
         if (
           d.lunchProvided ||
           d.dinnerProvided ||
           (Array.isArray(d.lunchEaters) && d.lunchEaters.length > 0) ||
           (Array.isArray(d.dinnerEaters) && d.dinnerEaters.length > 0)
         ) {
-          allDatesSet.add(d.date);
+          allDatesSet.add(dDate);
         }
       }
     });
 
     (effectiveAttendanceLogs || []).forEach(l => {
-      if (l && l.date && l.date <= targetTodayStr && l.date >= startDateStr) {
-        allDatesSet.add(l.date);
+      const lDate = safeDateStr(l?.date);
+      if (lDate && lDate <= targetTodayStr && lDate >= startDateStr) {
+        allDatesSet.add(lDate);
       }
     });
 
     // Include continuous active schedule dates from November 18 resumption up to today
     const resumptionStart = '2026-11-18';
-    let curr = new Date(`${resumptionStart}T00:00:00`);
-    const end = new Date(`${targetTodayStr}T00:00:00`);
-    while (curr <= end) {
-      const y = curr.getFullYear();
-      const m = String(curr.getMonth() + 1).padStart(2, '0');
-      const d = String(curr.getDate()).padStart(2, '0');
-      allDatesSet.add(`${y}-${m}-${d}`);
-      curr.setDate(curr.getDate() + 1);
+    try {
+      let curr = new Date(`${resumptionStart}T00:00:00`);
+      const end = new Date(`${targetTodayStr}T00:00:00`);
+      if (!isNaN(curr.getTime()) && !isNaN(end.getTime())) {
+        while (curr <= end) {
+          const y = curr.getFullYear();
+          const m = String(curr.getMonth() + 1).padStart(2, '0');
+          const d = String(curr.getDate()).padStart(2, '0');
+          allDatesSet.add(`${y}-${m}-${d}`);
+          curr.setDate(curr.getDate() + 1);
+        }
+      }
+    } catch {
+      // graceful fallback
     }
 
     const dates = Array.from(allDatesSet).map(dateKey => {
-      const day = daysMap.get(dateKey) || {
-        date: dateKey,
-        dayNumber: parseInt(String(dateKey || '').split('-')[2] || '1', 10),
+      const safeKey = safeDateStr(dateKey);
+      if (!safeKey) return null;
+
+      const day = daysMap.get(safeKey) || {
+        date: safeKey,
+        dayNumber: parseInt(safeKey.split('-')[2] || '1', 10),
         lunchProvided: false,
         dinnerProvided: false,
         lunchEaters: [],
         dinnerEaters: [],
       };
-      const compDay = computedMap.get(dateKey) || day;
-      const isToday = (dateKey === targetTodayStr);
+      const compDay = computedMap.get(safeKey) || day;
+      const isToday = (safeKey === targetTodayStr);
 
-      const lunchEatersList = Array.isArray(day?.lunchEaters) ? day.lunchEaters : [];
-      const dinnerEatersList = Array.isArray(day?.dinnerEaters) ? day.dinnerEaters : [];
+      const lunchEatersList = Array.isArray(day?.lunchEaters) ? day.lunchEaters.map(id => safeString(id)).filter(Boolean) : [];
+      const dinnerEatersList = Array.isArray(day?.dinnerEaters) ? day.dinnerEaters.map(id => safeString(id)).filter(Boolean) : [];
 
       // Safe attendance logs for this date
       const safeLogs = Array.isArray(effectiveAttendanceLogs) ? effectiveAttendanceLogs : [];
       const verifiedLunchLogs = safeLogs.filter(
-        l => l && l.date === dateKey && l.meal === 'lunch' && l.status === 'present'
+        l => l && safeDateStr(l.date) === safeKey && l.meal === 'lunch' && l.status === 'present'
       );
       const verifiedDinnerLogs = safeLogs.filter(
-        l => l && l.date === dateKey && l.meal === 'dinner' && l.status === 'present'
+        l => l && safeDateStr(l.date) === safeKey && l.meal === 'dinner' && l.status === 'present'
       );
 
       // Extract present members (eaters who ate) with null-safe lookup
@@ -343,7 +577,6 @@ function HistoryScreenContent({
         .filter(Boolean);
 
       // Meal Availability / Confirmation:
-      // Food is confirmed if verified wash log exists, or if lunchProvided / dinnerProvided is true in config
       let isLunchFoodConfirmed = Boolean(
         verifiedLunchLogs.length > 0 || day.lunchProvided
       );
@@ -360,15 +593,15 @@ function HistoryScreenContent({
         isLunchVerified = true;
         isLunchAvail = true;
         lunchWashers = verifiedLunchLogs.map(l => ({
-          id: l?.memberId || 'washer',
-          logId: l?.id || l?.slotId || `log-${dateKey}-lunch-${Math.random()}`,
-          slotId: l?.slotId || l?.id || `slot-${dateKey}-lunch-1`,
-          name: l?.memberName || getSafeMember(l?.memberId)?.name || 'Washer',
-          slotIndex: l?.slotIndex || 1,
-          code: getSafeMember(l?.memberId)?.code || '',
+          id: safeString(l?.memberId) || 'washer',
+          logId: safeString(l?.id || l?.slotId) || `log-${safeKey}-lunch-1`,
+          slotId: safeString(l?.slotId || l?.id) || `slot-${safeKey}-lunch-1`,
+          name: safeString(l?.memberName) || getSafeMember(l?.memberId)?.name || 'Washer',
+          slotIndex: Number(l?.slotIndex) || 1,
+          code: safeString(l?.code) || getSafeMember(l?.memberId)?.code || '',
           verified: true,
-          markedBy: l?.markedBy,
-          markedAt: l?.markedAt,
+          markedBy: safeString(l?.markedBy),
+          markedAt: safeString(l?.markedAt),
         }));
       } else if (isLunchFoodConfirmed) {
         isLunchAvail = true;
@@ -376,26 +609,36 @@ function HistoryScreenContent({
         let assigned = lunchSlots.filter(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
 
         // Dynamic fallback: compute from queue and attending members or active members
-        if (assigned.length === 0 && Array.isArray(members) && members.length > 0) {
-          const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
+        if (assigned.length === 0 && memberList.length > 0) {
+          const rawQueue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0
+            ? compDay.queueBefore
+            : memberList.map(m => m?.id);
+          const queue = Array.isArray(rawQueue) ? rawQueue.filter(Boolean).map(id => safeString(id)) : [];
           const eligibleEaters = lunchEatersList.length > 0 ? lunchEatersList : queue;
-          const userChosenWashers = Number(day.lunchWashers) === 2 ? 2 : 1;
-          if (userChosenWashers === 2 && eligibleEaters.length >= 2) {
-            const { assigned1, assigned2 } = assignLunchPair(queue, eligibleEaters, members);
-            assigned = [
-              { id: `${dateKey}-lunch-1`, meal: 'lunch', slotIndex: 1, assignedMemberId: assigned1, assignedMemberName: getSafeMember(assigned1)?.name || 'Washer' },
-              { id: `${dateKey}-lunch-2`, meal: 'lunch', slotIndex: 2, assignedMemberId: assigned2, assignedMemberName: getSafeMember(assigned2)?.name || 'Washer' },
-            ].filter(s => s && s.assignedMemberId);
-          } else {
-            const { assignedId } = assignSlot(queue, eligibleEaters, members);
-            if (assignedId) {
-              assigned = [{
-                id: `${dateKey}-lunch-1`,
-                meal: 'lunch',
-                slotIndex: 1,
-                assignedMemberId: assignedId,
-                assignedMemberName: getSafeMember(assignedId)?.name || 'Washer',
-              }];
+          const userChosenWashers = Number(day?.lunchWashers) === 2 ? 2 : 1;
+
+          if (queue.length > 0) {
+            try {
+              if (userChosenWashers === 2 && eligibleEaters.length >= 2) {
+                const { assigned1, assigned2 } = assignLunchPair(queue, eligibleEaters, memberList);
+                assigned = [
+                  { id: `${safeKey}-lunch-1`, meal: 'lunch', slotIndex: 1, assignedMemberId: assigned1, assignedMemberName: getSafeMember(assigned1)?.name || 'Washer' },
+                  { id: `${safeKey}-lunch-2`, meal: 'lunch', slotIndex: 2, assignedMemberId: assigned2, assignedMemberName: getSafeMember(assigned2)?.name || 'Washer' },
+                ].filter(s => s && s.assignedMemberId);
+              } else {
+                const { assignedId } = assignSlot(queue, eligibleEaters, memberList);
+                if (assignedId) {
+                  assigned = [{
+                    id: `${safeKey}-lunch-1`,
+                    meal: 'lunch',
+                    slotIndex: 1,
+                    assignedMemberId: assignedId,
+                    assignedMemberName: getSafeMember(assignedId)?.name || 'Washer',
+                  }];
+                }
+              }
+            } catch (err) {
+              console.warn('HistoryScreen: Lunch slot assignment warning:', err);
             }
           }
         }
@@ -403,11 +646,11 @@ function HistoryScreenContent({
         if (assigned.length > 0) {
           isLunchVerified = !isToday;
           lunchWashers = assigned.map(s => ({
-            id: s.assignedMemberId || 'washer',
-            logId: s.id,
-            slotId: s.id,
-            name: s.assignedMemberName || getSafeMember(s.assignedMemberId)?.name || 'Washer',
-            slotIndex: s.slotIndex || 1,
+            id: safeString(s.assignedMemberId) || 'washer',
+            logId: safeString(s.id),
+            slotId: safeString(s.id),
+            name: safeString(s.assignedMemberName) || getSafeMember(s.assignedMemberId)?.name || 'Washer',
+            slotIndex: Number(s.slotIndex) || 1,
             code: getSafeMember(s.assignedMemberId)?.code || '',
             verified: !isToday,
           }));
@@ -423,15 +666,15 @@ function HistoryScreenContent({
         isDinnerVerified = true;
         isDinnerAvail = true;
         dinnerWashers = verifiedDinnerLogs.map(l => ({
-          id: l?.memberId || 'washer',
-          logId: l?.id || l?.slotId || `log-${dateKey}-dinner-${Math.random()}`,
-          slotId: l?.slotId || l?.id || `slot-${dateKey}-dinner-1`,
-          name: l?.memberName || getSafeMember(l?.memberId)?.name || 'Washer',
-          slotIndex: l?.slotIndex || 1,
-          code: getSafeMember(l?.memberId)?.code || '',
+          id: safeString(l?.memberId) || 'washer',
+          logId: safeString(l?.id || l?.slotId) || `log-${safeKey}-dinner-1`,
+          slotId: safeString(l?.slotId || l?.id) || `slot-${safeKey}-dinner-1`,
+          name: safeString(l?.memberName) || getSafeMember(l?.memberId)?.name || 'Washer',
+          slotIndex: Number(l?.slotIndex) || 1,
+          code: safeString(l?.code) || getSafeMember(l?.memberId)?.code || '',
           verified: true,
-          markedBy: l?.markedBy,
-          markedAt: l?.markedAt,
+          markedBy: safeString(l?.markedBy),
+          markedAt: safeString(l?.markedAt),
         }));
       } else if (isDinnerFoodConfirmed) {
         isDinnerAvail = true;
@@ -439,30 +682,40 @@ function HistoryScreenContent({
         let dinnerSlot = dinnerSlots.find(s => s && s.assignedMemberId && s.assignedMemberName && s.assignedMemberName !== '-');
 
         // Dynamic fallback: compute from queue and attending members or active members
-        if (!dinnerSlot && Array.isArray(members) && members.length > 0) {
-          const queue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0 ? compDay.queueBefore : members.map(m => m.id);
+        if (!dinnerSlot && memberList.length > 0) {
+          const rawQueue = Array.isArray(compDay?.queueBefore) && compDay.queueBefore.length > 0
+            ? compDay.queueBefore
+            : memberList.map(m => m?.id);
+          const queue = Array.isArray(rawQueue) ? rawQueue.filter(Boolean).map(id => safeString(id)) : [];
           const eligibleEaters = dinnerEatersList.length > 0 ? dinnerEatersList : queue;
-          const { assignedId } = assignSlot(queue, eligibleEaters, members);
-          const assignedMem = getSafeMember(assignedId);
-          if (assignedId && assignedMem) {
-            dinnerSlot = {
-              id: `${dateKey}-dinner-1`,
-              meal: 'dinner',
-              slotIndex: 1,
-              assignedMemberId: assignedId,
-              assignedMemberName: assignedMem.name || 'Washer',
-            };
+
+          if (queue.length > 0) {
+            try {
+              const { assignedId } = assignSlot(queue, eligibleEaters, memberList);
+              const assignedMem = getSafeMember(assignedId);
+              if (assignedId && assignedMem) {
+                dinnerSlot = {
+                  id: `${safeKey}-dinner-1`,
+                  meal: 'dinner',
+                  slotIndex: 1,
+                  assignedMemberId: assignedId,
+                  assignedMemberName: assignedMem.name || 'Washer',
+                };
+              }
+            } catch (err) {
+              console.warn('HistoryScreen: Dinner slot assignment warning:', err);
+            }
           }
         }
 
         if (dinnerSlot) {
           isDinnerVerified = !isToday;
           dinnerWashers = [{
-            id: dinnerSlot.assignedMemberId || 'washer',
-            logId: dinnerSlot.id,
-            slotId: dinnerSlot.id,
-            name: dinnerSlot.assignedMemberName || getSafeMember(dinnerSlot.assignedMemberId)?.name || 'Washer',
-            slotIndex: dinnerSlot.slotIndex || 1,
+            id: safeString(dinnerSlot.assignedMemberId) || 'washer',
+            logId: safeString(dinnerSlot.id),
+            slotId: safeString(dinnerSlot.id),
+            name: safeString(dinnerSlot.assignedMemberName) || getSafeMember(dinnerSlot.assignedMemberId)?.name || 'Washer',
+            slotIndex: Number(dinnerSlot.slotIndex) || 1,
             code: getSafeMember(dinnerSlot.assignedMemberId)?.code || '',
             verified: !isToday,
           }];
@@ -470,7 +723,7 @@ function HistoryScreenContent({
       }
 
       // Explicit guarantee for Nov 25, 2026 (Dinner washed by Ponneelan M4)
-      if (dateKey === '2026-11-25' && dinnerWashers.length === 0) {
+      if (safeKey === '2026-11-25' && dinnerWashers.length === 0) {
         const ponneelan = getSafeMember('m4', 'Ponneelan');
         dinnerWashers = [{
           id: 'm4',
@@ -489,7 +742,7 @@ function HistoryScreenContent({
       }
 
       // Explicit guarantee for Nov 26, 2026 (Dinner washed by Suryakumar M5)
-      if (dateKey === '2026-11-26' && dinnerWashers.length === 0) {
+      if (safeKey === '2026-11-26' && dinnerWashers.length === 0) {
         const surya = getSafeMember('m5', 'Suryakumar');
         dinnerWashers = [{
           id: 'm5',
@@ -508,7 +761,7 @@ function HistoryScreenContent({
       }
 
       // Ensure Nov 24, 2026 is NOT assigned to anyone (pause / skipped day)
-      if (dateKey === '2026-11-24') {
+      if (safeKey === '2026-11-24') {
         lunchWashers = [];
         dinnerWashers = [];
         isLunchVerified = false;
@@ -522,31 +775,29 @@ function HistoryScreenContent({
       const isPending = !hasAnyConfirmedMeal || (isLunchAvail && !isLunchVerified) || (isDinnerAvail && !isDinnerVerified);
 
       // Safe date components parsing
-      const dateParts = String(dateKey || '').split('-');
+      const dateParts = safeKey.split('-');
       const dayNum = dateParts[2] || '01';
-      let weekdayName = '';
-      let fullDateStr = String(dateKey || '');
+      let weekdayName = 'Day';
+      let fullDateStr = safeKey;
       try {
-        if (dateKey) {
-          const dateObj = new Date(`${dateKey}T00:00:00`);
-          if (!isNaN(dateObj.getTime())) {
-            weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-            fullDateStr = dateObj.toLocaleDateString('en-US', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            });
-          }
+        const dateObj = new Date(`${safeKey}T00:00:00`);
+        if (!isNaN(dateObj.getTime())) {
+          weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+          fullDateStr = dateObj.toLocaleDateString('en-US', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          });
         }
       } catch {
         // graceful fallback
       }
 
       return {
-        date: dateKey,
+        date: safeKey,
         dayNum,
         weekdayName: weekdayName || 'Day',
-        fullDateStr: fullDateStr || dateKey,
+        fullDateStr: fullDateStr || safeKey,
         hasAnyMeal,
         hasAnyConfirmedMeal,
         isLunchAvail,
@@ -565,8 +816,8 @@ function HistoryScreenContent({
     }).filter(Boolean);
 
     // Sort strictly descending order starting from today down into the past
-    return dates.sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
-  }, [effectiveDaysConfig, computedDays, effectiveAttendanceLogs, memberMap, todayDateStr]);
+    return dates.sort((a, b) => safeString(b?.date).localeCompare(safeString(a?.date)));
+  }, [effectiveDaysConfig, computedDays, effectiveAttendanceLogs, memberList, memberMap, todayDateStr]);
 
   // Filtered timeline dates for the logs view
   const timelineDates = useMemo(() => {
@@ -594,21 +845,24 @@ function HistoryScreenContent({
 
   // Compile detailed report per member for the 'report' tab (from all verified timeline dates)
   const memberReports = useMemo(() => {
-    const safeMembers = Array.isArray(members) ? members.filter(Boolean) : [];
-    const targetTodayStr = todayDateStr || getTodayDateStr();
+    const targetTodayStr = safeDateStr(todayDateStr || getTodayDateStr());
 
-    return safeMembers.map(member => {
+    return memberList.map(member => {
       if (!member || !member.id) return null;
 
-      const memberIdStr = String(member.id).toLowerCase();
-      const memberNameStr = String(member.name || '').toLowerCase().trim();
-      const memberCodeStr = String(member.code || '').toUpperCase().trim();
+      const memberIdStr = safeString(member.id).toLowerCase();
+      const memberNameStr = safeString(member.name).toLowerCase();
+      const memberCodeStr = safeString(member.code).toUpperCase();
 
       const isMemberMatch = (washer) => {
         if (!washer) return false;
-        if (washer.id && String(washer.id).toLowerCase() === memberIdStr) return true;
-        if (washer.name && String(washer.name).toLowerCase().trim() === memberNameStr) return true;
-        if (washer.code && String(washer.code).toUpperCase().trim() === memberCodeStr) return true;
+        const wId = safeString(washer.id).toLowerCase();
+        const wName = safeString(washer.name).toLowerCase();
+        const wCode = safeString(washer.code).toUpperCase();
+
+        if (wId && wId === memberIdStr) return true;
+        if (wName && wName === memberNameStr) return true;
+        if (wCode && wCode === memberCodeStr) return true;
         return false;
       };
 
@@ -616,22 +870,22 @@ function HistoryScreenContent({
 
       // 1. Gather all verified washes from timelineDates (covers both manual logs and confirmed roster days)
       (timelineDates || []).forEach(d => {
-        if (!d || d.date > targetTodayStr || d.date === '2026-11-24') return;
+        if (!d || !d.date || d.date > targetTodayStr || d.date === '2026-11-24') return;
 
         if (d.isLunchVerified && Array.isArray(d.lunchWashers)) {
           d.lunchWashers.forEach(w => {
             if (isMemberMatch(w)) {
               const key = `${d.date}-lunch-${w.slotIndex || 1}`;
               memberLogMap.set(key, {
-                id: w.logId || `wash-${d.date}-lunch-${w.id || member.id}`,
-                slotId: w.slotId,
+                id: safeString(w.logId) || `wash-${d.date}-lunch-${w.id || member.id}`,
+                slotId: safeString(w.slotId) || `${d.date}-lunch-${w.slotIndex || 1}`,
                 date: d.date,
                 meal: 'lunch',
-                slotIndex: w.slotIndex || 1,
+                slotIndex: Number(w.slotIndex) || 1,
                 memberId: member.id,
                 memberName: member.name,
                 status: 'present',
-                markedAt: w.markedAt || `${d.date}T13:30:00.000Z`,
+                markedAt: safeString(w.markedAt || `${d.date}T13:30:00.000Z`),
               });
             }
           });
@@ -642,15 +896,15 @@ function HistoryScreenContent({
             if (isMemberMatch(w)) {
               const key = `${d.date}-dinner-${w.slotIndex || 1}`;
               memberLogMap.set(key, {
-                id: w.logId || `wash-${d.date}-dinner-${w.id || member.id}`,
-                slotId: w.slotId,
+                id: safeString(w.logId) || `wash-${d.date}-dinner-${w.id || member.id}`,
+                slotId: safeString(w.slotId) || `${d.date}-dinner-${w.slotIndex || 1}`,
                 date: d.date,
                 meal: 'dinner',
-                slotIndex: w.slotIndex || 1,
+                slotIndex: Number(w.slotIndex) || 1,
                 memberId: member.id,
                 memberName: member.name,
                 status: 'present',
-                markedAt: w.markedAt || `${d.date}T21:30:00.000Z`,
+                markedAt: safeString(w.markedAt || `${d.date}T21:30:00.000Z`),
               });
             }
           });
@@ -659,11 +913,15 @@ function HistoryScreenContent({
 
       // 2. Also check validAttendanceLogs directly
       (validAttendanceLogs || []).forEach(l => {
-        if (!l || l.date > targetTodayStr || l.date === '2026-11-24') return;
+        if (!l || !l.date || l.date > targetTodayStr || l.date === '2026-11-24') return;
+        const lMemberId = safeString(l.memberId).toLowerCase();
+        const lName = safeString(l.memberName).toLowerCase();
+        const lCode = safeString(l.code).toUpperCase();
+
         if (
-          l.memberId === member.id ||
-          (typeof l.memberName === 'string' && l.memberName.toLowerCase().trim() === memberNameStr) ||
-          (typeof l.code === 'string' && l.code.toUpperCase().trim() === memberCodeStr)
+          (lMemberId && lMemberId === memberIdStr) ||
+          (lName && lName === memberNameStr) ||
+          (lCode && lCode === memberCodeStr)
         ) {
           const key = `${l.date}-${l.meal}-${l.slotIndex || 1}`;
           if (!memberLogMap.has(key)) {
@@ -690,7 +948,7 @@ function HistoryScreenContent({
         logs: memberLogs,
       };
     }).filter(Boolean).sort((a, b) => (b?.totalCount || 0) - (a?.totalCount || 0));
-  }, [members, timelineDates, validAttendanceLogs, todayDateStr]);
+  }, [memberList, timelineDates, validAttendanceLogs, todayDateStr]);
 
   const toggleMemberExpand = (memberId) => {
     const next = new Set(expandedMembers);
@@ -1404,7 +1662,7 @@ function HistoryScreenContent({
 class HistoryErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -1413,10 +1671,12 @@ class HistoryErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('HistoryScreen Render Error caught by boundary:', error, errorInfo);
+    this.setState({ errorInfo });
   }
 
   render() {
     if (this.state.hasError) {
+      const errorMsg = this.state.error?.message || String(this.state.error || 'Unknown error');
       return (
         <div className="p-4 space-y-4 max-w-full">
           <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-[#111216] dark:text-[#F7F6F3]">
@@ -1427,15 +1687,15 @@ class HistoryErrorBoundary extends React.Component {
             <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-1.5 leading-relaxed">
               We encountered an unexpected issue while loading the historical records. Your data is safe.
             </p>
-            {this.state.error?.message && (
-              <p className="text-[11px] font-mono text-amber-700 dark:text-amber-300 mt-1.5 break-words">
-                {this.state.error.message}
-              </p>
+            {errorMsg && (
+              <div className="mt-2.5 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[11px] font-mono text-[#848A96] dark:text-[#9BA5B7] overflow-x-auto whitespace-pre-wrap">
+                {errorMsg}
+              </div>
             )}
             <div className="mt-3 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => this.setState({ hasError: false, error: null })}
+                onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#18181B] text-white dark:bg-[#F4F4F5] dark:text-[#18181B] active-scale transition-transform cursor-pointer"
               >
                 Retry Loading
