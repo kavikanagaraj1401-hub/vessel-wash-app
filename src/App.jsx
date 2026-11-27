@@ -1116,14 +1116,12 @@ export default function App() {
     const hour = new Date().getHours();
     const meal = hour >= 6 && hour < 16 ? 'lunch' : 'dinner';
     const todayComputed = computedDays.find(d => d.date === actualTodayDateStr);
-    const slot = meal === 'lunch' ? todayComputed?.lunch : todayComputed?.dinner;
-    const washerIds = slot?.assignedWashers || [];
-    const washerName = washerIds
-      .map(id => members.find(m => m.id === id)?.name)
-      .filter(Boolean)
+    const washerName = (todayComputed?.slots || [])
+      .filter(s => s && s.meal === meal && s.assignedMemberName && s.assignedMemberName !== '-')
+      .map(s => s.assignedMemberName)
       .join(' & ');
     hourlyContextRef.current = { washerName, meal };
-  }, [actualTodayDateStr, computedDays, members]);
+  }, [actualTodayDateStr, computedDays]);
 
   // Synchronize attendance and recalculate washer assignment to Supabase
   const syncAttendanceAndWasher = useCallback(async (dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig) => {

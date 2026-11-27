@@ -27,6 +27,8 @@ import {
   Moon,
   History,
   Bell,
+  MessageCircle,
+  MessageSquare,
 } from 'lucide-react';
 import { parseExcelTimetable } from '../../logic/excelImporter';
 import { MembersScreen } from '../../screens/MembersScreen';
@@ -734,66 +736,101 @@ $$;`;
                     </span>
                   </div>
 
-                  {/* 5b. Hourly Push Notifications (Every 1 hour) */}
-                  <div className="w-full flex items-center justify-between p-3.5 gap-2">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 text-[#111216] dark:text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40">
-                        <Bell className="w-5 h-5" />
+                  {/* 5b. Hourly Push Notifications + Free WhatsApp / SMS Share */}
+                  <div className="w-full p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 text-[#111216] dark:text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40">
+                          <Bell className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                            Hourly Push Alerts
+                          </span>
+                          <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                            {notifPermission === 'granted'
+                              ? (hourlyNotifEnabled ? 'Sending reminder every 1 hour' : 'Hourly reminders paused')
+                              : notifPermission === 'denied'
+                              ? 'Blocked in browser settings'
+                              : 'Tap Enable to allow push alerts'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
-                          Hourly Push Alerts
-                        </span>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
-                          {notifPermission === 'granted'
-                            ? (hourlyNotifEnabled ? 'Sending reminder every 1 hour' : 'Hourly reminders paused')
-                            : notifPermission === 'denied'
-                            ? 'Blocked in browser settings'
-                            : 'Tap Enable to allow push alerts'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {notifPermission !== 'granted' ? (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const res = await notificationService.requestPermission();
-                            setNotifPermission(res);
-                          }}
-                          className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] shadow-2xs cursor-pointer"
-                        >
-                          Enable
-                        </button>
-                      ) : (
-                        <>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {notifPermission !== 'granted' ? (
                           <button
                             type="button"
-                            onClick={() => {
-                              notificationService.triggerHourlyReminder({ isTest: true });
+                            onClick={async () => {
+                              const res = await notificationService.requestPermission();
+                              setNotifPermission(res);
                             }}
-                            className="px-2 py-1 text-[11px] font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56] cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] shadow-2xs cursor-pointer"
                           >
-                            Test
+                            Enable
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                notificationService.triggerHourlyReminder({ isTest: true });
+                              }}
+                              className="px-2 py-1 text-[11px] font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56] cursor-pointer"
+                            >
+                              Test
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = !hourlyNotifEnabled;
+                                notificationService.setHourlyEnabled(next);
+                                setHourlyNotifEnabled(next);
+                              }}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg border shadow-2xs cursor-pointer ${
+                                hourlyNotifEnabled
+                                  ? 'bg-[#22AC77]/15 text-[#22AC77] dark:text-[#4ADE80] border-[#22AC77]/30'
+                                  : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B]'
+                              }`}
+                            >
+                              {hourlyNotifEnabled ? 'ON' : 'OFF'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Free WhatsApp & SMS Notification Quick-Send */}
+                    {(() => {
+                      const hour = new Date().getHours();
+                      const meal = hour >= 6 && hour < 16 ? 'lunch' : 'dinner';
+                      const todayComputed = (computedDays || []).find(d => d?.date === todayDateStr);
+                      const washerName = (todayComputed?.slots || [])
+                        .filter(s => s && s.meal === meal && s.assignedMemberName && s.assignedMemberName !== '-')
+                        .map(s => s.assignedMemberName)
+                        .join(' & ');
+                      const ctx = { washerName, meal, dateStr: todayDateStr };
+
+                      return (
+                        <div className="flex items-center gap-2 pt-1 pl-[54px]">
+                          <button
+                            type="button"
+                            onClick={() => notificationService.sendViaWhatsApp(ctx)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#25D366]/15 text-[#15803D] dark:text-[#4ADE80] border border-[#25D366]/30 hover:bg-[#25D366]/25 transition-colors cursor-pointer"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              const next = !hourlyNotifEnabled;
-                              notificationService.setHourlyEnabled(next);
-                              setHourlyNotifEnabled(next);
-                            }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded-lg border shadow-2xs cursor-pointer ${
-                              hourlyNotifEnabled
-                                ? 'bg-[#22AC77]/15 text-[#22AC77] dark:text-[#4ADE80] border-[#22AC77]/30'
-                                : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B]'
-                            }`}
+                            onClick={() => notificationService.sendViaSMS(ctx)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#3B82F6]/15 text-[#1D4ED8] dark:text-[#60A5FA] border border-[#3B82F6]/30 hover:bg-[#3B82F6]/25 transition-colors cursor-pointer"
                           >
-                            {hourlyNotifEnabled ? 'ON' : 'OFF'}
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>SMS</span>
                           </button>
-                        </>
-                      )}
-                    </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 6. Sign Out / Logout */}

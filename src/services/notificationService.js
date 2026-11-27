@@ -320,6 +320,47 @@ export const notificationService = {
   },
 
   /**
+   * Build a clean reminder message for WhatsApp / SMS sharing
+   */
+  buildReminderMessage({ washerName = '', meal = '', dateStr = getTodayDateStr() } = {}) {
+    const mealLabel = meal ? `${meal.charAt(0).toUpperCase()}${meal.slice(1)}` : 'Today';
+    const washerLine = washerName
+      ? `🧼 *${mealLabel} Washer:* ${washerName}`
+      : `🧼 *${mealLabel} Washer:* Pending confirmation`;
+    return [
+      `🔔 *Vessel Washing Reminder* (${dateStr})`,
+      washerLine,
+      `Please check the app and mark meal attendance.`,
+    ].join('\n');
+  },
+
+  /**
+   * Open WhatsApp with a pre-filled reminder message (100% free, no API needed)
+   */
+  sendViaWhatsApp(context = {}) {
+    const message = typeof context === 'string' ? context : this.buildReminderMessage(context);
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+    return url;
+  },
+
+  /**
+   * Open default SMS app with a pre-filled reminder message (free carrier SMS)
+   */
+  sendViaSMS(context = {}, phone = '') {
+    const message = typeof context === 'string' ? context : this.buildReminderMessage(context);
+    const plainText = message.replace(/\*/g, '');
+    const separator = /iPad|iPhone|iPod/.test(navigator.userAgent || '') ? '&' : '?';
+    const url = `sms:${phone}${separator}body=${encodeURIComponent(plainText)}`;
+    if (typeof window !== 'undefined') {
+      window.location.href = url;
+    }
+    return url;
+  },
+
+  /**
    * Check if 1 hour (3,600,000 ms) has elapsed since the last hourly push notification.
    * Initializes the baseline timestamp on first run so it fires every 1 hour thereafter.
    */
