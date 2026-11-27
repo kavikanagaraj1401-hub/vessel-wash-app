@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, getIsolatedAuthClient } from './supabaseClient';
-import { extractNameFromEmail, isPrimaryAdminEmail } from '../logic/authUtils';
+import { extractNameFromEmail, isKavipriyanEmail, isKavipriyan, isSuryakumar, isSuryakumarEmail } from '../logic/authUtils';
 
 /**
  * Supabase Data & Realtime Service for Vessel Wash App
@@ -134,11 +134,11 @@ export const supabaseService = {
       const settingsMembers = settingsMap.get('members_list');
 
       const canonicalSeed = [
-        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'member', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
+        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'primary_admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
         { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
         { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
         { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
-        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'admin', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
+        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
         { id: 'm6', name: 'Arun', email: 'arun@vesselwash.app', role: 'member', code: 'M6', status: 'active', rotation_order: 6, has_login_set: true },
       ];
 
@@ -196,11 +196,19 @@ export const supabaseService = {
           ? Boolean(match.has_login_set)
           : (m.has_login_set !== undefined ? Boolean(m.has_login_set) : Boolean(email && email.includes('@')));
 
+        let assignedRole = m.role || match?.role || 'member';
+        // Enforce Kavipriyan is permanent Primary Admin, and Suryakumar is strictly standard member
+        if (isKavipriyan(m)) {
+          assignedRole = 'primary_admin';
+        } else if (isSuryakumar(m)) {
+          assignedRole = 'member';
+        }
+
         return {
           id: m.id || `m${idx + 1}`,
           name: m.name || m.full_name,
           email,
-          role: m.role || match?.role || 'member',
+          role: assignedRole,
           code: m.code || `M${m.rotation_order || idx + 1}`,
           status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
           rotation_order: m.rotation_order || idx + 1,
@@ -236,13 +244,18 @@ export const supabaseService = {
         console.warn('⚠️ Notice querying washer_activity:', washerActivityRes.reason?.message || washerActivityRes.reason);
       }
 
+      const rawAdmins = settingsMap.get('admin_user_ids');
+      const cleanAdminIds = Array.isArray(rawAdmins)
+        ? ['m1', ...rawAdmins.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2)
+        : ['m1'];
+
       return {
         success: true,
         members: deduplicatedMembers.length > 0 ? deduplicatedMembers : null,
         daysConfig: settingsMap.get('days_config') || null,
         initialQueue: settingsMap.get('initial_queue') || null,
         rosterRules: settingsMap.get('roster_rules') || null,
-        adminUserIds: settingsMap.get('admin_user_ids') || null,
+        adminUserIds: cleanAdminIds,
         attendanceHistory: dbAttendance || [],
         washerActivity: dbWasherActivity || [],
         attendanceLogs: settingsMap.get('attendance_logs') || null,
@@ -342,11 +355,11 @@ export const supabaseService = {
 
       // Ensure all canonical core members (M1-M6 Arun) are permanently included in fetchMembers
       const canonicalSeed = [
-        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'member', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
+        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'primary_admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
         { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
         { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
         { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
-        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'admin', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
+        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
         { id: 'm6', name: 'Arun', email: 'arun@vesselwash.app', role: 'member', code: 'M6', status: 'active', rotation_order: 6, has_login_set: true },
       ];
 
@@ -376,12 +389,19 @@ export const supabaseService = {
           ? Boolean(match.has_login_set) 
           : (m.has_login_set !== undefined ? Boolean(m.has_login_set) : Boolean(email && email.includes('@')));
 
+        let assignedRole = m.role || match?.role || 'member';
+        if (isKavipriyan(m)) {
+          assignedRole = 'primary_admin';
+        } else if (isSuryakumar(m)) {
+          assignedRole = 'member';
+        }
+
         return {
           id: m.id || `m${idx + 1}`,
           name: m.full_name || m.name,
           email,
           has_login_set: hasLogin,
-          role: m.role || match?.role || 'member',
+          role: assignedRole,
           code: m.code || `M${m.rotation_order || idx + 1}`,
           status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
           rotation_order: m.rotation_order || idx + 1,
@@ -552,7 +572,12 @@ export const supabaseService = {
       if (daysConfig) tasks.push(this.upsertSetting('days_config', daysConfig));
       if (initialQueue) tasks.push(this.upsertSetting('initial_queue', initialQueue));
       if (rosterRules) tasks.push(this.upsertSetting('roster_rules', rosterRules));
-      if (adminUserIds) tasks.push(this.upsertSetting('admin_user_ids', adminUserIds));
+      if (adminUserIds) {
+        const cleanAdmins = Array.isArray(adminUserIds)
+          ? ['m1', ...adminUserIds.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2)
+          : ['m1'];
+        tasks.push(this.upsertSetting('admin_user_ids', cleanAdmins));
+      }
 
       if (tasks.length > 0) {
         await Promise.all(tasks);
@@ -571,8 +596,11 @@ export const supabaseService = {
    */
   async saveAdminUserIds(adminUserIds) {
     if (!isSupabaseConfigured || !supabase || !adminUserIds) return false;
+    const cleanAdmins = Array.isArray(adminUserIds)
+      ? ['m1', ...adminUserIds.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2)
+      : ['m1'];
     try {
-      return await this.upsertSetting('admin_user_ids', adminUserIds);
+      return await this.upsertSetting('admin_user_ids', cleanAdmins);
     } catch (err) {
       console.warn('Failed to save admin_user_ids to Supabase:', err);
       return false;
@@ -737,6 +765,14 @@ export const supabaseService = {
    */
   async updateMemberRole(memberId, newRole) {
     if (!isSupabaseConfigured || !supabase || !memberId) return false;
+    if (isKavipriyan(memberId)) {
+      console.warn('Kavipriyan is the permanent Primary Administrator and cannot be demoted.');
+      return false;
+    }
+    if (isSuryakumar(memberId) && newRole === 'admin') {
+      console.warn('Suryakumar is designated as a standard Member and cannot be promoted to Admin.');
+      return false;
+    }
     try {
       const isUuid =
         typeof memberId === 'string' &&
@@ -745,7 +781,7 @@ export const supabaseService = {
       let query = supabase
         .from('members')
         .update({
-          role: newRole,
+          role: isSuryakumar(memberId) ? 'member' : newRole,
           updated_at: new Date().toISOString(),
         });
 
@@ -772,13 +808,38 @@ export const supabaseService = {
     if (!isSupabaseConfigured || !supabase || !email) return null;
     try {
       const cleanEmail = email.trim().toLowerCase();
+      if (isKavipriyanEmail(cleanEmail)) {
+        return {
+          id: 'm1',
+          full_name: 'Kavipriyan',
+          email: cleanEmail,
+          role: 'primary_admin',
+          is_active: true,
+          rotation_order: 1,
+        };
+      }
+      if (isSuryakumarEmail(cleanEmail)) {
+        return {
+          id: 'm5',
+          full_name: 'Suryakumar',
+          email: cleanEmail,
+          role: 'member',
+          is_active: true,
+          rotation_order: 5,
+        };
+      }
+
       const { data, error } = await supabase
         .from('members')
         .select('id, full_name, email, role, is_active, rotation_order')
         .ilike('email', cleanEmail)
         .maybeSingle();
 
-      if (!error && data) return data;
+      if (!error && data) {
+        if (isKavipriyan(data)) data.role = 'primary_admin';
+        else if (isSuryakumar(data)) data.role = 'member';
+        return data;
+      }
 
       // Fallback matching by email prefix or full name
       const prefix = cleanEmail.split('@')[0];
@@ -788,17 +849,21 @@ export const supabaseService = {
         .or(`full_name.ilike.%${prefix}%,email.ilike.${prefix}@%`)
         .maybeSingle();
 
-      if (fallbackData) return fallbackData;
+      if (fallbackData) {
+        if (isKavipriyan(fallbackData)) fallbackData.role = 'primary_admin';
+        else if (isSuryakumar(fallbackData)) fallbackData.role = 'member';
+        return fallbackData;
+      }
 
       // Safe fallback if members table is experiencing temporary RLS recursion or network timeout
       return {
-        role: isKavipriyanEmail(cleanEmail) ? 'admin' : 'member',
+        role: isKavipriyanEmail(cleanEmail) ? 'primary_admin' : 'member',
         is_active: true,
       };
     } catch (err) {
       console.warn('Could not fetch member profile:', err);
       return {
-        role: isPrimaryAdminEmail(email) ? 'admin' : 'member',
+        role: isKavipriyanEmail(email) ? 'primary_admin' : 'member',
         is_active: true,
       };
     }
@@ -1636,7 +1701,7 @@ export const supabaseService = {
     try {
       const trimmedEmail = email.trim();
       const fullName = extractNameFromEmail(trimmedEmail);
-      const role = isPrimaryAdminEmail(trimmedEmail) ? 'admin' : 'member';
+      const role = isKavipriyanEmail(trimmedEmail) ? 'primary_admin' : 'member';
 
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
@@ -1719,7 +1784,12 @@ export const supabaseService = {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const cleanName = fullName || extractNameFromEmail(trimmedEmail);
-      const assignedRole = role || (isPrimaryAdminEmail(trimmedEmail) ? 'admin' : 'member');
+      let assignedRole = role || 'member';
+      if (isKavipriyanEmail(trimmedEmail)) {
+        assignedRole = 'primary_admin';
+      } else if (isSuryakumarEmail(trimmedEmail)) {
+        assignedRole = 'member';
+      }
 
       // 1. Check if record with matching email already exists
       const { data: existingByEmail } = await supabase

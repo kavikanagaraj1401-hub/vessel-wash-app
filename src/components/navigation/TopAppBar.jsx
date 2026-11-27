@@ -19,6 +19,7 @@ import {
 import { Modal } from '../common/Modal';
 import { supabaseService } from '../../services/supabaseService';
 import { useTheme } from '../../context/ThemeContext';
+import { isKavipriyan, isSuryakumar } from '../../logic/authUtils';
 
 export function TopAppBar({
   title = 'Vessel Washing',
@@ -52,8 +53,8 @@ export function TopAppBar({
   const [passError, setPassError] = useState('');
   const [passSuccess, setPassSuccess] = useState('');
 
-  const isPrimaryAdmin = (m) => m?.id === 'm5' || (m?.name && m.name.toLowerCase().includes('suryakumar'));
-  const isMemberAdmin = (m) => isPrimaryAdmin(m) || (adminUserIds && adminUserIds.includes(m?.id));
+  const isPrimaryAdmin = (m) => !isSuryakumar(m) && isKavipriyan(m);
+  const isMemberAdmin = (m) => !isSuryakumar(m) && (isPrimaryAdmin(m) || (adminUserIds && adminUserIds.includes(m?.id)));
 
   useEffect(() => {
     const updateTime = () => {

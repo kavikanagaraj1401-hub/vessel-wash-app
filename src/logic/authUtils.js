@@ -71,6 +71,72 @@ export function isKavipriyanEmail(email = '') {
 }
 
 /**
+ * Checks whether the member, id, or email belongs to Kavipriyan (Primary Administrator).
+ * 
+ * @param {object|string} target
+ * @returns {boolean}
+ */
+export function isKavipriyan(target) {
+  if (!target) return false;
+  if (typeof target === 'string') {
+    const s = target.toLowerCase().trim();
+    return s === 'm1' || s.includes('kavipriyan') || s.includes('kavikanagaraj') || s.startsWith('kavi');
+  }
+  const name = (target.name || target.full_name || '').toLowerCase();
+  const email = (target.email || '').toLowerCase();
+  const id = (target.id || '').toLowerCase();
+  const code = (target.code || '').toLowerCase();
+  return (
+    id === 'm1' ||
+    code === 'm1' ||
+    name.includes('kavipriyan') ||
+    email.includes('kavipriyan') ||
+    email.includes('kavikanagaraj') ||
+    email.startsWith('kavi')
+  );
+}
+
+/**
+ * Checks whether the email belongs to Suryakumar.
+ * 
+ * @param {string} email
+ * @returns {boolean}
+ */
+export function isSuryakumarEmail(email = '') {
+  if (!email || typeof email !== 'string') return false;
+  const lower = email.toLowerCase().trim();
+  return lower.includes('suryakumar') || lower.includes('surya');
+}
+
+/**
+ * Checks whether the member, id, or email belongs to Suryakumar.
+ * 
+ * @param {object|string} target
+ * @returns {boolean}
+ */
+export function isSuryakumar(target) {
+  if (!target) return false;
+  if (typeof target === 'string') {
+    const s = target.toLowerCase().trim();
+    return s === 'm5' || s.includes('suryakumar') || s.includes('surya');
+  }
+  const name = (target.name || target.full_name || '').toLowerCase();
+  const email = (target.email || '').toLowerCase();
+  const id = (target.id || '').toLowerCase();
+  const code = (target.code || '').toLowerCase();
+  return (
+    id === 'm5' ||
+    (id === 'm3' && (name.includes('surya') || email.includes('surya'))) ||
+    name.includes('suryakumar') ||
+    name.includes('surya') ||
+    email.includes('suryakumar') ||
+    email.includes('surya') ||
+    code === 'm5' ||
+    (code === 'm3' && name.includes('surya'))
+  );
+}
+
+/**
  * Generates a clean default username from a member's name.
  * e.g., 'Arun Kumar' -> 'arun.kumar', 'Kavipriyan' -> 'kavipriyan'
  * 

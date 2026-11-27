@@ -26,11 +26,14 @@ import {
   Search,
   X,
   Shield,
+  User,
 } from 'lucide-react';
 import {
   generateTemporaryPassword,
   generateDefaultUsername,
   getNextMemberSequence,
+  isKavipriyan as isKavipriyanUtil,
+  isSuryakumar,
 } from '../logic/authUtils';
 import { supabaseService } from '../services/supabaseService';
 
@@ -39,7 +42,8 @@ export function MembersScreen({
   queue = [],
   attendanceLogs = [],
   isAdmin = false,
-  adminUserIds = ['m5'],
+  isPrimaryAdmin = false,
+  adminUserIds = ['m1'],
   onToggleAdminRole,
   onAddMember,
   onEditMember,
@@ -150,10 +154,10 @@ export function MembersScreen({
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'active' | 'inactive' | 'admins'
 
   // Helpers to identify primary admin and delegated admins
-  const isKavipriyan = (m) =>
-    m?.id === 'm5' || (m?.name && m.name.trim().toLowerCase().includes('suryakumar'));
+  const isKavipriyan = (m) => !isSuryakumar(m) && isKavipriyanUtil(m);
   const isMemberAdmin = (m) =>
-    isKavipriyan(m) || m?.role === 'admin' || (adminUserIds && adminUserIds.includes(m?.id));
+    !isSuryakumar(m) &&
+    (isKavipriyan(m) || m?.role === 'primary_admin' || m?.role === 'admin' || (adminUserIds && adminUserIds.includes(m?.id)));
 
   // Add Member Form state
   const [newName, setNewName] = useState('');
@@ -228,7 +232,9 @@ export function MembersScreen({
       memberType: newMemberType,
     });
 
-    if (newRole === 'admin' && onToggleAdminRole) {
+    const finalRole = isKavipriyan(trimmed) ? 'primary_admin' : (isSuryakumar(trimmed) ? 'member' : (isPrimaryAdmin && newRole === 'admin' ? 'admin' : 'member'));
+
+    if (finalRole === 'admin' && onToggleAdminRole) {
       onToggleAdminRole(seq.id, 'admin');
     }
 
@@ -238,7 +244,7 @@ export function MembersScreen({
           email: addEmail.trim().toLowerCase(),
           password: addPassword,
           fullName: trimmed,
-          role: newRole,
+          role: finalRole,
         });
         loadLoginStatus();
       } catch (err) {
@@ -274,8 +280,8 @@ export function MembersScreen({
 
     onEditMember(editModal.member.id, trimmed, editMemberType);
 
-    // If role changed in edit modal, trigger role update
-    if (!isKavipriyan(editModal.member) && onToggleAdminRole) {
+    // If role changed in edit modal, trigger role update - restricted solely to Primary Admin (Kavipriyan) and never for Suryakumar
+    if (isPrimaryAdmin && !isKavipriyan(editModal.member) && !isSuryakumar(editModal.member) && onToggleAdminRole) {
       const currentlyAdmin = isMemberAdmin(editModal.member);
       if (editRole === 'admin' && !currentlyAdmin) {
         onToggleAdminRole(editModal.member.id, 'admin');
@@ -778,6 +784,22 @@ export function MembersScreen({
                           >
                             <Crown className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B] fill-current" />
                           </div>
+                        ) : isSuryakumar(member) ? (
+                          <div
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-transparent text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-30 shrink-0"
+                            title="Suryakumar is designated as a standard Member (Admin promotion restricted)"
+                          >
+                            <Shield className="w-4 h-4 text-[#848A96] dark:text-[#64748B]" />
+                          </div>
+                        ) : !isPrimaryAdmin ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] cursor-not-allowed opacity-40 shrink-0"
+                            title="Only the Primary Administrator (Kavipriyan) can grant or revoke admin privileges"
+                          >
+                            {isThisAdmin ? <ShieldAlert className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                          </button>
                         ) : isThisAdmin ? (
                           <button
                             type="button"
@@ -1013,15 +1035,24 @@ export function MembersScreen({
               </button>
               <button
                 type="button"
-                disabled={adminUserIds.length >= 2}
+                disabled={!isPrimaryAdmin || adminUserIds.length >= 2 || isSuryakumar(newName)}
                 onClick={() => setNewRole('admin')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  adminUserIds.length >= 2
+                  !isPrimaryAdmin || adminUserIds.length >= 2 || isSuryakumar(newName)
                     ? 'opacity-40 cursor-not-allowed bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#848A96] dark:text-[#64748B] border-[#DDD9D0] dark:border-[#2A364B]'
                     : newRole === 'admin'
                     ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border-transparent shadow-xs'
                     : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
                 }`}
+                title={
+                  !isPrimaryAdmin
+                    ? 'Only Primary Administrator (Kavipriyan) can designate admins'
+                    : isSuryakumar(newName)
+                    ? 'Suryakumar cannot be designated as Admin'
+                    : adminUserIds.length >= 2
+                    ? 'Max 2 admins reached'
+                    : 'Designate as Co-Admin'
+                }
               >
                 <Crown className="w-3.5 h-3.5" />
                 <span>Co-Admin {adminUserIds.length >= 2 ? '(Limit reached)' : ''}</span>
@@ -1154,7 +1185,22 @@ export function MembersScreen({
             autoFocus
           />
 
-          {editModal.member && !isKavipriyan(editModal.member) ? (
+          {editModal.member && isKavipriyan(editModal.member) ? (
+            <div className="p-3 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 text-xs text-[#EA580C] dark:text-[#F59E0B] font-semibold flex items-center gap-2">
+              <Crown className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B]" />
+              <span>Primary Administrator (Permanent Role)</span>
+            </div>
+          ) : editModal.member && isSuryakumar(editModal.member) ? (
+            <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs text-[#4E525D] dark:text-[#9BA5B7] font-semibold flex items-center gap-2">
+              <User className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B]" />
+              <span>Standard Member (Permanent in Rotation)</span>
+            </div>
+          ) : !isPrimaryAdmin ? (
+            <div className="p-3 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-xs text-[#4E525D] dark:text-[#9BA5B7] font-semibold flex items-center gap-2">
+              <Lock className="w-4 h-4 text-[#848A96] dark:text-[#64748B]" />
+              <span>Role: {isMemberAdmin(editModal.member) ? 'Admin' : 'Member'} (Role changes restricted to Primary Admin)</span>
+            </div>
+          ) : (
             <div className="space-y-1.5 pt-1">
               <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">Account Role</label>
               <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
@@ -1171,9 +1217,12 @@ export function MembersScreen({
                 </button>
                 <button
                   type="button"
+                  disabled={!isMemberAdmin(editModal.member) && adminUserIds.length >= 2}
                   onClick={() => setEditRole('admin')}
                   className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    editRole === 'admin'
+                    !isMemberAdmin(editModal.member) && adminUserIds.length >= 2
+                      ? 'opacity-40 cursor-not-allowed text-[#848A96] dark:text-[#64748B]'
+                      : editRole === 'admin'
                       ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white font-extrabold shadow-2xs'
                       : 'text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3]'
                   }`}
@@ -1186,11 +1235,6 @@ export function MembersScreen({
                 Admins have full access to manage members and timetable rules. Members have daily
                 attendance entry.
               </p>
-            </div>
-          ) : (
-            <div className="p-3 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 text-xs text-[#EA580C] dark:text-[#F59E0B] font-semibold flex items-center gap-2">
-              <Crown className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B]" />
-              <span>Primary Administrator (Permanent Role)</span>
             </div>
           )}
 
@@ -1307,6 +1351,16 @@ export function MembersScreen({
               size="sm"
               onClick={() => {
                 if (adminModal.member && onToggleAdminRole) {
+                  if (!isPrimaryAdmin) {
+                    alert('Only the Primary Administrator (Kavipriyan) can grant or revoke admin privileges.');
+                    setAdminModal({ isOpen: false, member: null, action: 'grant' });
+                    return;
+                  }
+                  if (adminModal.action === 'grant' && isSuryakumar(adminModal.member)) {
+                    alert('Suryakumar is designated as a standard Member and cannot be promoted to Admin.');
+                    setAdminModal({ isOpen: false, member: null, action: 'grant' });
+                    return;
+                  }
                   onToggleAdminRole(
                     adminModal.member.id,
                     adminModal.action === 'grant' ? 'admin' : 'member'

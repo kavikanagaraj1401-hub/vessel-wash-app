@@ -48,6 +48,7 @@ export function SettingsModal({
   onClose,
   onTabChange,
   isAdmin = false,
+  isPrimaryAdmin = false,
   userName = 'Kavipriyan',
   userEmail = '',
   onSignOut,
@@ -885,6 +886,7 @@ $$;`;
                   queue={queue}
                   attendanceLogs={attendanceLogs}
                   isAdmin={isAdmin}
+                  isPrimaryAdmin={isPrimaryAdmin}
                   adminUserIds={adminUserIds}
                   onToggleAdminRole={onToggleAdminRole}
                   onAddMember={onAddMember}

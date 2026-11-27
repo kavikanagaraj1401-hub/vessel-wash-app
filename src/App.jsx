@@ -9,8 +9,7 @@ import { ActivityScreen } from './screens/ActivityScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { MembersScreen } from './screens/MembersScreen';
 import { BillScreen } from './screens/BillScreen';
-import { AuthScreen } from './components/auth/AuthScreen';
-import { extractNameFromEmail, extractUsername, isPrimaryAdminEmail, getNextMemberSequence } from './logic/authUtils';
+import { extractNameFromEmail, extractUsername, isKavipriyanEmail, isKavipriyan, isSuryakumar, isSuryakumarEmail, getNextMemberSequence } from './logic/authUtils';
 
 import { storage, INITIAL_MEMBERS, INITIAL_ATTENDANCE_LOGS } from './logic/storage';
 import { logActivityAction as defaultLogActivityAction, safeLogActivity } from './logic/activityLogger';
@@ -421,8 +420,9 @@ export default function App() {
       } else if (key === 'initial_queue' && Array.isArray(val)) {
         setInitialQueue(val);
       } else if (key === 'admin_user_ids' && Array.isArray(val)) {
-        setAdminUserIds(val);
-        storage.saveAdminUserIds(val);
+        const cleanAdmins = ['m1', ...val.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2);
+        setAdminUserIds(cleanAdmins);
+        storage.saveAdminUserIds(cleanAdmins);
       } else if (key === 'attendance_logs' && Array.isArray(val)) {
         setAttendanceLogs(prev => {
           const map = new Map();
@@ -483,8 +483,13 @@ export default function App() {
           if (remote.members && remote.members.length > 0) {
             const localMembers = storage.getMembers() || [];
             const combined = supabaseService.deduplicateMembers([...remote.members, ...localMembers]);
-            setMembers(combined);
-            storage.saveMembers(combined);
+            const normalized = combined.map(m => {
+              if (isKavipriyan(m)) return { ...m, role: 'primary_admin' };
+              if (isSuryakumar(m)) return { ...m, role: 'member' };
+              return m;
+            });
+            setMembers(normalized);
+            storage.saveMembers(normalized);
           }
 
           // Merge remote.daysConfig and remote.attendanceHistory in a single O(N + M) pass
@@ -533,8 +538,9 @@ export default function App() {
             setInitialQueue(remote.initialQueue);
           }
           if (remote.adminUserIds && Array.isArray(remote.adminUserIds)) {
-            setAdminUserIds(remote.adminUserIds);
-            storage.saveAdminUserIds(remote.adminUserIds);
+            const cleanAdmins = ['m1', ...remote.adminUserIds.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2);
+            setAdminUserIds(cleanAdmins);
+            storage.saveAdminUserIds(cleanAdmins);
           }
 
         // Build robust attendanceLogs combining remote.attendanceLogs, remote.washerActivity, and local storage
@@ -884,7 +890,7 @@ export default function App() {
     };
   }, [userEmail]);
 
-  const isUserPrimaryAdmin = isPrimaryAdminEmail(userEmail);
+  const isUserKavipriyan = isKavipriyanEmail(userEmail);
 
   const loggedInMember = useMemo(() => {
     if (userEmail) {
@@ -901,29 +907,34 @@ export default function App() {
   }, [members, userEmail, extractedUserName]);
 
   // Display name in header profile badge is extracted name from email
-  const userName = loggedInMember?.name || extractedUserName || 'Suryakumar';
+  const userName = loggedInMember?.name || extractedUserName || 'Kavipriyan';
 
-  // Role Access Control: Fetch role from members table. If role === 'admin', unlock admin settings.
-  // If role === 'member', show only daily roster and attendance tools.
+  // Role Access Control: Fetch role from members table. If role === 'admin' or 'primary_admin', unlock admin settings.
+  // Kavipriyan (M1) is permanent sole Primary Admin. Suryakumar is strictly standard Member (never admin or primary admin).
+  const isPrimaryAdmin = useMemo(() => {
+    if (isSuryakumar(loggedInMember) || (userEmail && isSuryakumarEmail(userEmail))) return false;
+    return isUserKavipriyan || isKavipriyan(loggedInMember);
+  }, [isUserKavipriyan, loggedInMember, userEmail]);
+
   const isAdmin = useMemo(() => {
     if (!isAdminMode) return false;
-    if (isUserPrimaryAdmin) return true;
-    if (dbUserRole === 'admin') return true;
-    if (loggedInMember?.role === 'admin') return true;
+    // Suryakumar is strictly a regular member - never an admin or primary admin
+    if (isSuryakumar(loggedInMember) || (userEmail && isSuryakumarEmail(userEmail))) return false;
+    if (isPrimaryAdmin) return true;
+    if (dbUserRole === 'admin' || dbUserRole === 'primary_admin') return true;
+    if (loggedInMember?.role === 'admin' || loggedInMember?.role === 'primary_admin') return true;
     if (loggedInMember?.id && adminUserIds.includes(loggedInMember.id)) return true;
     return false;
-  }, [isAdminMode, isUserPrimaryAdmin, dbUserRole, loggedInMember, adminUserIds]);
-
-  const isPrimaryAdmin = isUserPrimaryAdmin;
+  }, [isAdminMode, isPrimaryAdmin, dbUserRole, loggedInMember, adminUserIds, userEmail]);
 
   // Current logged in member representation for activity attribution
   const currentMember = useMemo(() => {
     if (loggedInMember) return loggedInMember;
     if (isAdmin) {
       return {
-        id: 'm5',
-        name: userName || 'Suryakumar',
-        code: 'M5',
+        id: 'm1',
+        name: userName || 'Kavipriyan',
+        code: 'M1',
       };
     }
     return {
@@ -1042,16 +1053,26 @@ export default function App() {
     setSelectedDateStr(dateStr);
   };
 
-  // Admin role toggle handler: allows Admins to change any member's role to 'admin' or 'member'
+  // Admin role toggle handler: allows ONLY Primary Admin (Kavipriyan) to change member roles
   // Saves these changes directly to the `role` column in the Supabase `members` table
   const handleToggleAdminRole = async (targetMemberId, explicitRole = null) => {
-    if (!isAdmin) return;
+    // Sole permission restriction: ONLY Kavipriyan (Primary Admin) can grant or revoke admin access
+    if (!isPrimaryAdmin) {
+      alert('Only the Primary Administrator (Kavipriyan) can grant or revoke admin privileges.');
+      return;
+    }
     const target = members.find(m => m.id === targetMemberId);
     if (!target) return;
 
-    // Suryakumar (M5) is permanent Primary Administrator
-    if (target.id === 'm5' || target.name.trim().toLowerCase().includes('suryakumar')) {
-      alert('Suryakumar is the Primary Administrator and cannot be demoted.');
+    // Kavipriyan is permanent Primary Administrator and cannot be demoted
+    if (isKavipriyan(target)) {
+      alert('Kavipriyan is the Primary Administrator and cannot be demoted.');
+      return;
+    }
+
+    // Suryakumar is strictly a regular Member and can never be promoted to Admin
+    if (isSuryakumar(target)) {
+      alert('Suryakumar is designated as a standard Member and cannot be promoted to Admin.');
       return;
     }
 
@@ -1068,11 +1089,18 @@ export default function App() {
       ? (adminUserIds.includes(targetMemberId) ? adminUserIds : [...adminUserIds, targetMemberId])
       : adminUserIds.filter(id => id !== targetMemberId);
 
-    setAdminUserIds(updatedAdminIds);
-    storage.saveAdminUserIds(updatedAdminIds);
+    // Sanitize to always guarantee Kavipriyan is present and Suryakumar is never present
+    const cleanAdminIds = ['m1', ...updatedAdminIds.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2);
+
+    setAdminUserIds(cleanAdminIds);
+    storage.saveAdminUserIds(cleanAdminIds);
 
     // 1. Update local members state with new role
-    const updatedMembers = members.map(m => (m.id === targetMemberId ? { ...m, role: newRole } : m));
+    const updatedMembers = members.map(m => {
+      if (isKavipriyan(m)) return { ...m, role: 'primary_admin' };
+      if (isSuryakumar(m)) return { ...m, role: 'member' };
+      return m.id === targetMemberId ? { ...m, role: newRole } : m;
+    });
     setMembers(updatedMembers);
     storage.saveMembers(updatedMembers);
 
@@ -1445,6 +1473,7 @@ export default function App() {
       m.id === id ? {
         ...m,
         name: newName,
+        role: isKavipriyan(m) ? 'primary_admin' : (isSuryakumar(m) ? 'member' : m.role),
         ...(newMemberType ? { memberType: newMemberType } : {}),
         updatedAt: new Date().toISOString()
       } : m
@@ -1518,7 +1547,7 @@ export default function App() {
     if (!target) return;
 
     // Safety guard: Kavipriyan / primary admin cannot be removed
-    const isPrimary = id === 'm1' || (target.name && target.name.trim().toLowerCase().includes('kavipriyan'));
+    const isPrimary = id === 'm1' || isKavipriyan(target);
     if (isPrimary) {
       alert('The primary administrator cannot be removed.');
       return;
@@ -1796,6 +1825,7 @@ export default function App() {
               queue={currentDayQueue}
               attendanceLogs={attendanceLogs}
               isAdmin={isAdmin}
+              isPrimaryAdmin={isPrimaryAdmin}
               adminUserIds={adminUserIds}
               onToggleAdminRole={handleToggleAdminRole}
               onAddMember={handleAddMember}
@@ -1857,6 +1887,7 @@ export default function App() {
           onClose={handleCloseSettings}
           onTabChange={handleTabChange}
           isAdmin={isAdmin}
+          isPrimaryAdmin={isPrimaryAdmin}
           userName={userName}
           userEmail={userEmail}
           onSignOut={handleSignOut}

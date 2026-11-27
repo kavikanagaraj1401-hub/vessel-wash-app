@@ -2,6 +2,7 @@
  * LocalStorage and Data Persistence for Vessel Washing App
  * Seeded with source of truth data from `new_vessel_washing_rotation(Timetable).csv`
  */
+import { isKavipriyan, isSuryakumar } from './authUtils.js';
 
 export const INITIAL_MEMBERS = [
   {
@@ -9,7 +10,7 @@ export const INITIAL_MEMBERS = [
     code: 'M1',
     name: 'Kavipriyan',
     email: 'kavipriyan@vesselwash.app',
-    role: 'member',
+    role: 'primary_admin',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -21,6 +22,7 @@ export const INITIAL_MEMBERS = [
     code: 'M2',
     name: 'Marudhu',
     email: 'marudhu@vesselwash.app',
+    role: 'member',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -32,6 +34,7 @@ export const INITIAL_MEMBERS = [
     code: 'M3',
     name: 'Perumal',
     email: 'perumal@vesselwash.app',
+    role: 'member',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -43,6 +46,7 @@ export const INITIAL_MEMBERS = [
     code: 'M4',
     name: 'Ponneelan',
     email: 'ponneelan@vesselwash.app',
+    role: 'member',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -54,7 +58,7 @@ export const INITIAL_MEMBERS = [
     code: 'M5',
     name: 'Suryakumar',
     email: 'suryakumar@vesselwash.app',
-    role: 'admin',
+    role: 'member',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -66,6 +70,7 @@ export const INITIAL_MEMBERS = [
     code: 'M6',
     name: 'Arun',
     email: 'arun@vesselwash.app',
+    role: 'member',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -417,25 +422,55 @@ export const storage = {
   getAdminUserIds() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ADMIN_IDS);
-      return data ? JSON.parse(data) : ['m5'];
+      const parsed = data ? JSON.parse(data) : ['m1'];
+      const arr = Array.isArray(parsed) ? parsed : ['m1'];
+      // Enforce Kavipriyan (m1) is permanent Primary Admin, and Suryakumar is strictly standard member
+      const clean = ['m1', ...arr.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2);
+      return clean;
     } catch (e) {
-      return ['m5'];
+      return ['m1'];
     }
   },
   saveAdminUserIds(adminIds) {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_IDS, JSON.stringify(adminIds));
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const arr = Array.isArray(adminIds) ? adminIds : ['m1'];
+      const clean = ['m1', ...arr.filter(id => id !== 'm1' && !isSuryakumar(id))].slice(0, 2);
+      localStorage.setItem(STORAGE_KEYS.ADMIN_IDS, JSON.stringify(clean));
+    } catch (e) {
+      // ignore
+    }
   },
 
   getMembers() {
     try {
+      if (typeof localStorage === 'undefined') return INITIAL_MEMBERS;
       const data = localStorage.getItem(STORAGE_KEYS.MEMBERS);
-      return data ? JSON.parse(data) : INITIAL_MEMBERS;
+      const list = data ? JSON.parse(data) : INITIAL_MEMBERS;
+      if (!Array.isArray(list)) return INITIAL_MEMBERS;
+      return list.map(m => {
+        if (isKavipriyan(m)) return { ...m, role: 'primary_admin' };
+        if (isSuryakumar(m)) return { ...m, role: 'member' };
+        return m;
+      });
     } catch (e) {
       return INITIAL_MEMBERS;
     }
   },
   saveMembers(members) {
-    localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const clean = Array.isArray(members)
+        ? members.map(m => {
+            if (isKavipriyan(m)) return { ...m, role: 'primary_admin' };
+            if (isSuryakumar(m)) return { ...m, role: 'member' };
+            return m;
+          })
+        : INITIAL_MEMBERS;
+      localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(clean));
+    } catch (e) {
+      // ignore
+    }
   },
 
   getDaysConfig() {
