@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { assignSlot, assignLunchPair } from '../logic/rotationEngine';
 import { getTodayDateStr } from '../logic/dateUtils';
+import { ThemeVesselWashingAnimation } from '../components/today/ThemeVesselWashingAnimation';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * Version 2 ("v2") Unslopped Home Screen
@@ -38,6 +40,8 @@ export function TodayScreen({
   onToggleLunchWashers,
   onResetAttendanceForSlot,
 }) {
+  const { isDaytime, isDark, brandClasses } = useTheme();
+
   // Selected meal session: defaults smartly based on time of day (Lunch 06:00-15:59, Dinner 16:00-05:59)
   const [selectedMeal, setSelectedMeal] = useState(() => {
     const currentHour = new Date().getHours();
@@ -539,9 +543,23 @@ export function TodayScreen({
                   - Dinner washer styled with Atmospheric Night Twilight Theme */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider">
-                    {selectedDateStr === currentDateStr ? "Today's Washer" : "Assigned Washer"}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider">
+                      {selectedDateStr === currentDateStr ? "Today's Washer" : "Assigned Washer"}
+                    </span>
+                    {selectedDateStr === currentDateStr && (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold border shadow-2xs uppercase tracking-wider ${
+                          isDaytime
+                            ? 'bg-[#EA580C]/10 text-[#C2410C] dark:text-[#FBBF24] border-[#EA580C]/25'
+                            : 'bg-[#2563EB]/10 text-[#1D4ED8] dark:text-[#38BDF8] border-[#2563EB]/25'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                        <span>Duty Active</span>
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
                     {liveAssignedSlots.length === 2 ? '2 Assigned' : '1 Assigned'}
                   </span>
@@ -551,18 +569,19 @@ export function TodayScreen({
                   {liveAssignedSlots.map((slot) => {
                     const member = memberMap.get(slot.assignedMemberId);
                     const isLunch = selectedMeal === 'lunch';
+                    const isTodayActive = (selectedDateStr === currentDateStr);
 
                     return (
                       <div
                         key={slot.id}
-                        className={`p-3.5 sm:p-4 rounded-xl border shadow-2xs flex items-center justify-between gap-3 ${
+                        className={`p-3.5 sm:p-4 rounded-xl border shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 relative overflow-hidden transition-all ${
                           isLunch
                             ? 'bg-gradient-to-br from-[#FFF9F0] via-white to-[#FFF3E0] dark:from-[#261B0B] dark:via-[#1E1609] dark:to-[#2B1D0B] border-[#F59E0B]/50'
                             : 'bg-gradient-to-br from-[#F5F3FF] via-white to-[#EDE9FE] dark:from-[#15122C] dark:via-[#120F26] dark:to-[#1B1736] border-indigo-400/35'
                         }`}
                       >
                         {/* Member Identity */}
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                           <div
                             className={`w-11 h-11 rounded-xl font-black text-sm sm:text-base flex items-center justify-center shadow-xs shrink-0 ${
                               isLunch
@@ -572,20 +591,27 @@ export function TodayScreen({
                           >
                             {member?.code || 'M'}
                           </div>
-                          <div className="min-w-0">
-                            <span
-                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border inline-block truncate uppercase tracking-wider ${
-                                isLunch
-                                  ? 'bg-[#FF7A00]/10 text-[#C2410C] dark:text-[#FBBF24] border-[#F59E0B]/30'
-                                  : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border-indigo-400/30'
-                              }`}
-                            >
-                              {liveAssignedSlots.length === 2
-                                ? `Washer ${slot.slotIndex}`
-                                : isLunch
-                                ? 'Lunch Duty'
-                                : 'Dinner Duty'}
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border inline-block truncate uppercase tracking-wider ${
+                                  isLunch
+                                    ? 'bg-[#FF7A00]/10 text-[#C2410C] dark:text-[#FBBF24] border-[#F59E0B]/30'
+                                    : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border-indigo-400/30'
+                                }`}
+                              >
+                                {liveAssignedSlots.length === 2
+                                  ? `Washer ${slot.slotIndex}`
+                                  : isLunch
+                                  ? 'Lunch Duty'
+                                  : 'Dinner Duty'}
+                              </span>
+                              {isTodayActive && (
+                                <span className="text-[9.5px] font-bold text-[#848A96] dark:text-[#64748B] hidden xs:inline">
+                                  &middot; Active Washer
+                                </span>
+                              )}
+                            </div>
                             <h3 className="text-sm sm:text-base font-extrabold text-[#111216] dark:text-[#F7F6F3] tracking-tight truncate leading-tight mt-0.5">
                               {slot.assignedMemberName}
                             </h3>
@@ -595,13 +621,22 @@ export function TodayScreen({
                           </div>
                         </div>
 
-                        <div className="shrink-0 text-right">
-                          <span className="text-[10px] text-[#71717A] dark:text-[#9BA5B7] block font-semibold">
-                            Position
-                          </span>
-                          <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] inline-block shadow-2xs">
-                            #{slot.slotIndex} in Turn
-                          </span>
+                        {/* Right Section: Theme-Adaptive Washing Animation & Position */}
+                        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                          {isTodayActive && (
+                            <div className="flex items-center justify-center shrink-0">
+                              <ThemeVesselWashingAnimation size="sm" />
+                            </div>
+                          )}
+
+                          <div className="shrink-0 text-right">
+                            <span className="text-[10px] text-[#71717A] dark:text-[#9BA5B7] block font-semibold">
+                              Position
+                            </span>
+                            <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] inline-block shadow-2xs">
+                              #{slot.slotIndex} in Turn
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
