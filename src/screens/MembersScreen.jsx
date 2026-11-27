@@ -39,7 +39,7 @@ export function MembersScreen({
   queue = [],
   attendanceLogs = [],
   isAdmin = false,
-  adminUserIds = ['m1'],
+  adminUserIds = ['m5'],
   onToggleAdminRole,
   onAddMember,
   onEditMember,
@@ -151,13 +151,12 @@ export function MembersScreen({
 
   // Helpers to identify primary admin and delegated admins
   const isKavipriyan = (m) =>
-    m?.id === 'm1' || (m?.name && m.name.trim().toLowerCase().includes('kavipriyan'));
+    m?.id === 'm5' || (m?.name && m.name.trim().toLowerCase().includes('suryakumar'));
   const isMemberAdmin = (m) =>
     isKavipriyan(m) || m?.role === 'admin' || (adminUserIds && adminUserIds.includes(m?.id));
 
   // Add Member Form state
   const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
   const [newCode, setNewCode] = useState('');
   const [newMemberType, setNewMemberType] = useState('permanent'); // 'permanent' | 'temporary'
   const [newRole, setNewRole] = useState('member'); // 'member' | 'admin'
@@ -170,7 +169,6 @@ export function MembersScreen({
 
   // Edit Member Form state
   const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState('member');
   const [editMemberType, setEditMemberType] = useState('permanent');
   const [editError, setEditError] = useState('');
@@ -178,7 +176,6 @@ export function MembersScreen({
   const handleOpenAdd = () => {
     const seq = getNextMemberSequence(members);
     setNewName('');
-    setNewPhone('');
     setNewCode(seq.code);
     setNewMemberType('permanent');
     setNewRole('member');
@@ -229,7 +226,6 @@ export function MembersScreen({
       code: assignedCode,
       status: 'active',
       memberType: newMemberType,
-      phone: newPhone.trim(),
     });
 
     if (newRole === 'admin' && onToggleAdminRole) {
@@ -256,7 +252,6 @@ export function MembersScreen({
   const handleOpenEdit = (member) => {
     setEditModal({ isOpen: true, member });
     setEditName(member.name);
-    setEditPhone(member.phone || '');
     setEditRole(isMemberAdmin(member) ? 'admin' : 'member');
     setEditMemberType(member.memberType || member.member_type || 'permanent');
     setEditError('');
@@ -277,7 +272,7 @@ export function MembersScreen({
       return;
     }
 
-    onEditMember(editModal.member.id, trimmed, editMemberType, editPhone.trim());
+    onEditMember(editModal.member.id, trimmed, editMemberType);
 
     // If role changed in edit modal, trigger role update
     if (!isKavipriyan(editModal.member) && onToggleAdminRole) {
@@ -582,7 +577,7 @@ export function MembersScreen({
         <div className="p-3.5 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 border border-[#EA580C]/30 dark:border-[#F59E0B]/40 text-[#EA580C] dark:text-[#F59E0B] text-xs flex items-center gap-2.5 shadow-2xs">
           <Lock className="w-4 h-4 text-[#EA580C] dark:text-[#F59E0B] shrink-0" />
           <span className="leading-snug">
-            <strong>View-Only Mode:</strong> Member additions, credential assignments, role delegation, and removal are restricted to <strong>Kavipriyan (Primary Admin)</strong>.
+            <strong>View-Only Mode:</strong> Member additions, credential assignments, role delegation, and removal are restricted to <strong>Suryakumar (Primary Admin)</strong>.
           </span>
         </div>
       )}
@@ -943,23 +938,6 @@ export function MembersScreen({
             />
           </div>
 
-          {/* Phone Number Input (for Free OTP Login) */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-              <span>Phone Number</span>
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#22AC77]/15 text-[#22AC77] dark:text-[#4ADE80]">
-                Free OTP Login
-              </span>
-            </label>
-            <input
-              type="tel"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="e.g. 9876543210"
-              className="w-full h-11 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] placeholder:text-[#848A96] dark:placeholder:text-[#64748B] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] focus:ring-1 focus:ring-[#EA580C]/20 transition-all font-medium"
-            />
-          </div>
-
           {/* Member Type: Temporary vs Permanent Segmented Cards */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
@@ -1174,14 +1152,6 @@ export function MembersScreen({
             error={editError}
             required
             autoFocus
-          />
-
-          <TextInput
-            label="Phone Number (Free OTP Login)"
-            type="tel"
-            value={editPhone}
-            onChange={(e) => setEditPhone(e.target.value)}
-            placeholder="e.g. 9876543210"
           />
 
           {editModal.member && !isKavipriyan(editModal.member) ? (

@@ -9,6 +9,7 @@ export const INITIAL_MEMBERS = [
     code: 'M1',
     name: 'Kavipriyan',
     email: 'kavipriyan@vesselwash.app',
+    role: 'member',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -53,6 +54,7 @@ export const INITIAL_MEMBERS = [
     code: 'M5',
     name: 'Suryakumar',
     email: 'suryakumar@vesselwash.app',
+    role: 'admin',
     has_login_set: true,
     status: 'active',
     memberType: 'permanent',
@@ -415,9 +417,9 @@ export const storage = {
   getAdminUserIds() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ADMIN_IDS);
-      return data ? JSON.parse(data) : ['m1'];
+      return data ? JSON.parse(data) : ['m5'];
     } catch (e) {
-      return ['m1'];
+      return ['m5'];
     }
   },
   saveAdminUserIds(adminIds) {

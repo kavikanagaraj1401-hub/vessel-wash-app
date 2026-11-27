@@ -56,7 +56,7 @@ export function SettingsModal({
   attendanceLogs = [],
   computedDays = [],
   todayDateStr = getTodayDateStr(),
-  adminUserIds = ['m1'],
+  adminUserIds = ['m5'],
   onToggleAdminRole,
   onAddMember,
   onEditMember,
@@ -1045,7 +1045,7 @@ $$;`;
                       </div>
                       <div className="flex justify-between py-1 text-[11px]">
                         <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Admin:</span>
-                        <span className="font-semibold text-[#ECBD56]">👑 Kavipriyan (Primary Admin)</span>
+                        <span className="font-semibold text-[#ECBD56]">👑 Suryakumar (Primary Admin)</span>
                       </div>
                     </div>
 

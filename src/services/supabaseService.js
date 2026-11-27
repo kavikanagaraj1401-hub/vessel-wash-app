@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, getIsolatedAuthClient } from './supabaseClient';
-import { extractNameFromEmail, isKavipriyanEmail, normalizePhone } from '../logic/authUtils';
+import { extractNameFromEmail, isPrimaryAdminEmail } from '../logic/authUtils';
 
 /**
  * Supabase Data & Realtime Service for Vessel Wash App
@@ -57,7 +57,6 @@ export const supabaseService = {
           ...member,
           id: isPrevUuid ? prev.id : (isCurrUuid ? member.id : prev.id || member.id),
           email: prev.email || member.email || null,
-          phone: member.phone || prev.phone || null,
           role: (prev.role === 'admin' || member.role === 'admin') ? 'admin' : (prev.role || member.role || 'member'),
           name: prev.name || member.name || prev.full_name || member.full_name,
           rotation_order: prev.rotation_order !== undefined ? prev.rotation_order : member.rotation_order,
@@ -135,11 +134,11 @@ export const supabaseService = {
       const settingsMembers = settingsMap.get('members_list');
 
       const canonicalSeed = [
-        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
+        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'member', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
         { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
         { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
         { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
-        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
+        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'admin', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
         { id: 'm6', name: 'Arun', email: 'arun@vesselwash.app', role: 'member', code: 'M6', status: 'active', rotation_order: 6, has_login_set: true },
       ];
 
@@ -201,7 +200,6 @@ export const supabaseService = {
           id: m.id || `m${idx + 1}`,
           name: m.name || m.full_name,
           email,
-          phone: m.phone || m.phone_number || null,
           role: m.role || match?.role || 'member',
           code: m.code || `M${m.rotation_order || idx + 1}`,
           status: m.status !== undefined ? m.status : (m.is_active !== undefined ? (m.is_active ? 'active' : 'inactive') : 'active'),
@@ -344,11 +342,11 @@ export const supabaseService = {
 
       // Ensure all canonical core members (M1-M6 Arun) are permanently included in fetchMembers
       const canonicalSeed = [
-        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'admin', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
+        { id: 'm1', name: 'Kavipriyan', email: 'kavipriyan@vesselwash.app', role: 'member', code: 'M1', status: 'active', rotation_order: 1, has_login_set: true },
         { id: 'm2', name: 'Marudhu', email: 'marudhu@vesselwash.app', role: 'member', code: 'M2', status: 'active', rotation_order: 2, has_login_set: true },
         { id: 'm3', name: 'Perumal', email: 'perumal@vesselwash.app', role: 'member', code: 'M3', status: 'active', rotation_order: 3, has_login_set: true },
         { id: 'm4', name: 'Ponneelan', email: 'ponneelan@vesselwash.app', role: 'member', code: 'M4', status: 'active', rotation_order: 4, has_login_set: true },
-        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'member', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
+        { id: 'm5', name: 'Suryakumar', email: 'suryakumar@vesselwash.app', role: 'admin', code: 'M5', status: 'active', rotation_order: 5, has_login_set: true },
         { id: 'm6', name: 'Arun', email: 'arun@vesselwash.app', role: 'member', code: 'M6', status: 'active', rotation_order: 6, has_login_set: true },
       ];
 
@@ -800,7 +798,7 @@ export const supabaseService = {
     } catch (err) {
       console.warn('Could not fetch member profile:', err);
       return {
-        role: isKavipriyanEmail(email) ? 'admin' : 'member',
+        role: isPrimaryAdminEmail(email) ? 'admin' : 'member',
         is_active: true,
       };
     }
@@ -1638,7 +1636,7 @@ export const supabaseService = {
     try {
       const trimmedEmail = email.trim();
       const fullName = extractNameFromEmail(trimmedEmail);
-      const role = isKavipriyanEmail(trimmedEmail) ? 'admin' : 'member';
+      const role = isPrimaryAdminEmail(trimmedEmail) ? 'admin' : 'member';
 
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
@@ -1672,14 +1670,9 @@ export const supabaseService = {
   },
 
   /**
-   * Supabase Auth: Log out / sign out (also clears free Phone OTP session)
+   * Supabase Auth: Log out / sign out
    */
   async signOut() {
-    try {
-      localStorage.removeItem('vw_otp_session');
-    } catch {
-      // ignore
-    }
     if (!isSupabaseConfigured || !supabase) return { success: true };
     try {
       const { error } = await supabase.auth.signOut();
@@ -1692,152 +1685,18 @@ export const supabaseService = {
   },
 
   /**
-   * Supabase Auth: Get current active session (checks Supabase Auth then free Phone OTP session)
+   * Supabase Auth: Get current active session
    */
   async getSession() {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (!error && data?.session) {
-          return data.session;
-        }
-      } catch (err) {
-        console.warn('Error getting session:', err);
-      }
-    }
+    if (!isSupabaseConfigured || !supabase) return null;
     try {
-      const raw = localStorage.getItem('vw_otp_session');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.user) return parsed;
-      }
-    } catch {
-      // ignore
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data?.session || null;
+    } catch (err) {
+      console.warn('Error getting session:', err);
+      return null;
     }
-    return null;
-  },
-
-  /**
-   * Free Phone + OTP Login: Lookup member by registered phone number and generate a 6-digit OTP
-   * (100% free — no paid SMS gateway required)
-   */
-  async sendFreePhoneOtp(phoneInput = '', membersList = []) {
-    const targetDigits = normalizePhone(phoneInput);
-    if (!targetDigits || targetDigits.length < 10) {
-      return { success: false, error: new Error('Please enter a valid 10-digit phone number.') };
-    }
-
-    let pool = Array.isArray(membersList) ? [...membersList] : [];
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: settingRow } = await supabase
-          .from('application_settings')
-          .select('setting_value')
-          .eq('setting_key', 'members_list')
-          .maybeSingle();
-        if (Array.isArray(settingRow?.setting_value)) {
-          pool = this.deduplicateMembers([...settingRow.setting_value, ...pool]);
-        }
-      } catch {
-        // use local pool fallback
-      }
-    }
-
-    const matched = pool.find(m => m && m.phone && normalizePhone(m.phone) === targetDigits);
-    if (!matched) {
-      return {
-        success: false,
-        error: new Error('No member found with this phone number. Ask your Admin to add your phone number in Members.'),
-      };
-    }
-
-    if (matched.status && matched.status !== 'active') {
-      return {
-        success: false,
-        error: new Error('This member account is inactive. Please contact your Administrator.'),
-      };
-    }
-
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-    const pending = {
-      phone: targetDigits,
-      otp,
-      expiresAt,
-      memberId: matched.id,
-      memberName: matched.name,
-    };
-
-    try {
-      localStorage.setItem('vw_pending_phone_otp', JSON.stringify(pending));
-    } catch {
-      // ignore
-    }
-
-    return {
-      success: true,
-      otp,
-      expiresAt,
-      member: matched,
-    };
-  },
-
-  /**
-   * Free Phone + OTP Login: Verify 6-digit OTP and create a persistent session
-   */
-  async verifyFreePhoneOtp(phoneInput = '', otpInput = '', membersList = []) {
-    const targetDigits = normalizePhone(phoneInput);
-    const cleanOtp = String(otpInput || '').trim();
-    if (!cleanOtp || cleanOtp.length !== 6) {
-      return { success: false, error: new Error('Please enter the 6-digit OTP.') };
-    }
-
-    let pending = null;
-    try {
-      const raw = localStorage.getItem('vw_pending_phone_otp');
-      if (raw) pending = JSON.parse(raw);
-    } catch {
-      pending = null;
-    }
-
-    if (!pending || pending.phone !== targetDigits) {
-      return { success: false, error: new Error('No active OTP found for this number. Please tap Send OTP again.') };
-    }
-
-    if (Date.now() > pending.expiresAt) {
-      return { success: false, error: new Error('OTP expired. Please request a new OTP.') };
-    }
-
-    if (pending.otp !== cleanOtp) {
-      return { success: false, error: new Error('Invalid OTP. Please check and try again.') };
-    }
-
-    const matched = (membersList || []).find(m => m && (m.id === pending.memberId || normalizePhone(m.phone) === targetDigits));
-    const memberName = matched?.name || pending.memberName || 'Member';
-    const memberEmail = matched?.email || `${memberName.toLowerCase().replace(/[^a-z0-9]/g, '')}@vesselwash.app`;
-
-    const otpSession = {
-      user: {
-        id: matched?.auth_id || matched?.id || pending.memberId,
-        email: memberEmail,
-        phone: targetDigits,
-        user_metadata: {
-          full_name: memberName,
-          phone: targetDigits,
-        },
-      },
-      access_token: null,
-      isOtpSession: true,
-    };
-
-    try {
-      localStorage.setItem('vw_otp_session', JSON.stringify(otpSession));
-      localStorage.removeItem('vw_pending_phone_otp');
-    } catch {
-      // ignore
-    }
-
-    return { success: true, session: otpSession };
   },
 
   /**
@@ -1860,7 +1719,7 @@ export const supabaseService = {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const cleanName = fullName || extractNameFromEmail(trimmedEmail);
-      const assignedRole = role || (isKavipriyanEmail(trimmedEmail) ? 'admin' : 'member');
+      const assignedRole = role || (isPrimaryAdminEmail(trimmedEmail) ? 'admin' : 'member');
 
       // 1. Check if record with matching email already exists
       const { data: existingByEmail } = await supabase

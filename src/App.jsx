@@ -10,7 +10,7 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { MembersScreen } from './screens/MembersScreen';
 import { BillScreen } from './screens/BillScreen';
 import { AuthScreen } from './components/auth/AuthScreen';
-import { extractNameFromEmail, extractUsername, isKavipriyanEmail, getNextMemberSequence } from './logic/authUtils';
+import { extractNameFromEmail, extractUsername, isPrimaryAdminEmail, getNextMemberSequence } from './logic/authUtils';
 
 import { storage, INITIAL_MEMBERS, INITIAL_ATTENDANCE_LOGS } from './logic/storage';
 import { logActivityAction as defaultLogActivityAction, safeLogActivity } from './logic/activityLogger';
@@ -736,7 +736,7 @@ export default function App() {
           await supabaseService.saveApplicationRules({
             daysConfig: storage.getDaysConfig(),
             initialQueue: storage.getInitialQueue(),
-            adminUserIds: ['m1'],
+            adminUserIds: ['m5'],
             rosterRules: { initialSeed: true },
           });
           const refreshed = await supabaseService.fetchInitialData();
@@ -884,7 +884,7 @@ export default function App() {
     };
   }, [userEmail]);
 
-  const isUserKavipriyan = isKavipriyanEmail(userEmail);
+  const isUserPrimaryAdmin = isPrimaryAdminEmail(userEmail);
 
   const loggedInMember = useMemo(() => {
     if (userEmail) {
@@ -901,29 +901,29 @@ export default function App() {
   }, [members, userEmail, extractedUserName]);
 
   // Display name in header profile badge is extracted name from email
-  const userName = loggedInMember?.name || extractedUserName || 'Kavipriyan';
+  const userName = loggedInMember?.name || extractedUserName || 'Suryakumar';
 
   // Role Access Control: Fetch role from members table. If role === 'admin', unlock admin settings.
   // If role === 'member', show only daily roster and attendance tools.
   const isAdmin = useMemo(() => {
     if (!isAdminMode) return false;
-    if (isUserKavipriyan) return true;
+    if (isUserPrimaryAdmin) return true;
     if (dbUserRole === 'admin') return true;
     if (loggedInMember?.role === 'admin') return true;
     if (loggedInMember?.id && adminUserIds.includes(loggedInMember.id)) return true;
     return false;
-  }, [isAdminMode, isUserKavipriyan, dbUserRole, loggedInMember, adminUserIds]);
+  }, [isAdminMode, isUserPrimaryAdmin, dbUserRole, loggedInMember, adminUserIds]);
 
-  const isPrimaryAdmin = isUserKavipriyan;
+  const isPrimaryAdmin = isUserPrimaryAdmin;
 
   // Current logged in member representation for activity attribution
   const currentMember = useMemo(() => {
     if (loggedInMember) return loggedInMember;
     if (isAdmin) {
       return {
-        id: 'm1',
-        name: userName || 'Kavipriyan',
-        code: 'M1',
+        id: 'm5',
+        name: userName || 'Suryakumar',
+        code: 'M5',
       };
     }
     return {
@@ -1049,9 +1049,9 @@ export default function App() {
     const target = members.find(m => m.id === targetMemberId);
     if (!target) return;
 
-    // Kavipriyan is permanent Primary Administrator
-    if (target.id === 'm1' || target.name.trim().toLowerCase().includes('kavipriyan')) {
-      alert('Kavipriyan is the Primary Administrator and cannot be demoted.');
+    // Suryakumar (M5) is permanent Primary Administrator
+    if (target.id === 'm5' || target.name.trim().toLowerCase().includes('suryakumar')) {
+      alert('Suryakumar is the Primary Administrator and cannot be demoted.');
       return;
     }
 
@@ -1369,7 +1369,7 @@ export default function App() {
     );
   };
 
-  const handleAddMember = async ({ name, code, status, memberType = 'permanent', phone = '' }) => {
+  const handleAddMember = async ({ name, code, status, memberType = 'permanent' }) => {
     if (!isAdmin) return;
     const seq = getNextMemberSequence(members);
     const assignedCode = code || seq.code;
@@ -1380,7 +1380,6 @@ export default function App() {
       id: assignedId,
       code: assignedCode,
       name,
-      phone: phone ? String(phone).trim() : null,
       role: 'member',
       status: status || 'active',
       memberType: memberType || 'permanent',
@@ -1437,7 +1436,7 @@ export default function App() {
     );
   };
 
-  const handleEditMember = async (id, newName, newMemberType, newPhone) => {
+  const handleEditMember = async (id, newName, newMemberType) => {
     if (!isAdmin) return;
     const target = members.find(m => m.id === id);
     const oldName = target?.name || id;
@@ -1446,7 +1445,6 @@ export default function App() {
       m.id === id ? {
         ...m,
         name: newName,
-        ...(newPhone !== undefined ? { phone: newPhone ? String(newPhone).trim() : null } : {}),
         ...(newMemberType ? { memberType: newMemberType } : {}),
         updatedAt: new Date().toISOString()
       } : m
@@ -1616,7 +1614,7 @@ export default function App() {
     setMembers(INITIAL_MEMBERS);
     const initialDays = ensureDaysCoverDate(storage.getDaysConfig(), actualTodayDateStr);
     const initialQ = INITIAL_MEMBERS.map(m => m.id);
-    const defaultAdmins = ['m1'];
+    const defaultAdmins = ['m5'];
     setDaysConfig(initialDays);
     setAttendanceLogs(storage.getAttendanceLogs());
     setInitialQueue(initialQ);

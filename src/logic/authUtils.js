@@ -3,21 +3,6 @@
  */
 
 /**
- * Normalize a phone number to its last 10 digits for reliable matching
- * (e.g. "+91 98765-43210" -> "9876543210").
- *
- * @param {string} phone
- * @returns {string}
- */
-export function normalizePhone(phone = '') {
-  const digits = String(phone || '').replace(/\D/g, '');
-  if (digits.length > 10) {
-    return digits.slice(-10);
-  }
-  return digits;
-}
-
-/**
  * Extracts the exact username portion before '@' (e.g. "kavipriyan" from "kavipriyan@gmail.com").
  * 
  * @param {string} email
@@ -67,19 +52,22 @@ export function extractNameFromEmail(email = '') {
 }
 
 /**
- * Checks whether the email belongs to Kavipriyan (Primary Administrator).
+ * Checks whether the email belongs to Suryakumar (Primary Administrator).
  * 
  * @param {string} email
  * @returns {boolean}
  */
-export function isKavipriyanEmail(email = '') {
+export function isPrimaryAdminEmail(email = '') {
   if (!email || typeof email !== 'string') return false;
   const lower = email.toLowerCase().trim();
-  return (
-    lower.includes('kavipriyan') ||
-    lower.includes('kavikanagaraj') ||
-    lower.startsWith('kavi')
-  );
+  return lower.includes('suryakumar') || lower.startsWith('surya');
+}
+
+/**
+ * Legacy alias kept for backwards compatibility.
+ */
+export function isKavipriyanEmail(email = '') {
+  return isPrimaryAdminEmail(email);
 }
 
 /**

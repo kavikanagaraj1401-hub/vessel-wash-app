@@ -10,22 +10,13 @@ import {
   ArrowRight,
   HelpCircle,
   X,
-  Phone,
-  KeyRound,
-  MessageCircle,
-  MessageSquare,
 } from 'lucide-react';
 import { supabaseService } from '../../services/supabaseService';
-import { notificationService } from '../../services/notificationService';
 
 export function AuthScreen({ onAuthSuccess, members = [] }) {
-  const [loginMode, setLoginMode] = useState('password'); // 'password' | 'otp'
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [otpInput, setOtpInput] = useState('');
-  const [otpSentInfo, setOtpSentInfo] = useState(null); // { otp, member, expiresAt }
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
@@ -43,48 +34,6 @@ export function AuthScreen({ onAuthSuccess, members = [] }) {
   const handleResetForm = () => {
     setLoading(false);
     setErrorMsg('');
-  };
-
-  const handleSendOtp = async () => {
-    if (loading) return;
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      const res = await supabaseService.sendFreePhoneOtp(phoneInput, members);
-      if (!res.success) {
-        setErrorMsg(res.error?.message || 'Could not send OTP.');
-      } else {
-        setOtpSentInfo({ otp: res.otp, member: res.member, expiresAt: res.expiresAt });
-        notificationService.sendPush('🔐 Vessel Wash Login OTP', {
-          body: `Your 6-digit OTP is ${res.otp} (valid 5 mins)`,
-          tag: 'vw-login-otp',
-          renotify: true,
-        });
-      }
-    } catch (err) {
-      setErrorMsg(err?.message || 'Failed to generate OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (loading) return;
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      const res = await supabaseService.verifyFreePhoneOtp(phoneInput, otpInput, members);
-      if (!res.success) {
-        setErrorMsg(res.error?.message || 'Invalid OTP.');
-      } else if (onAuthSuccess) {
-        onAuthSuccess(res.session);
-      }
-    } catch (err) {
-      setErrorMsg(err?.message || 'OTP verification failed.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -184,136 +133,7 @@ export function AuthScreen({ onAuthSuccess, members = [] }) {
           </div>
         )}
 
-        {/* Login Mode Switcher: Password vs Free Phone + OTP */}
-        <div className="flex p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] gap-1">
-          <button
-            type="button"
-            onClick={() => { setLoginMode('password'); setErrorMsg(''); }}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              loginMode === 'password'
-                ? 'bg-[#111216] dark:bg-[#ECBD56] text-white dark:text-[#111216] shadow-xs'
-                : 'text-[#4E525D] dark:text-[#9BA5B7]'
-            }`}
-          >
-            Password Login
-          </button>
-          <button
-            type="button"
-            onClick={() => { setLoginMode('otp'); setErrorMsg(''); }}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              loginMode === 'otp'
-                ? 'bg-[#111216] dark:bg-[#ECBD56] text-white dark:text-[#111216] shadow-xs'
-                : 'text-[#4E525D] dark:text-[#9BA5B7]'
-            }`}
-          >
-            Phone + OTP (Free)
-          </button>
-        </div>
-
         {/* Form */}
-        {loginMode === 'otp' ? (
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="login-phone" className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
-                Registered Phone Number
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    id="login-phone"
-                    type="tel"
-                    required
-                    disabled={loading}
-                    value={phoneInput}
-                    onChange={(e) => { setPhoneInput(e.target.value); if (errorMsg) setErrorMsg(''); }}
-                    placeholder="e.g. 9876543210"
-                    className="w-full h-11 pl-10 pr-3 text-xs font-semibold bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 transition-all"
-                  />
-                  <Phone className="w-4 h-4 text-[#848A96] dark:text-[#64748B] absolute left-3.5 top-3.5 pointer-events-none" />
-                </div>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={handleSendOtp}
-                  className="px-3.5 h-11 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] font-extrabold text-xs shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {otpSentInfo ? 'Resend' : 'Send OTP'}
-                </button>
-              </div>
-              <span className="text-[10px] text-[#848A96] dark:text-[#64748B] block">
-                100% free OTP — uses your phone number registered by Admin.
-              </span>
-            </div>
-
-            {otpSentInfo && (
-              <div className="p-3 rounded-2xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 text-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#15803D] dark:text-[#4ADE80]">
-                    OTP Ready for {otpSentInfo.member?.name}:
-                  </span>
-                  <span className="font-mono font-black text-sm tracking-widest px-2 py-0.5 rounded-lg bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] border border-[#22AC77]/40">
-                    {otpSentInfo.otp}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => notificationService.sendViaWhatsApp(`🔐 Vessel Wash Login OTP for ${otpSentInfo.member?.name}: *${otpSentInfo.otp}* (valid 5 mins)`)}
-                    className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-bold bg-[#25D366]/15 text-[#15803D] dark:text-[#4ADE80] border border-[#25D366]/30 cursor-pointer"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WhatsApp OTP</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => notificationService.sendViaSMS(`Vessel Wash Login OTP for ${otpSentInfo.member?.name}: ${otpSentInfo.otp} (valid 5 mins)`, phoneInput)}
-                    className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-bold bg-[#3B82F6]/15 text-[#1D4ED8] dark:text-[#60A5FA] border border-[#3B82F6]/30 cursor-pointer"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>SMS OTP</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label htmlFor="login-otp" className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] block">
-                6-Digit OTP
-              </label>
-              <div className="relative">
-                <input
-                  id="login-otp"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  required
-                  disabled={loading}
-                  value={otpInput}
-                  onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, '')); if (errorMsg) setErrorMsg(''); }}
-                  placeholder="Enter 6-digit OTP"
-                  className="w-full h-11 pl-10 pr-4 text-xs font-bold tracking-widest bg-white dark:bg-[#171F2C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#ECBD56] focus:ring-2 focus:ring-[#ECBD56]/20 transition-all"
-                />
-                <KeyRound className="w-4 h-4 text-[#848A96] dark:text-[#64748B] absolute left-3.5 top-3.5 pointer-events-none" />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || otpInput.length !== 6}
-              className="w-full h-11 bg-[#111216] dark:bg-[#ECBD56] hover:bg-[#23252C] dark:hover:bg-[#DEAA3E] text-white dark:text-[#111216] font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {loading ? (
-                <span>Verifying OTP...</span>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  <span>Verify &amp; Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username or Email Field */}
           <div className="space-y-1.5">
@@ -401,7 +221,6 @@ export function AuthScreen({ onAuthSuccess, members = [] }) {
             )}
           </button>
         </form>
-        )}
 
       </div>
 
@@ -436,7 +255,7 @@ export function AuthScreen({ onAuthSuccess, members = [] }) {
                 To maintain roster integrity and prevent unauthorized changes, self-service password resets are disabled. Please request a temporary password or reset from:
               </p>
               <div className="p-3 rounded-xl bg-[#FCF7ED] dark:bg-[#272115] border border-[#ECBD56]/40 text-[#845D08] dark:text-[#FBE6AB] font-semibold text-xs space-y-1">
-                <div>👑 <strong>Kavipriyan</strong> (Primary Administrator)</div>
+                <div>👑 <strong>Suryakumar</strong> (Primary Administrator)</div>
                 <div className="text-[11px] font-normal text-[#845D08]/80 dark:text-[#FBE6AB]/80">or any designated Co-Administrator in your group.</div>
               </div>
               <p className="text-[11px] text-[#848A96] dark:text-[#64748B]">

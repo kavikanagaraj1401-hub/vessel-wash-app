@@ -31,7 +31,7 @@ export function TopAppBar({
   onSignOut,
   onToggleAdminMode,
   allMembers = [],
-  adminUserIds = ['m1'],
+  adminUserIds = ['m5'],
   onSettingsClick,
   isLiveConnected = false,
 }) {
@@ -52,7 +52,7 @@ export function TopAppBar({
   const [passError, setPassError] = useState('');
   const [passSuccess, setPassSuccess] = useState('');
 
-  const isPrimaryAdmin = (m) => m?.id === 'm1' || (m?.name && m.name.toLowerCase().includes('kavipriyan'));
+  const isPrimaryAdmin = (m) => m?.id === 'm5' || (m?.name && m.name.toLowerCase().includes('suryakumar'));
   const isMemberAdmin = (m) => isPrimaryAdmin(m) || (adminUserIds && adminUserIds.includes(m?.id));
 
   useEffect(() => {
