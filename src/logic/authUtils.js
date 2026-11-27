@@ -3,6 +3,21 @@
  */
 
 /**
+ * Normalize a phone number to its last 10 digits for reliable matching
+ * (e.g. "+91 98765-43210" -> "9876543210").
+ *
+ * @param {string} phone
+ * @returns {string}
+ */
+export function normalizePhone(phone = '') {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length > 10) {
+    return digits.slice(-10);
+  }
+  return digits;
+}
+
+/**
  * Extracts the exact username portion before '@' (e.g. "kavipriyan" from "kavipriyan@gmail.com").
  * 
  * @param {string} email

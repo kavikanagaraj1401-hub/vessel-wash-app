@@ -1369,7 +1369,7 @@ export default function App() {
     );
   };
 
-  const handleAddMember = async ({ name, code, status, memberType = 'permanent' }) => {
+  const handleAddMember = async ({ name, code, status, memberType = 'permanent', phone = '' }) => {
     if (!isAdmin) return;
     const seq = getNextMemberSequence(members);
     const assignedCode = code || seq.code;
@@ -1380,6 +1380,7 @@ export default function App() {
       id: assignedId,
       code: assignedCode,
       name,
+      phone: phone ? String(phone).trim() : null,
       role: 'member',
       status: status || 'active',
       memberType: memberType || 'permanent',
@@ -1436,7 +1437,7 @@ export default function App() {
     );
   };
 
-  const handleEditMember = async (id, newName, newMemberType) => {
+  const handleEditMember = async (id, newName, newMemberType, newPhone) => {
     if (!isAdmin) return;
     const target = members.find(m => m.id === id);
     const oldName = target?.name || id;
@@ -1445,6 +1446,7 @@ export default function App() {
       m.id === id ? {
         ...m,
         name: newName,
+        ...(newPhone !== undefined ? { phone: newPhone ? String(newPhone).trim() : null } : {}),
         ...(newMemberType ? { memberType: newMemberType } : {}),
         updatedAt: new Date().toISOString()
       } : m
