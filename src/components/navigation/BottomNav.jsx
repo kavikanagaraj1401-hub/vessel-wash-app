@@ -3,15 +3,16 @@ import { LayoutGrid, Receipt, Users, History } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 /**
- * Modern Sleek Horizontal Dock Bottom Navigation Bar
- * - Fixed/pinned cleanly at the viewport bottom with balanced padding and safe-area clearance
- * - Minimalist thin-stroke icons stacked directly above crisp compact text labels
- * - High-contrast active vs. muted inactive states with no bulky top lines or cramped spacing
- * - Light and Dark mode WCAG contrast accessibility
- * - Dynamic Day (Orange) vs Night (Blue) brand accent theme
+ * Floating Pill Bottom Navigation Dock (Dorme Architecture)
+ * - Sleek floating rounded pill navigation dock (rounded-full / 28px radius)
+ * - Solid high-contrast active pill indicator:
+ *   - Pure white/light pill in dark mode (#FFFFFF text-[#0B0C0E])
+ *   - Deep charcoal/obsidian pill in light mode (#111214 text-white)
+ * - Crisp monochrome icons + micro-labels for Home, Bill, Members, and History
+ * - Muted inactive items with soft hover and active-scale feedback
  */
 export function BottomNav({ activeTab, onTabChange }) {
-  const { brandClasses } = useTheme();
+  const { isDark } = useTheme();
 
   const tabs = [
     { id: 'today', label: 'Home', icon: LayoutGrid },
@@ -21,45 +22,42 @@ export function BottomNav({ activeTab, onTabChange }) {
   ];
 
   return (
-    <nav
-      aria-label="Bottom Navigation"
-      className="shrink-0 z-30 w-full bg-white/95 dark:bg-[#121620]/95 backdrop-blur-md border-t border-[#DDD9D0]/70 dark:border-[#263042]/70 pb-safe shadow-[0_-2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] select-none transition-colors duration-200"
-    >
-      <div className="w-full max-w-lg mx-auto grid grid-cols-4 h-14 sm:h-16 px-1 sm:px-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+    <div className="shrink-0 w-full px-4 pb-safe pt-1 pointer-events-none z-30 flex justify-center">
+      <nav
+        aria-label="Bottom Navigation"
+        className="pointer-events-auto w-full max-w-[400px] mb-2 sm:mb-3 p-1.5 rounded-full bg-white/90 dark:bg-[#141518]/90 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_14px_36px_rgba(0,0,0,0.5)] select-none transition-all duration-200"
+      >
+        <div className="grid grid-cols-4 gap-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
 
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onTabChange(tab.id)}
-              aria-label={tab.label}
-              aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 sm:px-1 h-full w-full select-none active-scale transition-all duration-150 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 ${
-                isActive
-                  ? `${brandClasses?.activeText || 'text-[#EA580C] dark:text-[#F59E0B]'} ${brandClasses?.ring || 'focus-visible:ring-[#EA580C]/40'}`
-                  : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
-              }`}
-            >
-              <Icon
-                className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-150"
-                strokeWidth={isActive ? 2.2 : 1.8}
-              />
-              <span
-                className={`text-[9.5px] sm:text-[11px] tracking-tight leading-none mt-1 transition-all ${
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onTabChange(tab.id)}
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-full text-xs transition-all duration-200 select-none active-scale cursor-pointer ${
                   isActive
-                    ? `font-extrabold ${brandClasses?.activeText || 'text-[#EA580C] dark:text-[#F59E0B]'}`
-                    : 'font-medium text-[#71717A] dark:text-[#94A3B8]'
+                    ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] font-semibold shadow-xs'
+                    : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
                 }`}
               >
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+                <Icon
+                  className="w-4 h-4 shrink-0 transition-transform duration-150"
+                  strokeWidth={isActive ? 2.4 : 2}
+                />
+                <span className="text-[11px] sm:text-[12px] tracking-tight truncate leading-none">
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
   );
 }
+

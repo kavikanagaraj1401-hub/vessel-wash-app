@@ -1,9 +1,9 @@
 import React from 'react';
 
 /**
- * Modern Design System Card Component
- * Standardized 4px border-radius with Light/Dark token support
- * Light: #FFFFFF (Pure White) | Dark: #171F2C (Deep Slate)
+ * Modern Design System Bento Card Component (Dorme Reference)
+ * Standardized 20px border-radius with pure Grayscale Monochrome tokens
+ * Light: #FFFFFF (Pure White) on #F5F5F7 | Dark: #141518 (Elevated Graphite) on #0B0C0E
  */
 export function Card({
   children,
@@ -22,20 +22,21 @@ export function Card({
   };
 
   const highlightBorder = highlight
-    ? 'border-[#EA580C] dark:border-[#F59E0B] ring-2 ring-[#EA580C]/20 shadow-md'
-    : 'border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs';
+    ? 'border-[#111214] dark:border-white ring-2 ring-black/10 dark:ring-white/10 shadow-md'
+    : 'border-black/[0.07] dark:border-white/[0.08] shadow-2xs hover:shadow-xs';
 
   const clickableStyles = onClick
-    ? 'cursor-pointer active-scale hover:border-[#EA580C]/60 dark:hover:border-[#F59E0B]/60 transition-all'
+    ? 'cursor-pointer active-scale hover:border-black/30 dark:hover:border-white/30 transition-all'
     : '';
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-2xl border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
+      className={`bg-white dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-[20px] border ${highlightBorder} ${paddingStyles[padding]} ${clickableStyles} ${className}`}
       {...props}
     >
       {children}
     </div>
   );
 }
+

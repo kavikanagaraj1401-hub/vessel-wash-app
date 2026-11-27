@@ -136,10 +136,10 @@ export default {
       },
       fontFamily: {
         sans: [
-          'Fustat',
-          'Inter',
+          '"SF Pro Display"',
           '-apple-system',
           'BlinkMacSystemFont',
+          '"Inter"',
           'sans-serif',
         ],
       },

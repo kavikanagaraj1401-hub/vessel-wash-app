@@ -84,26 +84,26 @@ export function ThemeProvider({ children }) {
   };
 
   const brandClasses = useMemo(() => {
-    return isDaytime
+    return isDark
       ? {
-          primaryGradient: 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B]',
-          activeText: 'text-[#EA580C] dark:text-[#F59E0B]',
-          badge: 'bg-[#FFF7ED] dark:bg-[#2A1D15] text-[#C2410C] dark:text-[#FDBA74] border-[#F97316]/30',
-          ring: 'focus-visible:ring-[#EA580C]/40',
-          accentBorder: 'border-[#EA580C] dark:border-[#F59E0B]',
-          accentBorderSubtle: 'border-[#EA580C]/30 dark:border-[#F59E0B]/40',
-          subtleBg: 'bg-[#EA580C]/10 dark:bg-[#F59E0B]/15',
+          primaryGradient: 'bg-white text-[#0B0C0E]',
+          activeText: 'text-[#F5F5F7]',
+          badge: 'bg-[#1C1D21] text-[#F5F5F7] border-white/10',
+          ring: 'focus-visible:ring-white/20',
+          accentBorder: 'border-white',
+          accentBorderSubtle: 'border-white/20',
+          subtleBg: 'bg-white/10',
         }
       : {
-          primaryGradient: 'bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#06B6D4]',
-          activeText: 'text-[#2563EB] dark:text-[#38BDF8]',
-          badge: 'bg-[#EFF6FF] dark:bg-[#151D2E] text-[#1D4ED8] dark:text-[#93C5FD] border-[#3B82F6]/30',
-          ring: 'focus-visible:ring-[#2563EB]/40',
-          accentBorder: 'border-[#2563EB] dark:border-[#38BDF8]',
-          accentBorderSubtle: 'border-[#2563EB]/30 dark:border-[#38BDF8]/40',
-          subtleBg: 'bg-[#2563EB]/10 dark:bg-[#06B6D4]/15',
+          primaryGradient: 'bg-[#111214] text-white',
+          activeText: 'text-[#111214]',
+          badge: 'bg-[#EFEFF1] text-[#111214] border-black/10',
+          ring: 'focus-visible:ring-black/20',
+          accentBorder: 'border-[#111214]',
+          accentBorderSubtle: 'border-black/20',
+          subtleBg: 'bg-black/5',
         };
-  }, [isDaytime]);
+  }, [isDark]);
 
   return (
     <ThemeContext.Provider value={{

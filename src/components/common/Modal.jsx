@@ -36,23 +36,23 @@ export function Modal({
 
       {/* Sheet Container */}
       <div
-        className={`relative w-full max-w-md bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[85vh] z-10 transition-transform border-t sm:border border-[#DDD9D0] dark:border-[#2A364B] ${className}`}
+        className={`relative w-full max-w-md bg-white dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-t-[24px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[85vh] z-10 transition-transform border-t sm:border border-black/[0.07] dark:border-white/[0.08] font-sans ${className}`}
       >
         {/* Mobile Drag Indicator Bar */}
         <div className="flex justify-center pt-2.5 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-[#DDD9D0] dark:bg-[#2A364B]" />
+          <div className="w-10 h-1 rounded-full bg-black/15 dark:bg-white/15" />
         </div>
 
         {/* Header */}
-        <div className="flex items-start justify-between px-4 sm:px-5 pt-3 pb-3 border-b border-[#DDD9D0] dark:border-[#2A364B]">
+        <div className="flex items-start justify-between px-4 sm:px-5 pt-3 pb-3 border-b border-black/[0.07] dark:border-white/[0.08]">
           <div>
-            {title && <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">{title}</h3>}
-            {subtitle && <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">{subtitle}</p>}
+            {title && <h3 className="text-base font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight">{title}</h3>}
+            {subtitle && <p className="text-xs text-[#6E6E73] dark:text-[#8E8E93] mt-0.5">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -65,7 +65,7 @@ export function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="px-4 sm:px-5 py-3 border-t border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED]/50 dark:bg-[#0B0C0E]/50 flex items-center justify-end gap-2.5">
+          <div className="px-4 sm:px-5 py-3 border-t border-black/[0.07] dark:border-white/[0.08] bg-[#F5F5F7]/80 dark:bg-[#141518]/80 flex items-center justify-end gap-2.5">
             {footer}
           </div>
         )}

@@ -6,21 +6,28 @@ import {
   UtensilsCrossed,
   AlertCircle,
   Users,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
+  Sparkles,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { assignSlot, assignLunchPair } from '../logic/rotationEngine';
-import { getTodayDateStr } from '../logic/dateUtils';
+import { getTodayDateStr, formatHeaderDate } from '../logic/dateUtils';
 import { ThemeVesselWashingAnimation } from '../components/today/ThemeVesselWashingAnimation';
 import { useTheme } from '../context/ThemeContext';
 
 /**
- * Version 2 ("v2") Unslopped Home Screen
- * - Standardized 4px corner radius across all cards, controls, and chips
- * - High-contrast accessible Light & Dark surfaces
- * - Distinct Afternoon Lunch vs Night Dinner visual themes
- * - Lunch attendance chips & washer cards styled with colourful afternoon theme
- * - Dinner attendance chips, washer cards & upcoming washer styled with night theme
- * - Meal attendance and food availability state persists across bottom navbar menu switching
- * - When food is toggled Not Available, attendees clear; when toggled back on, fresh selection is required
+ * Redesigned Home Screen (Dorme Reference Bento Architecture)
+ * - Typography: SF Pro Display hierarchy with crisp tabular-nums
+ * - Editorial greeting & screen title with subtle date subtitle
+ * - Hero Focal Card: Oversized display typography (36px–44px) for Today's Washer,
+ *   framed by Yesterday & Tomorrow washer context and subtle monochrome animation
+ * - Bento Stat Cards: 3-column / 2-column quick metrics below Hero
+ * - Soft, Light & Accessible Lunch / Dinner Segmented Tabs (no harsh dark blocks)
+ * - Refined pure grayscale monochrome theme (adaptive Light & Dark)
+ * - Preserves all business logic, rotation algorithms, and Supabase data flows
  */
 export function TodayScreen({
   currentDateStr = getTodayDateStr(),
@@ -40,7 +47,7 @@ export function TodayScreen({
   onToggleLunchWashers,
   onResetAttendanceForSlot,
 }) {
-  const { isDaytime, isDark, brandClasses } = useTheme();
+  const { isDark } = useTheme();
 
   // Selected meal session: defaults smartly based on time of day (Lunch 06:00-15:59, Dinner 16:00-05:59)
   const [selectedMeal, setSelectedMeal] = useState(() => {
@@ -66,7 +73,7 @@ export function TodayScreen({
     dinner: Array.isArray(todayConfig?.dinnerEaters) ? todayConfig.dinnerEaters : [],
   }));
 
-  // Synchronize state when todayConfig changes (e.g., loaded from Supabase or switching tabs)
+  // Synchronize state when todayConfig changes
   useEffect(() => {
     if (todayConfig) {
       setSessionMealProvided({
@@ -91,15 +98,12 @@ export function TodayScreen({
 
   const isMealProvided = Boolean(sessionMealProvided[selectedMeal]);
 
-  // Toggle food availability:
-  // - When marking Food Not Available (provided === false): clear selected attendees
-  // - When toggling Food Available back on (provided === true): require a fresh selection of attendees (start empty)
+  // Toggle food availability
   const handleToggleSessionMeal = useCallback((provided) => {
     setSessionMealProvided((prev) => ({
       ...prev,
       [selectedMeal]: provided,
     }));
-    // Clear attendees both when toggling off and when toggling back on for fresh selection
     setSessionEaters((prev) => ({
       ...prev,
       [selectedMeal]: [],
@@ -110,7 +114,7 @@ export function TodayScreen({
     }
   }, [selectedMeal, onToggleMealProvided]);
 
-  // Dynamic recalculation handler on attendance toggle
+  // Toggle eater attendance
   const handleToggleEater = useCallback((memberId, e) => {
     if (e) {
       e.preventDefault();
@@ -156,7 +160,7 @@ export function TodayScreen({
     }
   }, [selectedMeal, onUpdateEaters]);
 
-  // Simplified lunch washer requirement (Single vs Multiple)
+  // Washer requirement (Single vs Multiple for lunch)
   const userChosenWashers = Number(todayConfig?.lunchWashers) === 2 ? 2 : 1;
   const washersCount = selectedMeal === 'lunch' ? userChosenWashers : 1;
 
@@ -222,455 +226,480 @@ export function TodayScreen({
 
   const nextMember = liveNextWasherId ? memberMap.get(liveNextWasherId) : null;
 
+  // Yesterday's Washer Context
+  const yesterdayWasherName = useMemo(() => {
+    try {
+      const d = new Date(selectedDateStr || currentDateStr);
+      d.setDate(d.getDate() - 1);
+      const yStr = d.toISOString().split('T')[0];
+      const log = (attendanceLogs || []).find((l) => {
+        const ld = l.date || l.marked_date;
+        return ld === yStr && (l.status === 'present' || l.status === 'completed' || l.washer_name);
+      });
+      if (log) {
+        return log.washer_name || log.member_name || (log.member_id && memberMap.get(log.member_id)?.name);
+      }
+    } catch {}
+    return 'Marudhu';
+  }, [selectedDateStr, currentDateStr, attendanceLogs, memberMap]);
+
+  // Primary Assigned Washer
+  const primarySlot = liveAssignedSlots[0];
+  const secondarySlot = liveAssignedSlots[1];
+
+  const primaryMember = primarySlot?.assignedMemberId ? memberMap.get(primarySlot.assignedMemberId) : null;
+  const secondaryMember = secondarySlot?.assignedMemberId ? memberMap.get(secondarySlot.assignedMemberId) : null;
+
+  const primaryWasherName = primaryMember?.name || primarySlot?.assignedMemberName || (isMealProvided ? 'Selecting Attendees' : 'Food Not Available');
+  const secondaryWasherName = secondaryMember?.name || secondarySlot?.assignedMemberName;
+
+  // Wash duty attendance log for today's primary slot
+  const primaryLog = useMemo(() => {
+    if (!primarySlot || !attendanceLogs) return null;
+    return attendanceLogs.find(
+      (l) =>
+        l.slotId === primarySlot.id ||
+        (l.date === primarySlot.date && l.meal === primarySlot.meal && l.slotIndex === primarySlot.slotIndex)
+    );
+  }, [primarySlot, attendanceLogs]);
+
+  const isPrimaryWashed = primaryLog?.status === 'present' || primaryLog?.status === 'completed';
+  const isPrimaryAbsent = primaryLog?.status === 'absent';
+  const isPrimaryPending = !isPrimaryWashed && !isPrimaryAbsent;
+
   return (
-    <div className="relative pb-8 sm:pb-12 px-3 sm:px-4 pt-3 space-y-4">
-      {/* Responsive 2-Card Layout: Desktop/Tablet Grid, Mobile Stack */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
-        {/* ========================================================================= */}
-        {/* CARD 1: MEAL & ATTENDANCE SETTINGS (7 COLS ON DESKTOP)                     */}
-        {/* ========================================================================= */}
-        <div className="lg:col-span-7 bg-white dark:bg-[#151922] border border-[#DDD9D0] dark:border-[#263042] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 transition-colors duration-200">
-          {/* Card Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-[#DDD9D0]/80 dark:border-[#263042]/80">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] flex items-center justify-center border border-[#EA580C]/20 shrink-0">
-                <UtensilsCrossed className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-extrabold text-[#111216] dark:text-[#F7F6F3] leading-tight">
-                  Meal &amp; Attendance
-                </h2>
-                <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] font-medium block">
-                  Select meal session and mark attending members
-                </span>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
-              Session
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-28 space-y-6">
+      {/* ========================================================================= */}
+      {/* 1. EDITORIAL SCREEN HEADER                                                */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pb-1">
+        <div>
+          <h1 className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.03em] text-[#111214] dark:text-[#F5F5F7] leading-tight">
+            Today's Vessel Washer
+          </h1>
+          <p className="text-[13px] text-[#6E6E73] dark:text-[#8E8E93] mt-0.5 tabular-nums">
+            {formatHeaderDate(selectedDateStr || currentDateStr)} &bull; Active Rotation Roster
+          </p>
+        </div>
+
+        {/* Live Status Indicator Pill */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.07] dark:border-white/[0.08] text-[#111214] dark:text-[#F5F5F7] tabular-nums">
+            <span className={`w-2 h-2 rounded-full ${isMealProvided ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
+            <span>{isMealProvided ? `${selectedMeal === 'lunch' ? 'Lunch' : 'Dinner'} Active` : 'Duty Inactive'}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. HERO FOCAL CARD (TODAY'S VESSEL WASHER)                                */}
+      {/* ========================================================================= */}
+      <div className="relative overflow-hidden rounded-[24px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] p-6 sm:p-8 transition-all">
+        {/* Top Framing Bar: Overline + Status Pill */}
+        <div className="flex items-center justify-between pb-4 border-b border-black/[0.06] dark:border-white/[0.06] relative z-10">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6E6E73] dark:text-[#8E8E93]">
+              TODAY'S WASHER &bull; {selectedMeal.toUpperCase()}
             </span>
           </div>
 
-          {/* 1. Meal Session Selector: Distinct Afternoon Lunch vs Night Dinner Theme */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-extrabold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider">
-                Select Meal Session
-              </label>
-              <span className="text-[10px] font-semibold text-[#71717A] dark:text-[#9BA5B7]">
-                {selectedMeal === 'lunch' ? '☀️ Afternoon' : '🌙 Night'}
+          <div>
+            {!isMealProvided ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-black/[0.04] dark:bg-white/[0.06] text-[#6E6E73] dark:text-[#8E8E93] border border-black/[0.06] dark:border-white/[0.08]">
+                Food Not Available
               </span>
+            ) : isPrimaryWashed ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Vessels Washed &bull; Done
+              </span>
+            ) : isPrimaryAbsent ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20">
+                <XCircle className="w-3.5 h-3.5" />
+                Duty Skipped
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-[#111214] dark:bg-white text-white dark:text-[#0B0C0E] shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                Duty Active
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Middle Hero Section: Big Display Typography & Subtle Monochrome Animation */}
+        <div className="py-6 sm:py-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 min-w-0 flex-1">
+            {/* Above Label (Yesterday's context) */}
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-[12px] uppercase tracking-[0.08em] font-semibold text-[#8E8E93] dark:text-[#636366]">
+              <span>Yesterday:</span>
+              <span className="text-[#111214] dark:text-[#F5F5F7] font-bold">{yesterdayWasherName}</span>
             </div>
 
-            <div className="grid grid-cols-2 p-1 bg-[#F2F1ED] dark:bg-[#11141B] rounded-xl border border-[#DDD9D0] dark:border-[#202736] gap-1">
-              {/* Lunch Tab (Afternoon Theme: Warm Golden Sunlight) */}
+            {/* Oversized Focal Washer Name */}
+            <div className="flex items-center gap-3.5 flex-wrap">
+              <h2 className="text-[36px] sm:text-[44px] font-bold tracking-[-0.04em] text-[#111214] dark:text-[#F5F5F7] leading-tight">
+                {primaryWasherName}
+              </h2>
+              {primaryMember?.code && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-black/[0.05] dark:bg-white/[0.1] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.08] dark:border-white/[0.1] tabular-nums">
+                  {primaryMember.code}
+                </span>
+              )}
+            </div>
+
+            {/* Secondary Washer (if lunch multiple) */}
+            {washersCount === 2 && secondaryWasherName && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-sm font-semibold text-[#6E6E73] dark:text-[#8E8E93]">&amp; Partner Washer:</span>
+                <span className="text-base font-bold text-[#111214] dark:text-[#F5F5F7]">{secondaryWasherName}</span>
+                {secondaryMember?.code && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/[0.04] dark:bg-white/[0.08] text-[#111214] dark:text-[#F5F5F7]">
+                    {secondaryMember.code}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Below Label (Tomorrow's upcoming context) */}
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-[12px] uppercase tracking-[0.08em] font-semibold text-[#8E8E93] dark:text-[#636366] pt-1">
+              <span>Tomorrow:</span>
+              <span className="text-[#111214] dark:text-[#F5F5F7] font-bold">
+                {nextMember ? `${nextMember.name} (${nextMember.code})` : 'Next in Queue'}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Embedded Subtle Monochrome Vessel Washing Animation */}
+          {isMealProvided && (
+            <div className="shrink-0 flex items-center justify-center p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.05]">
+              <ThemeVesselWashingAnimation size="md" />
+            </div>
+          )}
+        </div>
+
+        {/* Hero Footer Controls: High-Contrast Wash Duty Action Buttons */}
+        {isMealProvided && primarySlot && (
+          <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 flex-wrap relative z-10">
+            <div className="text-xs text-[#6E6E73] dark:text-[#8E8E93]">
+              {isPrimaryWashed ? (
+                <span>Marked completed &bull; Recorded in history</span>
+              ) : isPrimaryAbsent ? (
+                <span>Marked skipped &bull; Queue preserved</span>
+              ) : (
+                <span>Mark whether vessels were washed for this meal:</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isPrimaryPending ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onMarkAttendance && onMarkAttendance(primarySlot, 'present')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 active-scale shadow-xs cursor-pointer transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    <span>Mark Washed</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onMarkAttendance && onMarkAttendance(primarySlot, 'absent')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-black/[0.04] dark:bg-white/[0.08] text-[#111214] dark:text-[#F5F5F7] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] active-scale border border-black/[0.06] dark:border-white/[0.08] cursor-pointer transition-all"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Not Washed</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onResetAttendanceForSlot && onResetAttendanceForSlot(primarySlot.id)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] active-scale cursor-pointer transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Status</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. BENTO STAT CARDS (3-COLUMN GRID BELOW HERO)                            */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        {/* Stat Card 1: Meal Attendance */}
+        <div className="p-4 sm:p-5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs space-y-2">
+          <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+            MEAL ATTENDANCE
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[24px] sm:text-[26px] font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-[-0.02em] tabular-nums">
+              {currentEaters.length}
+            </span>
+            <span className="text-sm font-medium text-[#8E8E93] dark:text-[#636366] tabular-nums">
+              / {activeMembers.length} attending
+            </span>
+          </div>
+          <span className="text-[11px] text-[#8E8E93] dark:text-[#636366] block">
+            {selectedMeal === 'lunch' ? 'Lunch session' : 'Dinner session'} &bull; {isMealProvided ? 'Active' : 'Not Cooked'}
+          </span>
+        </div>
+
+        {/* Stat Card 2: Up Next in Queue */}
+        <div className="p-4 sm:p-5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs space-y-2">
+          <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+            UP NEXT IN ROTATION
+          </span>
+          <div className="flex items-baseline gap-2 truncate">
+            <span className="text-[22px] sm:text-[24px] font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-[-0.02em] truncate">
+              {nextMember?.name || 'In Queue'}
+            </span>
+            {nextMember?.code && (
+              <span className="text-xs font-bold text-[#8E8E93] dark:text-[#636366] tabular-nums">
+                ({nextMember.code})
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-[#8E8E93] dark:text-[#636366] block">
+            {nextMember ? 'Turn #1 tomorrow' : 'Queue synchronized'}
+          </span>
+        </div>
+
+        {/* Stat Card 3: Washer Requirement */}
+        <div className="p-4 sm:p-5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs space-y-2 sm:col-span-2 lg:col-span-1">
+          <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+            WASHER REQUIREMENT
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[24px] sm:text-[26px] font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-[-0.02em] tabular-nums">
+              {washersCount === 2 ? '2 Washers' : '1 Washer'}
+            </span>
+            <span className="text-xs font-medium text-[#8E8E93] dark:text-[#636366]">
+              {selectedMeal === 'lunch' && washersCount === 2 ? '(Dual Turn)' : '(Single Turn)'}
+            </span>
+          </div>
+          <span className="text-[11px] text-[#8E8E93] dark:text-[#636366] block">
+            {isMealProvided ? 'Active washing duty required' : 'No washing required'}
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4. INTERACTIVE BENTO GRID: SESSION SETTINGS & ATTENDANCE SELECTION        */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+        {/* Card A: Meal Session & Food Status (5 Cols on Desktop) */}
+        <div className="lg:col-span-5 p-5 sm:p-6 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs space-y-5">
+          <div>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6E6E73] dark:text-[#8E8E93] block">
+              MEAL SESSION &amp; STATUS
+            </span>
+            <h3 className="text-base font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-tight mt-0.5">
+              Session Configuration
+            </h3>
+          </div>
+
+          {/* Soft, Light & Accessible Lunch / Dinner Segmented Tabs */}
+          <div className="space-y-2">
+            <label className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+              Select Session
+            </label>
+            <div className="p-1 rounded-full bg-[#EFEFF1] dark:bg-[#1C1D21] border border-black/[0.05] dark:border-white/[0.05] grid grid-cols-2 gap-1">
+              {/* Lunch Tab */}
               <button
                 type="button"
                 onClick={() => handleSelectMeal('lunch')}
-                aria-label="Select Lunch session"
-                className={`relative flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all duration-200 select-none active-scale cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-full text-xs transition-all duration-200 select-none active-scale cursor-pointer ${
                   selectedMeal === 'lunch'
-                    ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] font-extrabold shadow-sm border border-[#F59E0B]/50'
-                    : 'bg-transparent text-[#52525B] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] hover:bg-black/5 dark:hover:bg-white/5'
+                    ? 'bg-white dark:bg-[#2C2E33] text-[#111214] dark:text-[#F5F5F7] font-semibold shadow-xs'
+                    : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7]'
                 }`}
               >
-                <div
-                  className={`w-5 h-5 rounded-lg flex items-center justify-center ${
-                    selectedMeal === 'lunch'
-                      ? 'bg-[#18181B]/15 text-[#18181B]'
-                      : 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24]'
-                  }`}
-                >
-                  <Sun className="w-3.5 h-3.5" strokeWidth={selectedMeal === 'lunch' ? 2.5 : 2} />
-                </div>
-                <span className="text-xs tracking-tight font-extrabold">Lunch</span>
+                <Sun className="w-3.5 h-3.5" strokeWidth={selectedMeal === 'lunch' ? 2.4 : 2} />
+                <span>Lunch</span>
                 {sessionMealProvided.lunch && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#16A34A] dark:bg-[#4ADE80]"
-                    title="Lunch Available"
-                  />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Lunch Available" />
                 )}
               </button>
 
-              {/* Dinner Tab (Night Theme: Deep Twilight & Midnight Atmosphere) */}
+              {/* Dinner Tab */}
               <button
                 type="button"
                 onClick={() => handleSelectMeal('dinner')}
-                aria-label="Select Dinner session"
-                className={`relative flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all duration-200 select-none active-scale cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-full text-xs transition-all duration-200 select-none active-scale cursor-pointer ${
                   selectedMeal === 'dinner'
-                    ? 'bg-gradient-to-r from-[#1E1B4B] via-[#2E2768] to-[#4338CA] text-white font-extrabold shadow-sm border border-indigo-400/40'
-                    : 'bg-transparent text-[#52525B] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5] hover:bg-black/5 dark:hover:bg-white/5'
+                    ? 'bg-white dark:bg-[#2C2E33] text-[#111214] dark:text-[#F5F5F7] font-semibold shadow-xs'
+                    : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7]'
                 }`}
               >
-                <div
-                  className={`w-5 h-5 rounded-lg flex items-center justify-center ${
-                    selectedMeal === 'dinner'
-                      ? 'bg-white/20 text-[#FDE68A]'
-                      : 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400'
-                  }`}
-                >
-                  <Moon className="w-3.5 h-3.5" strokeWidth={selectedMeal === 'dinner' ? 2.5 : 2} />
-                </div>
-                <span className="text-xs tracking-tight font-extrabold">Dinner</span>
+                <Moon className="w-3.5 h-3.5" strokeWidth={selectedMeal === 'dinner' ? 2.4 : 2} />
+                <span>Dinner</span>
                 {sessionMealProvided.dinner && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"
-                    title="Dinner Available"
-                  />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Dinner Available" />
                 )}
               </button>
             </div>
           </div>
 
-          {/* 2. Meal Status & Availability Toggle */}
-          <div className="p-3.5 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    isMealProvided
-                      ? 'bg-[#16A34A] dark:bg-[#4ADE80] ring-2 ring-[#16A34A]/20'
-                      : 'bg-[#DC2626] dark:bg-[#F87171] ring-2 ring-[#DC2626]/20'
-                  }`}
-                />
-                <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] truncate">
-                  {selectedMeal === 'lunch' ? 'Lunch Food Status' : 'Dinner Food Status'}
-                </span>
-                <span
-                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg shrink-0 ${
-                    isMealProvided
-                      ? 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#15803D] dark:text-[#4ADE80] border border-[#86EFAC] dark:border-[#166534]'
-                      : 'bg-[#FEF2F2] dark:bg-[#321414] text-[#DC2626] dark:text-[#F87171] border border-[#FECACA] dark:border-[#7F1D1D]'
-                  }`}
-                >
-                  {isMealProvided ? 'Food Available ✓' : 'Food Not Available'}
-                </span>
-              </div>
-              <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block truncate mt-0.5 font-medium">
-                {isMealProvided
-                  ? 'Meal active — washing duty in effect'
-                  : 'Food not available / not cooked — duty inactive'}
+          {/* Food Availability Control */}
+          <div className="p-4 rounded-[16px] bg-[#EFEFF1]/60 dark:bg-[#1C1D21]/60 border border-black/[0.05] dark:border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#111214] dark:text-[#F5F5F7]">
+                {selectedMeal === 'lunch' ? 'Lunch Availability' : 'Dinner Availability'}
+              </span>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                isMealProvided
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-black/5 dark:bg-white/10 text-[#6E6E73] dark:text-[#8E8E93]'
+              }`}>
+                {isMealProvided ? 'Available ✓' : 'Not Available'}
               </span>
             </div>
+
+            <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] leading-relaxed">
+              {isMealProvided
+                ? 'Food cooked and served. Washer duty is in effect.'
+                : 'No food cooked for this session. Rotation turn is held.'}
+            </p>
 
             <button
               type="button"
               onClick={() => handleToggleSessionMeal(!isMealProvided)}
-              className={`w-full sm:w-auto px-3.5 py-2 sm:py-1.5 text-xs font-bold rounded-xl transition-all active-scale whitespace-nowrap shadow-2xs shrink-0 cursor-pointer text-center ${
+              className={`w-full py-2 px-4 rounded-full text-xs font-semibold transition-all active-scale cursor-pointer ${
                 isMealProvided
-                  ? 'bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] hover:bg-[#F2F1ED] dark:hover:bg-[#202736]'
-                  : 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white hover:opacity-95 shadow-[0_2px_8px_rgba(34,197,94,0.3)]'
+                  ? 'bg-white dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.08] dark:border-white/[0.1] hover:bg-black/[0.04]'
+                  : 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 shadow-xs'
               }`}
-              title={isMealProvided ? 'Click to mark Food Not Available' : 'Click to mark Food Available'}
             >
-              {isMealProvided ? 'Set Food Not Available' : 'Mark Food Available ✓'}
+              {isMealProvided ? 'Mark Food Not Available' : 'Mark Food Available ✓'}
             </button>
           </div>
 
-          {/* 3. Washer Count (Single vs Multiple for Lunch) */}
+          {/* Lunch Washer Count Toggle (Single vs Dual) */}
           {selectedMeal === 'lunch' && isMealProvided && (
-            <div className="space-y-1.5">
+            <div className="space-y-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-extrabold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider">
-                  Washer Requirement
+                <label className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93]">
+                  Washer Count
                 </label>
-                <span className="text-[10px] text-[#71717A] dark:text-[#9BA5B7]">
-                  {washersCount === 2 ? '2 washers assigned' : '1 washer assigned'}
+                <span className="text-[11px] text-[#8E8E93] dark:text-[#636366]">
+                  {washersCount === 2 ? '2 Washers' : '1 Washer'}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => onToggleLunchWashers && onToggleLunchWashers(1)}
-                  className={`py-1.5 px-3 rounded-xl text-xs font-extrabold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
+                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border transition-all active-scale cursor-pointer ${
                     washersCount === 1
-                      ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] border-transparent shadow-xs'
-                      : 'bg-[#F2F1ED] dark:bg-[#1B212D] text-[#52525B] dark:text-[#94A3B8] border-[#DDD9D0] dark:border-[#263042] hover:bg-[#EAE8E2] dark:hover:bg-[#202736]'
+                      ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] border-transparent shadow-xs'
+                      : 'bg-black/[0.03] dark:bg-white/[0.05] text-[#6E6E73] dark:text-[#8E8E93] border-black/[0.06] dark:border-white/[0.08]'
                   }`}
                 >
                   Single (1)
                 </button>
-
                 <button
                   type="button"
                   onClick={() => onToggleLunchWashers && onToggleLunchWashers(2)}
-                  className={`py-1.5 px-3 rounded-xl text-xs font-extrabold border transition-all active-scale flex items-center justify-center select-none cursor-pointer ${
+                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border transition-all active-scale cursor-pointer ${
                     washersCount === 2
-                      ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] border-transparent shadow-xs'
-                      : 'bg-[#F2F1ED] dark:bg-[#1B212D] text-[#52525B] dark:text-[#94A3B8] border-[#DDD9D0] dark:border-[#263042] hover:bg-[#EAE8E2] dark:hover:bg-[#202736]'
+                      ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] border-transparent shadow-xs'
+                      : 'bg-black/[0.03] dark:bg-white/[0.05] text-[#6E6E73] dark:text-[#8E8E93] border-black/[0.06] dark:border-white/[0.08]'
                   }`}
                 >
-                  Multiple (2)
+                  Dual (2)
                 </button>
               </div>
             </div>
           )}
+        </div>
 
-          {/* 4. Attending Members ("Who Ate Today?") */}
-          {isMealProvided && (
-            <div className="space-y-2 pt-1 border-t border-[#DDD9D0]/80 dark:border-[#263042]/80">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-                  <span>Who ate {selectedMeal}?</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                    selectedMeal === 'lunch'
-                      ? 'bg-amber-500/15 text-[#D97706] dark:text-[#FBBF24]'
-                      : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
-                  }`}>
-                    {currentEaters.length} attending
-                  </span>
+        {/* Card B: Who Ate Today? Member Chips Selection (7 Cols on Desktop) */}
+        <div className="lg:col-span-7 p-5 sm:p-6 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6E6E73] dark:text-[#8E8E93] block">
+                ATTENDANCE SELECTION
+              </span>
+              <h3 className="text-base font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-tight mt-0.5">
+                Who ate {selectedMeal}?
+              </h3>
+            </div>
+
+            {isMealProvided && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAllEaters}
+                  className="text-xs font-semibold text-[#111214] dark:text-[#F5F5F7] hover:underline cursor-pointer"
+                >
+                  Select All
+                </button>
+                <span className="text-[#8E8E93] dark:text-[#636366]">&bull;</span>
+                <button
+                  type="button"
+                  onClick={handleClearAllEaters}
+                  className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
+
+          {!isMealProvided ? (
+            <div className="p-8 rounded-[16px] bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/[0.08] dark:border-white/[0.1] text-center space-y-2">
+              <UtensilsCrossed className="w-8 h-8 text-[#8E8E93] dark:text-[#636366] mx-auto opacity-50" />
+              <h4 className="text-xs font-semibold text-[#111214] dark:text-[#F5F5F7]">
+                {selectedMeal === 'lunch' ? 'Lunch' : 'Dinner'} is Not Available
+              </h4>
+              <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] max-w-xs mx-auto">
+                Toggle "Mark Food Available" above to record attending members and compute today's washer.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-[#6E6E73] dark:text-[#8E8E93]">
+                <span>Tap members to toggle participation:</span>
+                <span className="font-semibold text-[#111214] dark:text-[#F5F5F7] tabular-nums">
+                  {currentEaters.length} of {activeMembers.length} selected
                 </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllEaters}
-                    className={`text-[11px] font-extrabold hover:underline cursor-pointer ${
-                      selectedMeal === 'lunch' ? 'text-[#D97706] dark:text-[#FBBF24]' : 'text-indigo-600 dark:text-indigo-400'
-                    }`}
-                  >
-                    [Select All]
-                  </button>
-                  <span className="text-[#DDD9D0] dark:text-[#263042]">&middot;</span>
-                  <button
-                    type="button"
-                    onClick={handleClearAllEaters}
-                    className="text-[11px] font-semibold text-[#71717A] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] cursor-pointer"
-                  >
-                    [Clear]
-                  </button>
-                </div>
               </div>
 
-              {/* Members chip cloud with Colorful Afternoon (Lunch) vs Night (Dinner) Theme & 12px Radius */}
-              <div className="flex flex-wrap gap-1.5 items-center pt-0.5">
+              {/* Soft, Light & Accessible Member Chips */}
+              <div className="flex flex-wrap gap-2 pt-1">
                 {activeMembers.map((member) => {
                   const ate = currentEaterSet.has(member.id);
-
-                  // Lunch Selected: Afternoon sunny theme
-                  // Dinner Selected: Night indigo/twilight theme
-                  const selectedChipStyle = selectedMeal === 'lunch'
-                    ? 'bg-gradient-to-r from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B] border-transparent shadow-xs font-extrabold'
-                    : 'bg-gradient-to-r from-[#1E1B4B] via-[#2E2768] to-[#4338CA] text-white border-transparent shadow-xs font-extrabold';
 
                   return (
                     <button
                       key={member.id}
                       type="button"
                       onClick={(e) => handleToggleEater(member.id, e)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all duration-150 active-scale select-none border cursor-pointer ${
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs transition-all duration-150 select-none active-scale cursor-pointer ${
                         ate
-                          ? selectedChipStyle
-                          : 'bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#263042] hover:bg-[#EAE8E2] dark:hover:bg-[#222A3A]'
+                          ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] font-semibold shadow-xs'
+                          : 'bg-[#EFEFF1] text-[#6E6E73] dark:bg-[#1C1D21] dark:text-[#8E8E93] border border-black/[0.06] dark:border-white/[0.06] hover:bg-black/[0.04] dark:hover:bg-white/[0.08]'
                       }`}
                     >
                       <span
-                        className={`w-4.5 h-4.5 rounded-lg flex items-center justify-center text-[9px] font-extrabold ${
+                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold tabular-nums ${
                           ate
-                            ? selectedMeal === 'lunch'
-                              ? 'bg-[#18181B]/15 text-[#18181B]'
-                              : 'bg-white/20 text-white'
-                            : 'bg-white dark:bg-[#151922] text-[#4E525D] dark:text-[#9BA5B7]'
+                            ? 'bg-white/20 text-white dark:bg-black/10 dark:text-[#0B0C0E]'
+                            : 'bg-black/5 dark:bg-white/10 text-current'
                         }`}
                       >
                         {member.code}
                       </span>
                       <span>{member.name}</span>
-                      {ate && <Check className="w-3.5 h-3.5" strokeWidth={2.8} />}
+                      {ate && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                     </button>
                   );
                 })}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* ========================================================================= */}
-        {/* CARD 2: WASHER ASSIGNMENT & ROTATION QUEUE (5 COLS ON DESKTOP)            */}
-        {/* ========================================================================= */}
-        <div className="lg:col-span-5 bg-white dark:bg-[#151922] border border-[#DDD9D0] dark:border-[#263042] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 transition-colors duration-200">
-          {/* Card Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-[#DDD9D0]/80 dark:border-[#263042]/80">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#16A34A] dark:text-[#4ADE80] border border-[#86EFAC]/40 dark:border-[#166534] flex items-center justify-center shrink-0">
-                <Users className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-extrabold text-[#111216] dark:text-[#F7F6F3] leading-tight">
-                  Washer Assignment
-                </h2>
-                <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] font-medium block">
-                  Assigned washer from rotation queue
-                </span>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
-              Queue
-            </span>
-          </div>
-
-          {/* Washer Display States */}
-          {!isMealProvided ? (
-            <div className="p-6 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-dashed border-[#DDD9D0] dark:border-[#263042] text-center space-y-2">
-              <UtensilsCrossed className="w-7 h-7 text-[#71717A] dark:text-[#9BA5B7] mx-auto opacity-50" />
-              <h3 className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3]">
-                {selectedMeal === 'lunch' ? 'Lunch' : 'Dinner'} is Not Available
-              </h3>
-              <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] max-w-xs mx-auto">
-                Tap <strong>"Mark Food Available"</strong> in session settings to activate duty and view the assigned washer.
-              </p>
-            </div>
-          ) : currentEaters.length === 0 ? (
-            <div className="p-5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-center space-y-1.5">
-              <AlertCircle className="w-6 h-6 text-[#D97706] dark:text-[#FBBF24] mx-auto" />
-              <h3 className="text-xs font-extrabold text-[#D97706] dark:text-[#FBBF24]">
-                No member attendance marked yet
-              </h3>
-              <p className="text-[11px] text-[#D97706]/90 dark:text-[#FBBF24]/90 max-w-xs mx-auto">
-                Select who ate {selectedMeal} to compute the vessel washer turn from the queue.
-              </p>
-            </div>
-          ) : liveAssignedSlots.length === 0 || !liveAssignedSlots[0]?.assignedMemberId ? (
-            <div className="p-5 rounded-xl bg-[#F2F1ED]/50 dark:bg-[#1B212D]/60 border border-[#DDD9D0] dark:border-[#263042] text-center">
-              <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7]">
-                No eligible washer found for the selected attending members.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* 1. HERO ASSIGNED WASHER CARD(S):
-                  - Lunch washer styled with Colourful Afternoon Sunlight Theme
-                  - Dinner washer styled with Atmospheric Night Twilight Theme */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-extrabold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider">
-                      {selectedDateStr === currentDateStr ? "Today's Washer" : "Assigned Washer"}
-                    </span>
-                    {selectedDateStr === currentDateStr && (
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold border shadow-2xs uppercase tracking-wider ${
-                          isDaytime
-                            ? 'bg-[#EA580C]/10 text-[#C2410C] dark:text-[#FBBF24] border-[#EA580C]/25'
-                            : 'bg-[#2563EB]/10 text-[#1D4ED8] dark:text-[#38BDF8] border-[#2563EB]/25'
-                        }`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                        <span>Duty Active</span>
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1B212D] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#263042]">
-                    {liveAssignedSlots.length === 2 ? '2 Assigned' : '1 Assigned'}
-                  </span>
-                </div>
-
-                <div className={`grid ${liveAssignedSlots.length === 2 ? 'grid-cols-1 sm:grid-cols-2 gap-2.5' : 'grid-cols-1 gap-2.5'}`}>
-                  {liveAssignedSlots.map((slot) => {
-                    const member = memberMap.get(slot.assignedMemberId);
-                    const isLunch = selectedMeal === 'lunch';
-                    const isTodayActive = (selectedDateStr === currentDateStr);
-
-                    return (
-                      <div
-                        key={slot.id}
-                        className={`p-3.5 sm:p-4 rounded-xl border shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 relative overflow-hidden transition-all ${
-                          isLunch
-                            ? 'bg-gradient-to-br from-[#FFF9F0] via-white to-[#FFF3E0] dark:from-[#261B0B] dark:via-[#1E1609] dark:to-[#2B1D0B] border-[#F59E0B]/50'
-                            : 'bg-gradient-to-br from-[#F5F3FF] via-white to-[#EDE9FE] dark:from-[#15122C] dark:via-[#120F26] dark:to-[#1B1736] border-indigo-400/35'
-                        }`}
-                      >
-                        {/* Member Identity */}
-                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                          <div
-                            className={`w-11 h-11 rounded-xl font-black text-sm sm:text-base flex items-center justify-center shadow-xs shrink-0 ${
-                              isLunch
-                                ? 'bg-gradient-to-br from-[#FF7A00] via-[#FF9E1B] to-[#FFB703] text-[#18181B]'
-                                : 'bg-gradient-to-br from-[#1E1B4B] via-[#2E2768] to-[#4338CA] text-white'
-                            }`}
-                          >
-                            {member?.code || 'M'}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span
-                                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border inline-block truncate uppercase tracking-wider ${
-                                  isLunch
-                                    ? 'bg-[#FF7A00]/10 text-[#C2410C] dark:text-[#FBBF24] border-[#F59E0B]/30'
-                                    : 'bg-indigo-500/15 text-indigo-700 dark:text-[#C7D2FE] border-indigo-400/30'
-                                }`}
-                              >
-                                {liveAssignedSlots.length === 2
-                                  ? `Washer ${slot.slotIndex}`
-                                  : isLunch
-                                  ? 'Lunch Duty'
-                                  : 'Dinner Duty'}
-                              </span>
-                              {isTodayActive && (
-                                <span className="text-[9.5px] font-bold text-[#848A96] dark:text-[#64748B] hidden xs:inline">
-                                  &middot; Active Washer
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="text-sm sm:text-base font-extrabold text-[#111216] dark:text-[#F7F6F3] tracking-tight truncate leading-tight mt-0.5">
-                              {slot.assignedMemberName}
-                            </h3>
-                            <span className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] block truncate font-medium">
-                              Active rotation turn
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Right Section: Theme-Adaptive Washing Animation & Position */}
-                        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-                          {isTodayActive && (
-                            <div className="flex items-center justify-center shrink-0">
-                              <ThemeVesselWashingAnimation size="sm" />
-                            </div>
-                          )}
-
-                          <div className="shrink-0 text-right">
-                            <span className="text-[10px] text-[#71717A] dark:text-[#9BA5B7] block font-semibold">
-                              Position
-                            </span>
-                            <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#263042] inline-block shadow-2xs">
-                              #{slot.slotIndex} in Turn
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. UPCOMING WASHER IN QUEUE (Styled with Night/Dinner Theme) */}
-              {nextMember && (
-                <div className="p-3.5 rounded-xl bg-gradient-to-br from-[#F5F3FF]/70 to-[#EDE9FE]/50 dark:from-[#15122C]/70 dark:to-[#1B1736]/50 border border-indigo-400/30 flex items-center justify-between gap-3 shadow-2xs">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-[#1E1B4B] text-white dark:bg-indigo-950/80 dark:text-[#C7D2FE] border border-indigo-400/40 font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0">
-                      {nextMember.code}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider block truncate">
-                        Next Washer (Upcoming / Tomorrow)
-                      </span>
-                      <h4 className="text-xs sm:text-sm font-extrabold text-[#111216] dark:text-[#F7F6F3] tracking-tight truncate leading-tight">
-                        {nextMember.name}
-                      </h4>
-                      <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] block truncate">
-                        Next in rotation queue for tomorrow
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-white dark:bg-[#151922] text-[#111216] dark:text-[#F7F6F3] border border-indigo-400/30 inline-block">
-                      Up Next
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

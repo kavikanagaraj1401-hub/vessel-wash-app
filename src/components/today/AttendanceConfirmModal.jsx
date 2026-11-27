@@ -43,23 +43,23 @@ export function AttendanceConfirmModal({
       }
     >
       <div className="space-y-3.5">
-        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
+        <div className="flex items-start gap-3 p-3.5 rounded-[16px] bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.07] dark:border-white/[0.08]">
           {isAbsent ? (
-            <AlertTriangle className="w-5 h-5 text-[#E0851A] dark:text-[#FF9F45] flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-current flex-shrink-0 mt-0.5" />
           ) : (
-            <CheckCircle2 className="w-5 h-5 text-[#22AC77] dark:text-[#4ADE80] flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-5 h-5 text-current flex-shrink-0 mt-0.5" />
           )}
           <div className="text-xs">
-            <p className="font-bold text-[#111216] dark:text-[#F7F6F3] text-sm mb-0.5">
+            <p className="font-bold text-[#111214] dark:text-[#F5F5F7] text-sm mb-0.5">
               {memberName} &middot; {slotTitle}
             </p>
             {isAbsent ? (
-              <p className="text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
-                Marking <strong className="text-[#111216] dark:text-[#F7F6F3]">{memberName}</strong> as absent will keep their place at the front of the queue for the next meal they attend.
+              <p className="text-[#6E6E73] dark:text-[#8E8E93] leading-relaxed">
+                Marking <strong className="text-[#111214] dark:text-[#F5F5F7]">{memberName}</strong> as absent will keep their place at the front of the queue for the next meal they attend.
               </p>
             ) : (
-              <p className="text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
-                Confirming that <strong className="text-[#111216] dark:text-[#F7F6F3]">{memberName}</strong> has washed the vessels. They will move to the back of the queue.
+              <p className="text-[#6E6E73] dark:text-[#8E8E93] leading-relaxed">
+                Confirming that <strong className="text-[#111214] dark:text-[#F5F5F7]">{memberName}</strong> has washed the vessels. They will move to the back of the queue.
               </p>
             )}
           </div>

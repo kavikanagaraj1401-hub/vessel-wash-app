@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VesselCleaningAnimation } from './VesselCleaningAnimation';
+import { ThemeVesselWashingAnimation } from './ThemeVesselWashingAnimation';
 import {
   Sparkles,
   CheckCircle2,
@@ -67,24 +67,20 @@ export function VesselWasherHero({
   const otherMembers = allMembers.filter(m => m.id !== slot.assignedMemberId);
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#111216] via-[#171F2C] to-[#0B0C0E] text-[#F7F6F3] border border-[#DDD9D0]/20 dark:border-[#2A364B] shadow-xl p-4 transition-all">
+    <div className="relative overflow-hidden rounded-[24px] bg-[#141518] text-[#F5F5F7] border border-white/[0.08] shadow-xl p-5 transition-all">
       {/* Ambient background glow */}
-      <div
-        className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl pointer-events-none transition-all duration-500 ${
-          isWashed ? 'bg-[#22AC77]/20' : isNotWashed ? 'bg-[#D9483B]/20' : 'bg-[#ECBD56]/20'
-        }`}
-      />
-      <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-[#ECBD56]/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-white/[0.03] blur-2xl pointer-events-none" />
+      <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-white/[0.02] rounded-full blur-2xl pointer-events-none" />
 
       {/* 1. Header Status Bar */}
-      <div className="flex items-center justify-between relative z-10 pb-2 border-b border-white/10">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className={`w-3.5 h-3.5 ${isWashed ? 'text-[#22AC77]' : 'text-[#ECBD56]'}`} />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#9BA5B7]">
+      <div className="flex items-center justify-between relative z-10 pb-3 border-b border-white/[0.08]">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-white" />
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8E8E93]">
             {mealName}
           </span>
           {totalWashers === 2 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ECBD56]/20 text-[#ECBD56] border border-[#ECBD56]/40">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/10">
               Washer {slotIndex} of 2
             </span>
           )}
@@ -93,19 +89,19 @@ export function VesselWasherHero({
         {/* Live Status Badge */}
         <div>
           {isWashed ? (
-            <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-bold bg-[#22AC77] text-white shadow-2xs">
-              <CheckCircle2 className="w-3 h-3 text-white" />
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold bg-white text-[#0B0C0E] shadow-2xs">
+              <CheckCircle2 className="w-3 h-3 text-[#0B0C0E]" />
               Vessels Washed
             </span>
           ) : isNotWashed ? (
-            <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-bold bg-[#D9483B]/20 text-[#FF5A4E] border border-[#D9483B]/40">
-              <XCircle className="w-3 h-3 text-[#FF5A4E]" />
-              Did Not Wash
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold bg-neutral-800 text-white border border-white/20 shadow-2xs">
+              <XCircle className="w-3 h-3 text-white" />
+              Not Washed
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold bg-[#ECBD56]/20 text-[#ECBD56] border border-[#ECBD56]/40">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ECBD56] animate-pulse" />
-              Awaiting Wash Mark
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/10 shadow-2xs">
+              <Clock className="w-3 h-3 text-white" />
+              Due Today
             </span>
           )}
         </div>
@@ -113,7 +109,7 @@ export function VesselWasherHero({
 
       {/* 2. Vessel Cleaning Animation Illustration */}
       <div className="py-2 relative z-10">
-        <VesselCleaningAnimation isCleaned={isWashed} />
+        <ThemeVesselWashingAnimation isCleaned={isWashed} size={110} />
       </div>
 
       {/* 3. Assigned Washer Card */}
@@ -122,21 +118,21 @@ export function VesselWasherHero({
           <div
             className={`w-11 h-11 rounded-full font-bold text-sm flex items-center justify-center shadow-md flex-shrink-0 transition-all ${
               isWashed
-                ? 'bg-[#22AC77] text-white ring-2 ring-[#22AC77]/40'
+                ? 'bg-white text-[#0B0C0E]'
                 : isNotWashed
-                ? 'bg-[#D9483B] text-white'
-                : 'bg-[#ECBD56] text-[#111216]'
+                ? 'bg-neutral-800 text-white border border-white/20'
+                : 'bg-white/20 text-white'
             }`}
           >
             {assignedMember?.code || 'M'}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-[#ECBD56] uppercase tracking-wide block">
+              <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-[0.08em] block">
                 {totalWashers === 2 ? `Washer ${slotIndex}` : 'Assigned Washer'}
               </span>
               {partnerName && (
-                <span className="text-[9px] text-[#9BA5B7] font-normal">
+                <span className="text-[9px] text-[#8E8E93] font-normal">
                   (with {partnerName})
                 </span>
               )}
@@ -148,8 +144,8 @@ export function VesselWasherHero({
         </div>
 
         <div className="flex-shrink-0 text-right">
-          <span className="text-[10px] text-[#9BA5B7] block font-medium">Selected via</span>
-          <span className="text-xs font-bold text-[#22AC77] dark:text-[#4ADE80]">Queue & Attendance</span>
+          <span className="text-[10px] text-[#8E8E93] block font-medium">Selected via</span>
+          <span className="text-xs font-semibold text-white">Queue & Attendance</span>
         </div>
       </div>
 
@@ -157,16 +153,16 @@ export function VesselWasherHero({
       <div className="mt-3 p-3 rounded-2xl bg-black/40 border border-white/10 relative z-10 space-y-2.5">
         {/* Status line */}
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#9BA5B7] flex items-center gap-1">
-            <Clock className="w-3 h-3 text-[#ECBD56]" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#8E8E93] flex items-center gap-1">
+            <Clock className="w-3 h-3 text-white" />
             Duty Status:
           </span>
           {isWashed ? (
-            <span className="text-[11px] font-bold text-[#22AC77] dark:text-[#4ADE80]">Completed ✓</span>
+            <span className="text-[11px] font-bold text-white">Completed ✓</span>
           ) : isNotWashed ? (
-            <span className="text-[11px] font-bold text-[#FF5A4E]">Did Not Wash ✗</span>
+            <span className="text-[11px] font-bold text-neutral-300">Did Not Wash ✗</span>
           ) : (
-            <span className="text-[11px] font-bold text-[#ECBD56]">Pending Mark</span>
+            <span className="text-[11px] font-bold text-white">Pending Mark</span>
           )}
         </div>
 
@@ -174,13 +170,13 @@ export function VesselWasherHero({
         {isPending && (
           <div className="space-y-2 pt-0.5">
             {/* Who is marking selector */}
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+            <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-[#9BA5B7] font-semibold flex items-center gap-1">
-                  <UserCheck className="w-3 h-3 text-[#ECBD56]" />
+                <span className="text-[10px] text-[#8E8E93] font-semibold flex items-center gap-1">
+                  <UserCheck className="w-3 h-3 text-white" />
                   Who is marking?
                 </span>
-                <span className="text-[10px] font-bold text-[#ECBD56] truncate max-w-[140px]">
+                <span className="text-[10px] font-bold text-white truncate max-w-[140px]">
                   {getActorLabel()}
                 </span>
               </div>
@@ -195,8 +191,8 @@ export function VesselWasherHero({
                   }}
                   className={`flex-1 py-1.5 px-2.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
                     markingType === 'self'
-                      ? 'bg-[#ECBD56] text-[#111216] shadow-xs'
-                      : 'bg-white/10 text-slate-300 hover:bg-white/15'
+                      ? 'bg-white text-[#0B0C0E] shadow-xs'
+                      : 'bg-white/10 text-[#8E8E93] hover:text-white hover:bg-white/15'
                   }`}
                 >
                   Self ({assignedName})
@@ -210,8 +206,8 @@ export function VesselWasherHero({
                   }}
                   className={`flex-1 py-1.5 px-2.5 rounded-full text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     markingType === 'behalf'
-                      ? 'bg-[#ECBD56] text-[#111216] shadow-xs'
-                      : 'bg-white/10 text-slate-300 hover:bg-white/15'
+                      ? 'bg-white text-[#0B0C0E] shadow-xs'
+                      : 'bg-white/10 text-[#8E8E93] hover:text-white hover:bg-white/15'
                   }`}
                 >
                   <span>On Behalf</span>
@@ -221,8 +217,8 @@ export function VesselWasherHero({
 
               {/* On Behalf Dropdown / Chips */}
               {(showBehalfPicker || (markingType === 'behalf' && !behalfActor)) && (
-                <div className="pt-1.5 border-t border-white/10 space-y-1">
-                  <span className="text-[9px] text-[#9BA5B7] block font-medium">
+                <div className="pt-2 border-t border-white/[0.08] space-y-1">
+                  <span className="text-[9px] text-[#8E8E93] block font-medium">
                     Select who is marking on behalf of {assignedName}:
                   </span>
                   <div className="flex flex-wrap gap-1">
@@ -237,8 +233,8 @@ export function VesselWasherHero({
                         }}
                         className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
                           behalfActor === m.name
-                            ? 'bg-[#ECBD56] text-[#111216] font-bold'
-                            : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                            ? 'bg-white text-[#0B0C0E] font-bold'
+                            : 'bg-white/10 text-[#8E8E93] hover:text-white hover:bg-white/20'
                         }`}
                       >
                         {m.name}
@@ -250,22 +246,22 @@ export function VesselWasherHero({
             </div>
 
             {/* Action Buttons: Mark as Washed vs Did Not Wash */}
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleConfirmWashed}
-                className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-bold bg-[#22AC77] hover:bg-[#1E9B6B] text-white shadow-md active-scale transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-bold bg-white text-[#0B0C0E] hover:bg-neutral-200 shadow-md active-scale transition-all cursor-pointer"
               >
-                <Check className="w-4 h-4 text-white" />
+                <Check className="w-4 h-4 text-current" />
                 <span>Mark as Washed</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleConfirmNotWashed}
-                className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-semibold bg-[#D9483B]/20 hover:bg-[#D9483B]/30 text-[#FF5A4E] border border-[#D9483B]/40 active-scale transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/20 active-scale transition-all cursor-pointer"
               >
-                <X className="w-3.5 h-3.5 text-[#FF5A4E]" />
+                <X className="w-3.5 h-3.5 text-current" />
                 <span>Did Not Wash</span>
               </button>
             </div>
@@ -274,14 +270,14 @@ export function VesselWasherHero({
 
         {/* When Washed: Show details of who marked it + Change button */}
         {isWashed && (
-          <div className="p-2.5 rounded-xl bg-[#22AC77]/15 border border-[#22AC77]/30 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <CheckCircle2 className="w-4 h-4 text-[#22AC77] flex-shrink-0" />
+          <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CheckCircle2 className="w-4 h-4 text-white flex-shrink-0" />
               <div className="min-w-0">
-                <span className="text-xs font-bold text-[#22AC77] block truncate">
+                <span className="text-xs font-bold text-white block truncate">
                   {assignedName} washed vessels
                 </span>
-                <span className="text-[10px] text-[#22AC77]/80 block truncate">
+                <span className="text-[10px] text-[#8E8E93] block truncate">
                   Marked by: {markedBy || `${assignedName} (Self)`}
                 </span>
               </div>
@@ -289,7 +285,7 @@ export function VesselWasherHero({
             <button
               type="button"
               onClick={() => onResetWash && onResetWash(slot.id)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-full bg-white/10 border border-white/15 hover:bg-white/20 transition-colors flex-shrink-0 cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-semibold text-[#8E8E93] hover:text-white px-2.5 py-1 rounded-full bg-white/10 border border-white/15 hover:bg-white/20 transition-colors flex-shrink-0 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Change</span>
@@ -299,14 +295,14 @@ export function VesselWasherHero({
 
         {/* When Not Washed: Show details of who marked it + Mark Washed button */}
         {isNotWashed && (
-          <div className="p-2.5 rounded-xl bg-[#D9483B]/15 border border-[#D9483B]/30 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <XCircle className="w-4 h-4 text-[#FF5A4E] flex-shrink-0" />
+          <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <XCircle className="w-4 h-4 text-white flex-shrink-0" />
               <div className="min-w-0">
-                <span className="text-xs font-bold text-[#FF5A4E] block truncate">
+                <span className="text-xs font-bold text-white block truncate">
                   Marked as Did Not Wash
                 </span>
-                <span className="text-[10px] text-[#FF5A4E]/80 block truncate">
+                <span className="text-[10px] text-[#8E8E93] block truncate">
                   Marked by: {markedBy || 'System / Colleague'}
                 </span>
               </div>
@@ -314,9 +310,9 @@ export function VesselWasherHero({
             <button
               type="button"
               onClick={handleConfirmWashed}
-              className="flex items-center gap-1 text-[11px] font-bold text-white px-3 py-1 rounded-full bg-[#22AC77] hover:bg-[#1E9B6B] transition-colors flex-shrink-0 cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-bold text-[#0B0C0E] px-3 py-1.5 rounded-full bg-white hover:bg-neutral-200 transition-colors flex-shrink-0 cursor-pointer shadow-xs"
             >
-              <Check className="w-3 h-3 text-white" />
+              <Check className="w-3 h-3 text-current" />
               <span>Mark Washed</span>
             </button>
           </div>

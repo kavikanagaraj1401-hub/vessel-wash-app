@@ -462,46 +462,46 @@ $$;`;
       {/* Side Slide Drawer Container (Sliding in from the right) */}
       <div className="fixed inset-y-0 right-0 max-w-full flex justify-end">
         <div
-          className={`w-screen max-w-[450px] bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] h-full shadow-2xl flex flex-col border-l border-[#DDD9D0] dark:border-[#2A364B] transition-transform duration-300 ease-out transform ${
+          className={`w-screen max-w-[450px] bg-[#F5F5F7] dark:bg-[#0B0C0E] text-[#111214] dark:text-[#F5F5F7] h-full shadow-2xl flex flex-col border-l border-black/[0.07] dark:border-white/[0.08] transition-transform duration-300 ease-out transform ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
           {/* Drawer Header */}
           {currentView === null ? (
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#DDD9D0]/80 dark:border-[#2A364B]/80 bg-white dark:bg-[#171F2C] shrink-0">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-black/[0.07] dark:border-white/[0.08] bg-white dark:bg-[#141518] shrink-0">
               <div className="flex items-center gap-2.5">
                 <img
                   src="/logo.png"
                   alt="Vessel Wash Logo"
-                  className="w-8 h-8 rounded-xl object-cover border border-[#ECBD56]/50 shadow-2xs flex-shrink-0"
+                  className="w-8 h-8 rounded-xl object-cover border border-black/[0.08] dark:border-white/[0.08] shadow-2xs flex-shrink-0"
                 />
                 <div>
-                  <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">Menu &amp; Settings</h3>
-                  <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60">Members, activity, rules &amp; sync</p>
+                  <h3 className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight">Menu &amp; Settings</h3>
+                  <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">Members, activity, rules &amp; sync</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-full text-[#111216]/50 dark:text-[#F7F6F3]/50 hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title="Close menu"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#DDD9D0]/80 dark:border-[#2A364B]/80 bg-white dark:bg-[#171F2C] shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.07] dark:border-white/[0.08] bg-white dark:bg-[#141518] shrink-0">
               <button
                 type="button"
                 onClick={() => setCurrentView(null)}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3] px-2.5 py-1.5 -ml-1 rounded-full hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] px-2.5 py-1.5 -ml-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
 
-              <h3 className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3]">
+              <h3 className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7]">
                 {currentView === 'members' && 'Application Members'}
                 {currentView === 'activity' && 'Activity Logs'}
                 {currentView === 'rules' && 'Rotation Rules'}
@@ -511,7 +511,7 @@ $$;`;
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-full text-[#111216]/50 dark:text-[#F7F6F3]/50 hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -520,36 +520,36 @@ $$;`;
           )}
 
           {/* Drawer Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-[#111216] dark:text-[#F7F6F3]">
+          <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-[#111214] dark:text-[#F5F5F7]">
             {/* When at root: Show Account card + WhatsApp-style list */}
             {currentView === null && (
               <>
                 {/* Active User Account Banner in Drawer */}
-                <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs flex items-center justify-between gap-3">
+                <div className="p-3.5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-xs flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
                         isAdmin
-                          ? 'admin-gradient text-white border border-[#ECBD56]/80 ring-2 ring-[#ECBD56]/30 shadow-xs'
-                          : 'bg-[#111216] dark:bg-[#1F2A3C] text-white dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B]'
+                          ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] shadow-xs'
+                          : 'bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08]'
                       }`}
                     >
                       {isAdmin ? '👑' : (userName.charAt(0) || 'U')}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-[#111216] dark:text-[#F7F6F3] truncate">{userName}</span>
+                        <span className="text-xs sm:text-sm font-bold text-[#111214] dark:text-[#F5F5F7] truncate">{userName}</span>
                         {isAdmin ? (
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/80 inline-flex items-center gap-1 shadow-2xs">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] inline-flex items-center gap-1">
                             Admin
                           </span>
                         ) : (
-                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216]/70 dark:text-[#F7F6F3]/70 border border-[#DDD9D0] dark:border-[#2A364B]">
+                          <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#6E6E73] dark:text-[#8E8E93] border border-black/[0.07] dark:border-white/[0.08]">
                             Member
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 block truncate">
+                      <span className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] block truncate">
                         {userEmail || 'Active session'}
                       </span>
                     </div>
@@ -562,7 +562,7 @@ $$;`;
                         onClose();
                         await onSignOut();
                       }}
-                      className="px-3 py-1.5 rounded-full text-[11px] font-bold text-[#D9483B] dark:text-[#FF5A4E] bg-white dark:bg-[#171F2C] hover:bg-[#FDF1F0] dark:hover:bg-[#331310] border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#F5A9A2] dark:hover:border-[#991B1B] shadow-2xs transition-colors flex items-center gap-1.5 active-scale flex-shrink-0 cursor-pointer"
+                      className="px-3 py-1.5 rounded-full text-[11px] font-semibold text-[#111214] dark:text-[#F5F5F7] bg-[#F5F5F7] dark:bg-[#1C1D21] hover:bg-black/10 dark:hover:bg-white/10 border border-black/[0.07] dark:border-white/[0.08] shadow-2xs transition-colors flex items-center gap-1.5 active-scale flex-shrink-0 cursor-pointer"
                       title="Log Out"
                     >
                       <LogOut className="w-3.5 h-3.5" />
@@ -573,55 +573,55 @@ $$;`;
 
                 {/* Section Title */}
                 <div className="pt-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#111216]/50 dark:text-[#F7F6F3]/50 px-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] px-1">
                     Settings &amp; Management
                   </span>
                 </div>
 
                 {/* WhatsApp-Style Vertical List (Strictly ordered: 1. Members, 2. Activity, 3. Rotation rules, 4. Excel sync, 5. Appearance) */}
-                <div className="bg-white dark:bg-[#171F2C] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs divide-y divide-[#DDD9D0]/60 dark:divide-[#2A364B]/60 overflow-hidden">
+                <div className="bg-white dark:bg-[#141518] rounded-[20px] border border-black/[0.07] dark:border-white/[0.08] shadow-xs divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
                   {/* 1. Members */}
                   <button
                     type="button"
                     onClick={() => setCurrentView('members')}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] flex items-center justify-center shrink-0 border border-[#22AC77]/20 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform">
                         <Users className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                        <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                           Members
                         </span>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                        <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                           Manage member roster, passwords &amp; admin roles
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#8E8E93] group-hover:text-[#111214] dark:group-hover:text-[#F5F5F7] shrink-0 ml-2" />
                   </button>
 
                   {/* 2. Activity */}
                   <button
                     type="button"
                     onClick={() => setCurrentView('activity')}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#2563EB]/10 dark:bg-[#BFB4FF]/15 text-[#2563EB] dark:text-[#BFB4FF] flex items-center justify-center shrink-0 border border-[#2563EB]/20 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform">
                         <Activity className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                        <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                           Activity
                         </span>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                        <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                           Live audit log of wash assignments, duties &amp; marks
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#8E8E93] group-hover:text-[#111214] dark:group-hover:text-[#F5F5F7] shrink-0 ml-2" />
                   </button>
 
                   {/* 3. Wash History (Cleanly routes to locked shell History view, preserving header & navbar) */}
@@ -631,44 +631,44 @@ $$;`;
                       onClose();
                       if (onTabChange) onTabChange('history');
                     }}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] flex items-center justify-center shrink-0 border border-[#EA580C]/20 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform">
                         <History className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                        <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                           Wash History
                         </span>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                        <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                           Date-by-date vessel washing timeline &amp; duty audit
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#8E8E93] group-hover:text-[#111214] dark:group-hover:text-[#F5F5F7] shrink-0 ml-2" />
                   </button>
 
                   {/* 3. Rotation rules */}
                   <button
                     type="button"
                     onClick={() => setCurrentView('rules')}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 dark:bg-[#ECBD56]/20 text-[#111216] dark:text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform">
                         <Repeat className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                        <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                           Rotation rules
                         </span>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                        <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                           FIFO queue rules, database sync &amp; engine logic
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3] shrink-0 ml-2" />
+                    <ChevronRight className="w-4 h-4 text-[#8E8E93] group-hover:text-[#111214] dark:group-hover:text-[#F5F5F7] shrink-0 ml-2" />
                   </button>
 
                   {/* 4. Excel sync (RBAC restricted to Admin) */}
@@ -680,36 +680,36 @@ $$;`;
                     }}
                     className={`w-full flex items-center justify-between p-3.5 text-left transition-colors group ${
                       isAdmin
-                        ? 'hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 cursor-pointer'
-                        : 'opacity-65 cursor-not-allowed bg-[#F2F1ED]/40 dark:bg-[#1F2A3C]/40'
+                        ? 'hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 cursor-pointer'
+                        : 'opacity-50 cursor-not-allowed bg-black/[0.02] dark:bg-white/[0.02]'
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 text-[#22AC77] dark:text-[#4ADE80] flex items-center justify-center shrink-0 border border-[#22AC77]/20 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform">
                         <FileSpreadsheet className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight">
+                          <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight">
                             Excel sync
                           </span>
                           {!isAdmin && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full admin-gradient text-white border border-[#ECBD56]/40 text-[9px] font-bold">
-                              <Lock className="w-2.5 h-2.5 text-[#ECBD56]" />
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/10 dark:bg-white/10 text-[#6E6E73] dark:text-[#8E8E93] text-[9px] font-bold">
+                              <Lock className="w-2.5 h-2.5" />
                               Admin Only
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                        <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                           Upload timetable file &amp; sync historical attendance
                         </p>
                       </div>
                     </div>
                     <div className="shrink-0 ml-2">
                       {isAdmin ? (
-                        <ChevronRight className="w-4 h-4 text-[#111216]/40 dark:text-[#F7F6F3]/40 group-hover:text-[#111216] dark:group-hover:text-[#F7F6F3]" />
+                        <ChevronRight className="w-4 h-4 text-[#8E8E93] group-hover:text-[#111214] dark:group-hover:text-[#F5F5F7]" />
                       ) : (
-                        <Lock className="w-4 h-4 text-[#ECBD56]" />
+                        <Lock className="w-4 h-4 text-[#8E8E93]" />
                       )}
                     </div>
                   </button>
@@ -717,23 +717,23 @@ $$;`;
                   {/* 5. Appearance Theme Switcher */}
                   <div
                     onClick={toggleTheme}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-[#F2F1ED]/80 dark:hover:bg-[#1F2A3C]/80 active:bg-[#DDD9D0]/50 dark:active:bg-[#2A364B]/50 transition-colors text-left cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform">
                         {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                       </div>
                       <div className="min-w-0">
-                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                        <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                           Appearance
                         </span>
-                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                        <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                           Currently in {isDark ? 'Dark Mode' : 'Light Mode'}
                         </p>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
-                      {isDark ? 'Switch to Light' : 'Switch to Dark'}
+                    <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs">
+                      {isDark ? 'Light' : 'Dark'}
                     </span>
                   </div>
 
@@ -741,14 +741,14 @@ $$;`;
                   <div className="w-full p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 text-[#111216] dark:text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40">
+                        <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08]">
                           <Bell className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                          <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                             Hourly Push Alerts
                           </span>
-                          <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                             {notifPermission === 'granted'
                               ? (hourlyNotifEnabled ? 'Sending reminder every 1 hour' : 'Hourly reminders paused')
                               : notifPermission === 'denied'
@@ -765,7 +765,7 @@ $$;`;
                               const res = await notificationService.requestPermission();
                               setNotifPermission(res);
                             }}
-                            className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] shadow-2xs cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-bold rounded-full bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] shadow-2xs cursor-pointer"
                           >
                             Enable
                           </button>
@@ -776,7 +776,7 @@ $$;`;
                               onClick={() => {
                                 notificationService.triggerHourlyReminder({ isTest: true });
                               }}
-                              className="px-2 py-1 text-[11px] font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56] cursor-pointer"
+                              className="px-2 py-1 text-[11px] font-semibold rounded-full bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08] hover:border-black/30 dark:hover:border-white/30 cursor-pointer"
                             >
                               Test
                             </button>
@@ -787,10 +787,10 @@ $$;`;
                                 notificationService.setHourlyEnabled(next);
                                 setHourlyNotifEnabled(next);
                               }}
-                              className={`px-2.5 py-1 text-xs font-bold rounded-lg border shadow-2xs cursor-pointer ${
+                              className={`px-2.5 py-1 text-xs font-bold rounded-full border shadow-2xs cursor-pointer transition-colors ${
                                 hourlyNotifEnabled
-                                  ? 'bg-[#22AC77]/15 text-[#22AC77] dark:text-[#4ADE80] border-[#22AC77]/30'
-                                  : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B]'
+                                  ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] border-transparent'
+                                  : 'bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#6E6E73] dark:text-[#8E8E93] border-black/[0.07] dark:border-white/[0.08]'
                               }`}
                             >
                               {hourlyNotifEnabled ? 'ON' : 'OFF'}
@@ -816,7 +816,7 @@ $$;`;
                           <button
                             type="button"
                             onClick={() => notificationService.sendViaWhatsApp(ctx)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#25D366]/15 text-[#15803D] dark:text-[#4ADE80] border border-[#25D366]/30 hover:bg-[#25D366]/25 transition-colors cursor-pointer"
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             <span>WhatsApp</span>
@@ -824,7 +824,7 @@ $$;`;
                           <button
                             type="button"
                             onClick={() => notificationService.sendViaSMS(ctx)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#3B82F6]/15 text-[#1D4ED8] dark:text-[#60A5FA] border border-[#3B82F6]/30 hover:bg-[#3B82F6]/25 transition-colors cursor-pointer"
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                             <span>SMS</span>
@@ -841,22 +841,22 @@ $$;`;
                         onClose();
                         await onSignOut();
                       }}
-                      className="w-full flex items-center justify-between p-3.5 hover:bg-[#FDF1F0] dark:hover:bg-[#331310] active:bg-[#F5A9A2]/30 transition-colors text-left cursor-pointer group"
+                      className="w-full flex items-center justify-between p-3.5 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors text-left cursor-pointer group"
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#171F2C] text-[#D9483B] dark:text-[#FF5A4E] flex items-center justify-center shrink-0 border border-[#DDD9D0] dark:border-[#2A364B] group-hover:scale-105 transition-transform shadow-2xs">
+                        <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shrink-0 border border-black/[0.07] dark:border-white/[0.08] group-hover:scale-105 transition-transform shadow-2xs">
                           <LogOut className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-sm font-bold text-[#D9483B] dark:text-[#FF5A4E] leading-tight block">
+                          <span className="text-sm font-bold text-[#111214] dark:text-[#F5F5F7] leading-tight block">
                             Log Out
                           </span>
-                          <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] truncate mt-0.5">
+                          <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] truncate mt-0.5">
                             End your current session safely
                           </p>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-[#D9483B]/60 dark:text-[#FF5A4E]/60 group-hover:text-[#D9483B] dark:group-hover:text-[#FF5A4E]" />
+                      <ChevronRight className="w-4 h-4 text-[#8E8E93] group-hover:text-[#111214] dark:group-hover:text-[#F5F5F7]" />
                     </div>
                   )}
                 </div>
@@ -866,12 +866,12 @@ $$;`;
                   <img
                     src="/logo.png"
                     alt="Vessel Wash Logo"
-                    className="w-9 h-9 rounded-xl mx-auto mb-2 object-cover border border-[#ECBD56]/40 shadow-2xs opacity-90"
+                    className="w-9 h-9 rounded-xl mx-auto mb-2 object-cover border border-black/[0.08] dark:border-white/[0.08] shadow-2xs opacity-90"
                   />
-                  <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 font-semibold">
+                  <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] font-semibold">
                     Vessel Washer App &bull; Continuous Multi-Year Engine
                   </p>
-                  <p className="text-[10px] text-[#111216]/40 dark:text-[#F7F6F3]/40 mt-0.5">
+                  <p className="text-[10px] text-[#8E8E93] mt-0.5 tabular-nums">
                     Supabase Cloud Sync &bull; {todayDateStr}
                   </p>
                 </div>
@@ -912,16 +912,16 @@ $$;`;
 
             {/* VIEW 3: ROTATION RULES */}
             {currentView === 'rules' && (
-              <div className="space-y-3.5 animate-fadeIn text-xs text-[#111216]/80 dark:text-[#F7F6F3]/80">
+              <div className="space-y-3.5 animate-fadeIn text-xs text-[#111214]/80 dark:text-[#F5F5F7]/80">
                 {/* Sub-tab pills */}
-                <div className="grid grid-cols-2 p-1 bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-full border border-[#DDD9D0] dark:border-[#2A364B] text-[11px] font-bold">
+                <div className="grid grid-cols-2 p-1 bg-[#EFEFF1] dark:bg-[#1C1D21] rounded-full border border-black/[0.07] dark:border-white/[0.08] text-[11px] font-bold">
                   <button
                     type="button"
                     onClick={() => setRulesSubTab('rules')}
                     className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
                       rulesSubTab === 'rules'
-                        ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs font-bold'
-                        : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
+                        ? 'bg-white dark:bg-[#2C2E33] text-[#111214] dark:text-[#F5F5F7] shadow-xs font-bold'
+                        : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] font-semibold'
                     }`}
                   >
                     <Info className="w-3.5 h-3.5 flex-shrink-0" />
@@ -933,8 +933,8 @@ $$;`;
                     onClick={() => setRulesSubTab('schedule')}
                     className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition-all select-none truncate cursor-pointer ${
                       rulesSubTab === 'schedule'
-                        ? 'bg-[#111216] dark:bg-[#ECBD56] text-[#F7F6F3] dark:text-[#111216] shadow-xs font-bold'
-                        : 'text-[#111216]/70 dark:text-[#F7F6F3]/70 hover:text-[#111216] dark:hover:text-[#F7F6F3] font-semibold'
+                        ? 'bg-white dark:bg-[#2C2E33] text-[#111214] dark:text-[#F5F5F7] shadow-xs font-bold'
+                        : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] font-semibold'
                     }`}
                   >
                     <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
@@ -944,12 +944,12 @@ $$;`;
 
                 {rulesSubTab === 'rules' ? (
                   <div className="space-y-3.5">
-                    <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2">
-                      <div className="flex items-center gap-1.5 text-[#111216] dark:text-[#F7F6F3] font-bold text-xs">
-                        <Info className="w-4 h-4 text-[#ECBD56]" />
+                    <div className="p-3.5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] space-y-2">
+                      <div className="flex items-center gap-1.5 text-[#111214] dark:text-[#F5F5F7] font-bold text-xs">
+                        <Info className="w-4 h-4 text-current" />
                         <span>Rotation System Engine Rules</span>
                       </div>
-                      <ul className="list-disc pl-4 space-y-1.5 text-[#111216]/70 dark:text-[#F7F6F3]/70 text-[11px]">
+                      <ul className="list-disc pl-4 space-y-1.5 text-[#6E6E73] dark:text-[#8E8E93] text-[11px]">
                         <li><strong>Single Shared Queue:</strong> One unified queue for Lunch and Dinner. Lunch is assigned first; dinner continues from the remainder.</li>
                         <li><strong>Washer Selection:</strong> Assigned to whoever is nearest the front of the queue who ate that meal.</li>
                         <li><strong>Absence Defers Turn:</strong> Absent members keep their place at the front; they wash next time they eat.</li>
@@ -959,32 +959,32 @@ $$;`;
                     </div>
 
                     {/* Supabase Cloud Connection Panel */}
-                    <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2.5 text-xs">
+                    <div className="p-3.5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] space-y-2.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 font-bold text-[#111216] dark:text-[#F7F6F3]">
-                          <Database className="w-4 h-4 text-[#ECBD56]" />
+                        <div className="flex items-center gap-1.5 font-bold text-[#111214] dark:text-[#F5F5F7]">
+                          <Database className="w-4 h-4 text-current" />
                           <span>Supabase Cloud Database</span>
                         </div>
                         {isSupabaseConfigured ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#22AC77]/10 dark:bg-[#4ADE80]/15 border border-[#22AC77]/30 dark:border-[#4ADE80]/40 text-[#22AC77] dark:text-[#4ADE80] text-[10px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#22AC77] dark:bg-[#4ADE80] animate-pulse" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 border border-black/[0.07] dark:border-white/[0.08] text-[#111214] dark:text-[#F5F5F7] text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                             Connected
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E0851A]/10 dark:bg-[#FF9F45]/15 border border-[#E0851A]/30 dark:border-[#FF9F45]/40 text-[#E0851A] dark:text-[#FF9F45] text-[10px] font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 border border-black/[0.07] dark:border-white/[0.08] text-[#6E6E73] dark:text-[#8E8E93] text-[10px] font-bold">
                             Local Storage Mode
                           </span>
                         )}
                       </div>
 
-                      <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 leading-relaxed">
+                      <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] leading-relaxed">
                         Connect your Supabase project to track attendance and sync assignments across devices in Realtime.
                       </p>
 
                       {isAdmin ? (
                         <div className="space-y-2.5 pt-1">
                           <div>
-                            <label className="block text-[10px] font-bold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider mb-1">
+                            <label className="block text-[10px] font-bold text-[#111214] dark:text-[#F5F5F7] uppercase tracking-wider mb-1">
                               Project URL
                             </label>
                             <input
@@ -992,12 +992,12 @@ $$;`;
                               value={dbUrl}
                               onChange={(e) => setDbUrl(e.target.value)}
                               placeholder="https://xyzcompany.supabase.co"
-                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] focus:border-[#ECBD56] focus:outline-hidden font-mono bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3]"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-black/[0.07] dark:border-white/[0.08] focus:border-black dark:focus:border-white focus:outline-hidden font-mono bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7]"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-[#111216] dark:text-[#F7F6F3] uppercase tracking-wider mb-1">
+                            <label className="block text-[10px] font-bold text-[#111214] dark:text-[#F5F5F7] uppercase tracking-wider mb-1">
                               Anon / Public API Key
                             </label>
                             <input
@@ -1005,7 +1005,7 @@ $$;`;
                               value={dbKey}
                               onChange={(e) => setDbKey(e.target.value)}
                               placeholder="eyJhbGciOi..."
-                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] focus:border-[#ECBD56] focus:outline-hidden font-mono bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3]"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-black/[0.07] dark:border-white/[0.08] focus:border-black dark:focus:border-white focus:outline-hidden font-mono bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7]"
                             />
                           </div>
 
@@ -1013,63 +1013,63 @@ $$;`;
                             <button
                               type="button"
                               onClick={handleSaveCredentials}
-                              className="flex-1 py-1.5 px-3 rounded-lg bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              className="flex-1 py-2 px-3 rounded-full bg-[#111214] hover:bg-black text-white dark:bg-white dark:text-[#0B0C0E] dark:hover:bg-neutral-200 text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
                             >
                               {savedSuccess ? 'Saved! Reloading...' : 'Save & Connect'}
                             </button>
                             <button
                               type="button"
                               onClick={handleCopySql}
-                              className="py-1.5 px-3 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#DDD9D0] dark:hover:bg-[#2A364B] text-[#111216] dark:text-[#F7F6F3] text-xs font-semibold flex items-center gap-1 transition-colors border border-[#DDD9D0] dark:border-[#2A364B] cursor-pointer"
+                              className="py-2 px-3 rounded-full bg-[#F5F5F7] dark:bg-[#1C1D21] hover:bg-black/10 dark:hover:bg-white/10 text-[#111214] dark:text-[#F5F5F7] text-xs font-semibold flex items-center gap-1 transition-colors border border-black/[0.07] dark:border-white/[0.08] cursor-pointer"
                               title="Copy SQL Schema for Supabase SQL Editor"
                             >
-                              {copiedSql ? <Check className="w-3.5 h-3.5 text-[#22AC77] dark:text-[#4ADE80]" /> : <Copy className="w-3.5 h-3.5 text-[#ECBD56]" />}
+                              {copiedSql ? <Check className="w-3.5 h-3.5 text-current" /> : <Copy className="w-3.5 h-3.5 text-current" />}
                               <span>{copiedSql ? 'Copied SQL!' : 'Copy SQL'}</span>
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60">
-                          Supabase database configuration is managed by Admin <strong>Kavipriyan</strong>.
+                        <div className="p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.07] dark:border-white/[0.08] text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">
+                          Supabase database configuration is managed by Primary Admin <strong>Kavipriyan</strong>.
                         </div>
                       )}
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-2 text-xs">
-                      <h4 className="font-bold text-[#111216] dark:text-[#F7F6F3]">Configuration</h4>
-                      <div className="flex justify-between py-1 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
-                        <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Timeline:</span>
-                        <span className="font-semibold text-[#111216] dark:text-[#F7F6F3]">Continuous Multi-Year</span>
+                    <div className="p-3.5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] space-y-2 text-xs">
+                      <h4 className="font-bold text-[#111214] dark:text-[#F5F5F7]">Configuration</h4>
+                      <div className="flex justify-between py-1 border-b border-black/[0.05] dark:border-white/[0.05] text-[11px]">
+                        <span className="text-[#6E6E73] dark:text-[#8E8E93]">Timeline:</span>
+                        <span className="font-semibold text-[#111214] dark:text-[#F5F5F7]">Continuous Multi-Year</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60 text-[11px]">
-                        <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Current Date:</span>
-                        <span className="font-semibold text-[#111216] dark:text-[#F7F6F3]">{todayDateStr}</span>
+                      <div className="flex justify-between py-1 border-b border-black/[0.05] dark:border-white/[0.05] text-[11px]">
+                        <span className="text-[#6E6E73] dark:text-[#8E8E93]">Current Date:</span>
+                        <span className="font-semibold text-[#111214] dark:text-[#F5F5F7] tabular-nums">{todayDateStr}</span>
                       </div>
                       <div className="flex justify-between py-1 text-[11px]">
-                        <span className="text-[#111216]/60 dark:text-[#F7F6F3]/60">Admin:</span>
-                        <span className="font-semibold text-[#ECBD56]">👑 Suryakumar (Primary Admin)</span>
+                        <span className="text-[#6E6E73] dark:text-[#8E8E93]">Admin:</span>
+                        <span className="font-semibold text-[#111214] dark:text-[#F5F5F7]">👑 Kavipriyan (Primary Admin)</span>
                       </div>
                     </div>
 
                     {/* Factory Reset */}
-                    <div className="pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                    <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.05]">
                       {!isAdmin ? (
-                        <div className="p-2.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 flex items-center gap-2">
-                          <Lock className="w-3.5 h-3.5 text-[#ECBD56] shrink-0" />
-                          <span>System reset is locked to Admin <strong>Kavipriyan</strong> only.</span>
+                        <div className="p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.07] dark:border-white/[0.08] text-[11px] text-[#6E6E73] dark:text-[#8E8E93] flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-current shrink-0" />
+                          <span>System reset is locked to Primary Admin <strong>Kavipriyan</strong> only.</span>
                         </div>
                       ) : !resetConfirm ? (
                         <button
                           type="button"
                           onClick={() => setResetConfirm(true)}
-                          className="text-[#D9483B] dark:text-[#FF5A4E] text-xs font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
+                          className="text-[#6E6E73] hover:text-[#111214] dark:text-[#8E8E93] dark:hover:text-[#F5F5F7] text-xs font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
                           <span>Reset to Excel Seed Data (Admin Only)</span>
                         </button>
                       ) : (
-                        <div className="p-3 rounded-lg bg-[#D9483B]/10 border border-[#D9483B]/30 space-y-2">
-                          <p className="text-xs text-[#D9483B] dark:text-[#FF5A4E] font-medium">
+                        <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 space-y-2">
+                          <p className="text-xs text-[#111214] dark:text-[#F5F5F7] font-medium">
                             Reset all attendance records and restore initial members and continuous rotation?
                           </p>
                           <div className="flex gap-2">
@@ -1099,12 +1099,12 @@ $$;`;
             {/* VIEW 4: EXCEL SYNC & UPLOAD */}
             {currentView === 'excel' && (
               <div className="space-y-3 animate-fadeIn text-xs">
-                <div className="p-3.5 rounded-2xl bg-[#ECBD56]/15 dark:bg-[#ECBD56]/10 border border-[#ECBD56]/40 text-[#111216] dark:text-[#F7F6F3] space-y-1">
-                  <span className="font-bold flex items-center gap-1 text-xs text-[#111216] dark:text-[#F7F6F3]">
-                    <FileSpreadsheet className="w-4 h-4 text-[#ECBD56]" />
+                <div className="p-3.5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] text-[#111214] dark:text-[#F5F5F7] space-y-1">
+                  <span className="font-bold flex items-center gap-1.5 text-xs text-[#111214] dark:text-[#F5F5F7]">
+                    <FileSpreadsheet className="w-4 h-4 text-current" />
                     Upload Updated Timetable Excel
                   </span>
-                  <p className="text-[11px] text-[#111216]/70 dark:text-[#F7F6F3]/70 leading-snug">
+                  <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93] leading-snug">
                     Upload your updated Excel sheet with all past attendance records. The system will detect the last recorded date and seamlessly continue the rotation rules from today onwards.
                   </p>
                 </div>
@@ -1112,7 +1112,7 @@ $$;`;
                 {/* Upload Area */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-5 rounded-xl border-2 border-dashed border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56] bg-white dark:bg-[#171F2C] flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors active-scale text-center"
+                  className="p-5 rounded-[20px] border-2 border-dashed border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 bg-white dark:bg-[#141518] flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors active-scale text-center"
                 >
                   <input
                     ref={fileInputRef}
@@ -1121,14 +1121,14 @@ $$;`;
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  <div className="w-10 h-10 rounded-full bg-[#ECBD56]/20 text-[#ECBD56] flex items-center justify-center shadow-xs">
+                  <div className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center shadow-xs">
                     <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-[#111216] dark:text-[#F7F6F3] block">
+                    <span className="font-bold text-xs text-[#111214] dark:text-[#F5F5F7] block">
                       Click to Browse or Drop Excel File
                     </span>
-                    <span className="text-[10px] text-[#111216]/50 dark:text-[#F7F6F3]/50">
+                    <span className="text-[10px] text-[#6E6E73] dark:text-[#8E8E93]">
                       Supports .xlsx, .xls, or .csv (Timetable Format)
                     </span>
                   </div>
@@ -1136,7 +1136,7 @@ $$;`;
 
                 {/* Status: Parsing */}
                 {uploadStatus === 'parsing' && (
-                  <div className="p-3 rounded-xl bg-[#2563EB]/10 border border-[#2563EB]/25 text-[#2563EB] dark:text-[#BFB4FF] flex items-center gap-2 text-xs">
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center gap-2 text-xs">
                     <Clock className="w-4 h-4 animate-spin" />
                     <span>Reading and analyzing timetable records...</span>
                   </div>
@@ -1144,53 +1144,53 @@ $$;`;
 
                 {/* Status: Error */}
                 {uploadStatus === 'error' && (
-                  <div className="p-3 rounded-xl bg-[#D9483B]/10 border border-[#D9483B]/25 text-[#D9483B] dark:text-[#FF5A4E] space-y-1 text-xs">
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[#111214] dark:text-[#F5F5F7] space-y-1 text-xs">
                     <div className="flex items-center gap-1.5 font-bold">
-                      <AlertTriangle className="w-4 h-4" />
+                      <AlertTriangle className="w-4 h-4 text-current" />
                       <span>Import Failed</span>
                     </div>
-                    <p className="text-[11px] opacity-90">{uploadError}</p>
+                    <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">{uploadError}</p>
                   </div>
                 )}
 
                 {/* Status: Preview */}
                 {uploadStatus === 'preview' && parsedData && (
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-xs space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60 pb-2">
-                      <span className="font-bold text-xs text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />
+                  <div className="p-3.5 rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.05] pb-2">
+                      <span className="font-bold text-xs text-[#111214] dark:text-[#F5F5F7] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-current" />
                         File Ready for Sync
                       </span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216]/70 dark:text-[#F7F6F3]/70 border border-[#DDD9D0] dark:border-[#2A364B]">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#6E6E73] dark:text-[#8E8E93] border border-black/[0.07] dark:border-white/[0.08]">
                         {parsedData.sheetName}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
-                        <span className="text-[#111216]/50 dark:text-[#F7F6F3]/50 block text-[10px]">Total Days Found</span>
-                        <strong className="text-[#111216] dark:text-[#F7F6F3] text-xs">{parsedData.totalRows} days</strong>
+                      <div className="p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.05] dark:border-white/[0.05]">
+                        <span className="text-[#6E6E73] dark:text-[#8E8E93] block text-[10px]">Total Days Found</span>
+                        <strong className="text-[#111214] dark:text-[#F5F5F7] text-xs tabular-nums">{parsedData.totalRows} days</strong>
                       </div>
-                      <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
-                        <span className="text-[#111216]/50 dark:text-[#F7F6F3]/50 block text-[10px]">Last Marked Date</span>
-                        <strong className="text-[#ECBD56] text-xs">{parsedData.lastMarkedDate || 'None'}</strong>
+                      <div className="p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.05] dark:border-white/[0.05]">
+                        <span className="text-[#6E6E73] dark:text-[#8E8E93] block text-[10px]">Last Marked Date</span>
+                        <strong className="text-[#111214] dark:text-[#F5F5F7] text-xs tabular-nums">{parsedData.lastMarkedDate || 'None'}</strong>
                       </div>
-                      <div className="p-2 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0]/60 dark:border-[#2A364B]/60 col-span-2">
-                        <span className="text-[#111216]/50 dark:text-[#F7F6F3]/50 block text-[10px]">Recorded Duties Parsed</span>
-                        <strong className="text-[#111216] dark:text-[#F7F6F3] text-xs">{parsedData.attendanceLogs.length} historical wash records</strong>
+                      <div className="p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.05] dark:border-white/[0.05] col-span-2">
+                        <span className="text-[#6E6E73] dark:text-[#8E8E93] block text-[10px]">Recorded Duties Parsed</span>
+                        <strong className="text-[#111214] dark:text-[#F5F5F7] text-xs tabular-nums">{parsedData.attendanceLogs.length} historical wash records</strong>
                       </div>
                     </div>
 
                     {!isAdmin ? (
-                      <div className="p-2 rounded-lg bg-[#E0851A]/10 border border-[#E0851A]/30 text-[#E0851A] dark:text-[#FF9F45] text-[11px] flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5 text-[#E0851A] dark:text-[#FF9F45] shrink-0" />
-                        <span>Applying Excel updates is locked to Admin <strong>Kavipriyan</strong>.</span>
+                      <div className="p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.07] dark:border-white/[0.08] text-[11px] text-[#6E6E73] dark:text-[#8E8E93] flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-current shrink-0" />
+                        <span>Applying Excel updates is locked to Primary Admin <strong>Kavipriyan</strong>.</span>
                       </div>
                     ) : (
                       <button
                         type="button"
                         onClick={handleApplyExcel}
-                        className="w-full py-2.5 px-3 rounded-xl bg-[#ECBD56] hover:bg-[#DEAA3E] text-[#111216] font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-full bg-[#111214] hover:bg-black text-white dark:bg-white dark:text-[#0B0C0E] dark:hover:bg-neutral-200 font-bold text-xs shadow-xs flex items-center justify-center gap-2 active-scale transition-all cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
                         <span>Apply &amp; Sync Timetable from Excel</span>
@@ -1201,8 +1201,8 @@ $$;`;
 
                 {/* Status: Success */}
                 {uploadStatus === 'success' && (
-                  <div className="p-3 rounded-xl bg-[#22AC77]/10 border border-[#22AC77]/30 text-[#22AC77] dark:text-[#4ADE80] flex items-center gap-2 text-xs font-bold animate-fadeIn">
-                    <CheckCircle2 className="w-4 h-4 text-[#22AC77] dark:text-[#4ADE80]" />
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center gap-2 text-xs font-bold animate-fadeIn">
+                    <CheckCircle2 className="w-4 h-4 text-current" />
                     <span>Timetable applied successfully! Recalculating rotation...</span>
                   </div>
                 )}

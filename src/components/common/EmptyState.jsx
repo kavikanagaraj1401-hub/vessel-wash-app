@@ -11,13 +11,13 @@ export function EmptyState({
   className = '',
 }) {
   return (
-    <div className={`flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-[#171F2C] rounded-2xl border border-[#DDD9D0] dark:border-[#2A364B] shadow-sm transition-colors ${className}`}>
-      <div className="w-12 h-12 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] flex items-center justify-center text-[#111216]/60 dark:text-[#F7F6F3]/60 mb-3">
-        <Icon className="w-6 h-6" strokeWidth={1.75} />
+    <div className={`flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-[#141518] rounded-[20px] border border-black/[0.07] dark:border-white/[0.08] shadow-xs transition-colors font-sans ${className}`}>
+      <div className="w-12 h-12 rounded-full bg-[#F5F5F7] dark:bg-[#1C1D21] border border-black/[0.07] dark:border-white/[0.08] flex items-center justify-center text-[#111214] dark:text-[#F5F5F7] mb-3">
+        <Icon className="w-6 h-6 text-current" strokeWidth={1.75} />
       </div>
-      <h3 className="text-sm font-semibold text-[#111216] dark:text-[#F7F6F3] mb-1">{title}</h3>
+      <h3 className="text-sm font-semibold text-[#111214] dark:text-[#F5F5F7] mb-1">{title}</h3>
       {description && (
-        <p className="text-xs text-[#111216]/60 dark:text-[#F7F6F3]/60 max-w-xs mb-4">{description}</p>
+        <p className="text-xs text-[#6E6E73] dark:text-[#8E8E93] max-w-xs mb-4">{description}</p>
       )}
       {actionLabel && onAction && (
         <Button size="sm" onClick={onAction}>

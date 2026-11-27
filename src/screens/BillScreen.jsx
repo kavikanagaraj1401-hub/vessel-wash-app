@@ -1342,21 +1342,16 @@ export function BillScreen({
       </div>
 
       {/* 1. Monthly Expense Section Header & Metric Cards */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
+      <div className="p-5 sm:p-6 rounded-[24px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#EA580C] dark:text-[#F59E0B]">
-                Expense Management
-              </span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-[#EA580C]/10 dark:bg-[#F59E0B]/15 text-[#EA580C] dark:text-[#F59E0B] border border-[#EA580C]/20">
-                LIFO Feed
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111216] dark:text-[#F7F6F3] mt-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6E6E73] dark:text-[#8E8E93] block">
+              EXPENSE LEDGER &bull; LIFO FEED
+            </span>
+            <h2 className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.03em] text-[#111214] dark:text-[#F5F5F7] leading-tight mt-0.5">
               Monthly Expense
             </h2>
-            <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] mt-0.5">
+            <p className="text-[13px] text-[#6E6E73] dark:text-[#8E8E93] mt-0.5">
               Personal out-of-pocket expense ledger &bull; Creator-scoped history
             </p>
           </div>
@@ -1369,10 +1364,10 @@ export function BillScreen({
                 type="button"
                 onClick={handleOpenExportModal}
                 disabled={exportingReport}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs active-scale"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08] text-xs font-semibold transition-all cursor-pointer active-scale"
                 title="Prepare and Export Consolidated Expense Report with Date Range"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F59E0B]" />
+                <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>{exportingReport ? 'Exporting...' : 'Export Report'}</span>
               </button>
             )}
@@ -1381,7 +1376,7 @@ export function BillScreen({
             <button
               type="button"
               onClick={handleOpenNewBill}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white font-bold text-xs shadow-xs active-scale transition-all cursor-pointer select-none"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 font-semibold text-xs shadow-xs active-scale transition-all cursor-pointer select-none"
               title="Create Expense Bill"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -1391,37 +1386,37 @@ export function BillScreen({
         </div>
 
         {/* 2. Consistent Filter UI Pattern (Search on left, Month Tabs on right) */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search Bar */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-[#848A96] dark:text-[#64748B] absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#8E8E93] dark:text-[#636366] absolute left-3.5 top-3 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search receipts by ID, particular, or expense type..."
-              className="w-full h-10 pl-9 pr-9 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] text-[#111216] dark:text-[#F7F6F3] placeholder-[#848A96] dark:placeholder-[#64748B] focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 shadow-2xs transition-all"
+              className="w-full h-10 pl-9 pr-9 text-xs bg-black/[0.03] dark:bg-white/[0.05] rounded-full border border-black/[0.08] dark:border-white/[0.1] text-[#111214] dark:text-[#F5F5F7] placeholder-[#8E8E93] dark:placeholder-[#636366] focus:outline-none focus:bg-white dark:focus:bg-[#141518] focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10 shadow-2xs transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-[#848A96] dark:text-[#64748B] hover:text-[#111216] dark:hover:text-[#F7F6F3] p-0.5 rounded-lg hover:bg-white dark:hover:bg-[#171F2C] transition-colors cursor-pointer"
+                className="absolute right-2.5 top-2.5 text-[#8E8E93] dark:text-[#636366] hover:text-[#111214] dark:hover:text-[#F5F5F7] p-0.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Month Filter Pills: Clean Grayscale Non-Meal Tabs */}
-          <div className="flex items-center gap-1 bg-[#F2F1ED] dark:bg-[#121620] p-1 rounded-xl border border-[#DDD9D0] dark:border-[#263042] overflow-x-auto scrollbar-none">
+          {/* Month Filter Pills: Clean Grayscale Tabs */}
+          <div className="flex items-center gap-1 bg-[#EFEFF1] dark:bg-[#1C1D21] p-1 rounded-full border border-black/[0.05] dark:border-white/[0.05] overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => setSelectedMonth('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs transition-all whitespace-nowrap cursor-pointer ${
                 selectedMonth === 'all'
-                  ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs'
-                  : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
+                  ? 'bg-white dark:bg-[#2C2E33] text-[#111214] dark:text-[#F5F5F7] font-semibold shadow-xs'
+                  : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7]'
               }`}
             >
               All History
@@ -1431,10 +1426,10 @@ export function BillScreen({
                 key={ym}
                 type="button"
                 onClick={() => setSelectedMonth(ym)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full text-xs transition-all whitespace-nowrap cursor-pointer ${
                   selectedMonth === ym
-                    ? 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-xs'
-                    : 'text-[#71717A] dark:text-[#94A3B8] hover:text-[#18181B] dark:hover:text-[#F4F4F5]'
+                    ? 'bg-white dark:bg-[#2C2E33] text-[#111214] dark:text-[#F5F5F7] font-semibold shadow-xs'
+                    : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7]'
                 }`}
               >
                 {formatMonthTitle(ym)}
@@ -1443,57 +1438,66 @@ export function BillScreen({
           </div>
         </div>
 
-        {/* 3. Summary Metrics: 3 Requested Metric Labels */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
-            <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
-              Total Monthly Expense Amount
+        {/* 3. Summary Bento Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+          <div className="p-4 sm:p-5 rounded-[20px] bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.07] space-y-1.5">
+            <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+              TOTAL EXPENSE AMOUNT
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-black text-[#EA580C] dark:text-[#F59E0B] tracking-tight">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[24px] sm:text-[26px] font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-[-0.02em] tabular-nums">
                 ₹{monthlyMetrics.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-              <span className="text-[10px] font-bold text-[#4E525D] dark:text-[#9BA5B7]">INR</span>
+              <span className="text-[11px] font-medium text-[#8E8E93] dark:text-[#636366]">INR</span>
             </div>
+            <span className="text-[11px] text-[#8E8E93] dark:text-[#636366] block">
+              Active ledger total
+            </span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
-            <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
-              Total Receipts
+          <div className="p-4 sm:p-5 rounded-[20px] bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.07] space-y-1.5">
+            <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+              TOTAL RECEIPTS
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-black text-[#111216] dark:text-[#F7F6F3] tracking-tight">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[24px] sm:text-[26px] font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-[-0.02em] tabular-nums">
                 {monthlyMetrics.count}
               </span>
-              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7]">receipts recorded</span>
+              <span className="text-[11px] font-medium text-[#8E8E93] dark:text-[#636366]">recorded</span>
             </div>
+            <span className="text-[11px] text-[#8E8E93] dark:text-[#636366] block">
+              Receipt entries logged
+            </span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B]">
-            <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] block">
-              Avg. Spent Amount
+          <div className="p-4 sm:p-5 rounded-[20px] bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.07] space-y-1.5">
+            <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#8E8E93] block">
+              AVERAGE SPENT
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-black text-[#111216] dark:text-[#F7F6F3] tracking-tight">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[24px] sm:text-[26px] font-semibold text-[#111214] dark:text-[#F5F5F7] tracking-[-0.02em] tabular-nums">
                 ₹{monthlyMetrics.avg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7]">avg / receipt</span>
+              <span className="text-[11px] font-medium text-[#8E8E93] dark:text-[#636366]">avg / receipt</span>
             </div>
+            <span className="text-[11px] text-[#8E8E93] dark:text-[#636366] block">
+              Normalized expense
+            </span>
           </div>
         </div>
       </div>
 
       {/* 4. LIFO History Cards Feed */}
       {displayedBills.length === 0 ? (
-        <div className="p-8 sm:p-12 text-center rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs space-y-3">
-          <div className="w-14 h-14 rounded-xl bg-[#EA580C]/15 text-[#EA580C] dark:text-[#F97316] flex items-center justify-center mx-auto border border-[#EA580C]/30 shadow-xs">
+        <div className="p-8 sm:p-12 text-center rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs space-y-3">
+          <div className="w-14 h-14 rounded-full bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] flex items-center justify-center mx-auto border border-black/[0.08] dark:border-white/[0.1] shadow-xs">
             <Receipt className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#111216] dark:text-[#F7F6F3]">
+            <h3 className="text-base font-semibold text-[#111214] dark:text-[#F5F5F7]">
               No Expense Receipts Found
             </h3>
-            <p className="text-xs text-[#4E525D] dark:text-[#9BA5B7] max-w-sm mx-auto mt-1 leading-relaxed">
+            <p className="text-xs text-[#6E6E73] dark:text-[#8E8E93] max-w-sm mx-auto mt-1 leading-relaxed">
               {searchQuery
                 ? `No receipts matched "${searchQuery}". Clear your search or change the month filter.`
                 : 'You have not recorded any expenses for this period. Tap the "New Bill" button below to log your first expense!'}
@@ -1503,7 +1507,7 @@ export function BillScreen({
             <button
               type="button"
               onClick={handleOpenNewBill}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white text-xs font-bold shadow-xs active-scale transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 text-xs font-semibold shadow-xs active-scale transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Record First Expense</span>
@@ -1519,25 +1523,25 @@ export function BillScreen({
             return (
               <div
                 key={bill.id}
-                className="rounded-2xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs hover:shadow-xs transition-all p-4 sm:p-5 space-y-3.5"
+                className="rounded-[20px] bg-white dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs hover:shadow-xs transition-all p-5 space-y-3.5"
               >
                 {/* Top Row: Primary Heading = Receipt No. + Expense Date & Total Amount */}
-                <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                <div className="flex items-start justify-between gap-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Primary Heading: Receipt No. */}
-                      <h3 className="text-base sm:text-lg font-black tracking-tight text-[#111216] dark:text-[#F7F6F3]">
+                      <h3 className="text-base sm:text-lg font-bold tracking-tight text-[#111214] dark:text-[#F5F5F7] tabular-nums">
                         {bill.receiptId || '#00001'}
                       </h3>
-                      <span className="px-2.5 py-0.5 rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] text-[11px] font-semibold border border-[#DDD9D0] dark:border-[#2A364B]">
+                      <span className="px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-[#6E6E73] dark:text-[#8E8E93] text-[11px] font-medium border border-black/[0.06] dark:border-white/[0.08]">
                         {bill.expenseType || 'General Expense'}
                       </span>
                     </div>
 
                     {/* Member Name in Small Text Size */}
-                    <p className="text-[11px] font-medium text-[#4E525D] dark:text-[#9BA5B7]">
+                    <p className="text-[11px] font-medium text-[#6E6E73] dark:text-[#8E8E93]">
                       Paid by{' '}
-                      <span className="font-bold text-[#111216] dark:text-[#F7F6F3]">
+                      <span className="font-semibold text-[#111214] dark:text-[#F5F5F7]">
                         {bill.paidByMemberName || currentMember?.name}
                       </span>
                       {bill.paidByMemberCode ? ` (${bill.paidByMemberCode})` : ''}
@@ -1546,68 +1550,68 @@ export function BillScreen({
 
                   {/* Expense Date and Total Amount */}
                   <div className="text-right shrink-0">
-                    <span className="text-[11px] font-semibold text-[#4E525D] dark:text-[#9BA5B7] flex items-center justify-end gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
+                    <span className="text-[11px] font-medium text-[#6E6E73] dark:text-[#8E8E93] flex items-center justify-end gap-1 tabular-nums">
+                      <Calendar className="w-3.5 h-3.5" />
                       {formatBillDisplayDate(bill.billDateTime)}
                     </span>
-                    <span className="text-xl sm:text-2xl font-black text-[#EA580C] dark:text-[#F97316] tracking-tight block mt-0.5">
+                    <span className="text-xl sm:text-2xl font-bold text-[#111214] dark:text-[#F5F5F7] tracking-tight block mt-0.5 tabular-nums">
                       ₹{Number(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
 
                 {/* Particulars / Line Items Summary */}
-                <div className="rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] p-3 border border-[#DDD9D0] dark:border-[#2A364B]">
+                <div className="rounded-[16px] bg-[#EFEFF1]/60 dark:bg-[#1C1D21]/60 p-3.5 border border-black/[0.05] dark:border-white/[0.06]">
                   <div
                     onClick={() => toggleExpand(bill.id)}
                     className="flex items-center justify-between cursor-pointer select-none"
                   >
                     <div className="min-w-0 flex-1 pr-3">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#4E525D] dark:text-[#9BA5B7] block">
+                      <span className="text-[10px] uppercase font-semibold tracking-wider text-[#6E6E73] dark:text-[#8E8E93] block">
                         Particulars Summary
                       </span>
-                      <p className="text-xs font-semibold text-[#111216] dark:text-[#F7F6F3] truncate mt-0.5">
+                      <p className="text-xs font-semibold text-[#111214] dark:text-[#F5F5F7] truncate mt-0.5">
                         {(bill.lineItems || []).map(it => it.particular).filter(Boolean).join(', ') || 'No line items recorded'}
                       </p>
                     </div>
 
                     <button
                       type="button"
-                      className="text-xs font-bold text-[#EA580C] dark:text-[#F97316] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                      className="text-xs font-semibold text-[#111214] dark:text-[#F5F5F7] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
                     >
                       <span>{isExpanded ? 'Hide' : `View (${bill.lineItems?.length || 0})`}</span>
                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                   </div>
 
-                  {/* Expandable itemized table with structured borders and rounded corners */}
+                  {/* Expandable itemized table */}
                   {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70 animate-fadeIn">
+                    <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] animate-fadeIn">
                       <table className="w-full text-xs border-collapse">
                         <thead>
-                          <tr className="text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
-                            <th className="text-left font-bold py-1.5 w-12">S.No</th>
-                            <th className="text-left font-bold py-1.5">Particular</th>
-                            <th className="text-right font-bold py-1.5 w-24">Amount</th>
+                          <tr className="text-[#6E6E73] dark:text-[#8E8E93] border-b border-black/[0.06] dark:border-white/[0.06]">
+                            <th className="text-left font-semibold py-1.5 w-12">S.No</th>
+                            <th className="text-left font-semibold py-1.5">Particular</th>
+                            <th className="text-right font-semibold py-1.5 w-24">Amount</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#DDD9D0]/40 dark:divide-[#2A364B]/40">
+                        <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
                           {(bill.lineItems || []).map((item, idx) => (
-                            <tr key={item.id || idx} className="text-[#111216] dark:text-[#F7F6F3]">
-                              <td className="py-1.5 font-bold text-[#4E525D] dark:text-[#9BA5B7]">
+                            <tr key={item.id || idx} className="text-[#111214] dark:text-[#F5F5F7]">
+                              <td className="py-1.5 font-medium text-[#6E6E73] dark:text-[#8E8E93] tabular-nums">
                                 #{item.sNo || idx + 1}
                               </td>
                               <td className="py-1.5 font-medium">{item.particular}</td>
-                              <td className="py-1.5 font-bold text-right text-[#EA580C] dark:text-[#F97316]">
+                              <td className="py-1.5 font-bold text-right text-[#111214] dark:text-[#F5F5F7] tabular-nums">
                                 ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
                           ))}
-                          <tr className="border-t border-[#DDD9D0] dark:border-[#2A364B] font-bold">
-                            <td colSpan={2} className="pt-2 text-right text-[#4E525D] dark:text-[#9BA5B7]">
+                          <tr className="border-t border-black/[0.08] dark:border-white/[0.1] font-bold">
+                            <td colSpan={2} className="pt-2 text-right text-[#6E6E73] dark:text-[#8E8E93]">
                               Total:
                             </td>
-                            <td className="pt-2 text-right text-sm text-[#EA580C] dark:text-[#F97316] font-black">
+                            <td className="pt-2 text-right text-sm text-[#111214] dark:text-[#F5F5F7] font-bold tabular-nums">
                               ₹{Number(bill.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
@@ -1617,42 +1621,38 @@ export function BillScreen({
                   )}
                 </div>
 
-                {/* 5. BILL HISTORY CARD BUTTON ORDER:
-                    Strictly in horizontal order:
-                    1. Delete (Trash icon)
-                    2. View Receipt
-                    3. Download Receipt */}
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#DDD9D0]/50 dark:border-[#2A364B]/50 flex-wrap">
-                  {/* 1. Delete (Trash icon) */}
+                {/* 5. Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-black/[0.05] dark:border-white/[0.05] flex-wrap">
+                  {/* Delete Button */}
                   {userIsCreator && (
                     <button
                       type="button"
                       onClick={() => setBillToDelete(bill)}
-                      className="p-2 rounded-xl text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 border border-[#DDD9D0] dark:border-[#2A364B] transition-colors cursor-pointer"
+                      className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors cursor-pointer"
                       title="Delete Receipt"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
 
-                  {/* 2. View Receipt */}
+                  {/* View Receipt */}
                   <button
                     type="button"
                     onClick={() => setPreviewBill(bill)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] hover:bg-[#EAE8E2] dark:hover:bg-[#253248] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08] text-xs font-semibold transition-all cursor-pointer shadow-2xs"
                     title="View Receipt Preview"
                   >
-                    <Receipt className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
+                    <Receipt className="w-3.5 h-3.5" />
                     <span>View Receipt</span>
                   </button>
 
-                  {/* 3. Download Receipt */}
+                  {/* Download Receipt */}
                   {userIsCreator && (
                     <button
                       type="button"
                       onClick={() => downloadReceiptAsPng(bill)}
                       disabled={exportingPng}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] hover:opacity-95 text-white text-xs font-bold shadow-2xs active-scale transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 text-xs font-semibold shadow-2xs active-scale transition-all cursor-pointer"
                       title="Download Expense Receipt PNG"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -1667,11 +1667,11 @@ export function BillScreen({
       )}
 
       {/* 5. Mobile Floating Action Button (FAB) "New Bill" */}
-      <div className="sm:hidden fixed bottom-24 right-5 z-30">
+      <div className="sm:hidden fixed bottom-20 right-4 z-20">
         <button
           type="button"
           onClick={handleOpenNewBill}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] active:opacity-90 text-white font-bold text-xs shadow-xl border border-[#EA580C]/40 ring-4 ring-[#EA580C]/20 active-scale transition-all cursor-pointer select-none"
+          className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] active:scale-95 text-xs font-semibold shadow-lg border border-black/10 dark:border-white/10 active-scale transition-all cursor-pointer select-none"
           title="Create Expense Bill"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -1689,7 +1689,7 @@ export function BillScreen({
       >
         <form onSubmit={handleFormSubmit} className="space-y-4">
           {formError && (
-            <div className="p-3 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-[#DC2626] dark:text-[#EF4444] text-xs flex items-start gap-2">
+            <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[#111214] dark:text-[#F5F5F7] text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{formError}</span>
             </div>
@@ -1697,12 +1697,12 @@ export function BillScreen({
 
           {/* Bill Date & Time */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center justify-between">
+            <label className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7] flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
+                <Calendar className="w-3.5 h-3.5 text-[#111214] dark:text-[#F5F5F7]" />
                 <span>Bill Date &amp; Time</span>
               </span>
-              <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-normal">
+              <span className="text-[10px] text-[#6E6E73] dark:text-[#8E8E93] font-normal">
                 (Past dates permitted)
               </span>
             </label>
@@ -1711,21 +1711,21 @@ export function BillScreen({
               required
               value={billDateTime}
               onChange={(e) => setBillDateTime(e.target.value)}
-              className="w-full h-10 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 transition-all"
+              className="w-full h-10 px-3.5 text-xs bg-[#F5F5F7] dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-[14px] border border-black/[0.07] dark:border-white/[0.08] outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10 transition-all tabular-nums"
             />
           </div>
 
           {/* Paid By - RESTRICTED & AUTO-BOUND TO CURRENT LOGGED-IN USER */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
+            <label className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7] flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-[#111214] dark:text-[#F5F5F7]" />
               <span>Paid By</span>
             </label>
-            <div className="w-full h-10 px-3.5 flex items-center justify-between text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B]">
+            <div className="w-full h-10 px-3.5 flex items-center justify-between text-xs bg-[#F5F5F7] dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-[14px] border border-black/[0.07] dark:border-white/[0.08]">
               <span className="font-bold">
                 {currentMember?.name || 'Member'} {currentMember?.code ? `(${currentMember.code})` : ''}
               </span>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-[#EA580C]/10 text-[#EA580C] dark:text-[#F97316] border border-[#EA580C]/20">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] border border-black/10 dark:border-white/15">
                 Logged In User
               </span>
             </div>
@@ -1733,8 +1733,8 @@ export function BillScreen({
 
           {/* Expense Type - STRICTLY CLEAN TEXT INPUT */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3] flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5 text-[#EA580C] dark:text-[#F97316]" />
+            <label className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7] flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-[#111214] dark:text-[#F5F5F7]" />
               <span>Expense Type</span>
             </label>
             <input
@@ -1743,54 +1743,54 @@ export function BillScreen({
               value={expenseType}
               onChange={(e) => setExpenseType(e.target.value)}
               placeholder="Enter expense type (e.g. Vegetables, Grocery, Gas Refill)"
-              className="w-full h-10 px-3.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]/20 transition-all placeholder-[#848A96] dark:placeholder-[#64748B]"
+              className="w-full h-10 px-3.5 text-xs bg-[#F5F5F7] dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-[14px] border border-black/[0.07] dark:border-white/[0.08] outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10 transition-all placeholder-[#8E8E93]"
             />
           </div>
 
           {/* Line Items Table with Structured Cell Borders and Clear Alignment */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+              <label className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7]">
                 Line Items (Particulars &amp; Amounts)
               </label>
               <button
                 type="button"
                 onClick={handleAddLineItem}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#EA580C] dark:text-[#F97316] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#111214] dark:text-[#F5F5F7] hover:underline cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Item</span>
               </button>
             </div>
 
-            <div className="rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden bg-white dark:bg-[#171F2C]">
+            <div className="rounded-[14px] border border-black/[0.07] dark:border-white/[0.08] overflow-hidden bg-white dark:bg-[#141518]">
               <div className="overflow-x-auto max-h-56 overflow-y-auto">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] border-b border-[#DDD9D0] dark:border-[#2A364B]">
-                      <th className="py-2 px-2.5 text-center w-12 border-r border-[#DDD9D0] dark:border-[#2A364B]">S.No</th>
-                      <th className="py-2 px-3 text-left border-r border-[#DDD9D0] dark:border-[#2A364B]">Particular</th>
-                      <th className="py-2 px-3 text-right w-32 border-r border-[#DDD9D0] dark:border-[#2A364B]">Amount (₹)</th>
+                    <tr className="bg-[#EFEFF1] dark:bg-[#1C1D21] text-[11px] font-bold text-[#6E6E73] dark:text-[#8E8E93] border-b border-black/[0.07] dark:border-white/[0.08]">
+                      <th className="py-2 px-2.5 text-center w-12 border-r border-black/[0.07] dark:border-white/[0.08]">S.No</th>
+                      <th className="py-2 px-3 text-left border-r border-black/[0.07] dark:border-white/[0.08]">Particular</th>
+                      <th className="py-2 px-3 text-right w-32 border-r border-black/[0.07] dark:border-white/[0.08]">Amount (₹)</th>
                       <th className="py-2 px-2 text-center w-10">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#DDD9D0]/60 dark:divide-[#2A364B]/60">
+                  <tbody className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
                     {lineItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-[#F9F8F6] dark:hover:bg-[#1C2534] transition-colors">
-                        <td className="py-1.5 px-2 text-center font-bold text-[#4E525D] dark:text-[#9BA5B7] border-r border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                      <tr key={item.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                        <td className="py-1.5 px-2 text-center font-bold text-[#6E6E73] dark:text-[#8E8E93] border-r border-black/[0.07] dark:border-white/[0.08]">
                           #{item.sNo}
                         </td>
-                        <td className="py-1 px-2 border-r border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                        <td className="py-1 px-2 border-r border-black/[0.07] dark:border-white/[0.08]">
                           <input
                             type="text"
                             required
                             value={item.particular}
                             onChange={(e) => handleLineItemChange(idx, 'particular', e.target.value)}
                             placeholder="Particular description"
-                            className="w-full h-8 px-2.5 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] focus:ring-1 focus:ring-[#EA580C]"
+                            className="w-full h-8 px-2.5 text-xs bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] rounded-lg border border-black/[0.07] dark:border-white/[0.08] outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10"
                           />
                         </td>
-                        <td className="py-1 px-2 border-r border-[#DDD9D0]/60 dark:border-[#2A364B]/60">
+                        <td className="py-1 px-2 border-r border-black/[0.07] dark:border-white/[0.08]">
                           <input
                             type="number"
                             step="any"
@@ -1799,7 +1799,7 @@ export function BillScreen({
                             value={item.amount}
                             onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)}
                             placeholder="0.00"
-                            className="w-full h-8 px-2.5 text-xs text-right bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] font-bold rounded-lg border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] dark:focus:border-[#F97316] focus:ring-1 focus:ring-[#EA580C]"
+                            className="w-full h-8 px-2.5 text-xs text-right bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#111214] dark:text-[#F5F5F7] font-bold rounded-lg border border-black/[0.07] dark:border-white/[0.08] outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10 tabular-nums"
                           />
                         </td>
                         <td className="py-1 px-1 text-center">
@@ -1807,7 +1807,7 @@ export function BillScreen({
                             <button
                               type="button"
                               onClick={() => handleRemoveLineItem(idx)}
-                              className="p-1 rounded-lg text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 cursor-pointer transition-colors"
+                              className="p-1 rounded-lg text-[#6E6E73] hover:text-black dark:text-[#8E8E93] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
                               title="Remove item"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -1818,11 +1818,11 @@ export function BillScreen({
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-[#F2F1ED] dark:bg-[#1F2A3C] border-t border-[#DDD9D0] dark:border-[#2A364B]">
-                      <td colSpan={2} className="py-2.5 px-3 text-right text-xs font-bold text-[#111216] dark:text-[#F7F6F3] border-r border-[#DDD9D0] dark:border-[#2A364B]">
+                    <tr className="bg-[#EFEFF1] dark:bg-[#1C1D21] border-t border-black/[0.07] dark:border-white/[0.08]">
+                      <td colSpan={2} className="py-2.5 px-3 text-right text-xs font-bold text-[#111214] dark:text-[#F5F5F7] border-r border-black/[0.07] dark:border-white/[0.08]">
                         Auto Calculated Sum:
                       </td>
-                      <td className="py-2.5 px-3 text-right text-sm font-black text-[#EA580C] dark:text-[#F97316] border-r border-[#DDD9D0] dark:border-[#2A364B]">
+                      <td className="py-2.5 px-3 text-right text-sm font-black text-[#111214] dark:text-[#F5F5F7] border-r border-black/[0.07] dark:border-white/[0.08] tabular-nums">
                         ₹{calculatedGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td></td>
@@ -1834,7 +1834,7 @@ export function BillScreen({
           </div>
 
           {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-black/[0.07] dark:border-white/[0.08]">
             <Button
               type="button"
               variant="secondary"
@@ -1866,7 +1866,7 @@ export function BillScreen({
         {previewBill && (
           <div className="space-y-4">
             {/* Authentic Thermal Receipt Paper Layout */}
-            <div className="flex justify-center p-2.5 sm:p-4 bg-[#ECEAE3] dark:bg-[#0B0C0E] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
+            <div className="flex justify-center p-2.5 sm:p-4 bg-[#F5F5F7] dark:bg-[#0B0C0E] rounded-[16px] border border-black/[0.07] dark:border-white/[0.08] overflow-hidden">
               <div className="w-full flex justify-center">
                 <ThermalReceipt bill={previewBill} />
               </div>
@@ -1905,12 +1905,12 @@ export function BillScreen({
         subtitle="Are you sure you want to delete this receipt?"
       >
         <div className="space-y-4">
-          <div className="p-3.5 rounded-xl bg-[#FDF1F0] dark:bg-[#331310] border border-[#F5A9A2] dark:border-[#991B1B] text-xs space-y-1.5">
-            <p className="font-bold text-[#DC2626] dark:text-[#EF4444]">
+          <div className="p-3.5 rounded-[14px] bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-xs space-y-1.5">
+            <p className="font-bold text-[#111214] dark:text-[#F5F5F7]">
               Are you sure you want to delete this receipt?
             </p>
-            <p className="text-[#4E525D] dark:text-[#9BA5B7] leading-relaxed">
-              This will permanently delete receipt <strong className="text-[#111216] dark:text-[#F7F6F3]">{billToDelete?.receiptId}</strong> (₹{Number(billToDelete?.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) for <em>{billToDelete?.expenseType}</em> from your expense history. This action cannot be undone.
+            <p className="text-[#6E6E73] dark:text-[#8E8E93] leading-relaxed">
+              This will permanently delete receipt <strong className="text-[#111214] dark:text-[#F5F5F7]">{billToDelete?.receiptId}</strong> (₹{Number(billToDelete?.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) for <em>{billToDelete?.expenseType}</em> from your expense history. This action cannot be undone.
             </p>
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
@@ -1937,7 +1937,7 @@ export function BillScreen({
         <div className="space-y-4">
           {/* Quick Preset Buttons (Includes Last 2 Months) */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+            <label className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7]">
               Quick Range Presets
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -1955,8 +1955,8 @@ export function BillScreen({
                   disabled={exportingReport}
                   className={`px-2 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer whitespace-nowrap text-center ${
                     activeRangePreset === preset.id
-                      ? 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white border-transparent shadow-xs'
-                      : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#EAE8E2] dark:hover:bg-[#253248]'
+                      ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] border-transparent shadow-xs'
+                      : 'bg-[#EFEFF1] dark:bg-[#1C1D21] text-[#6E6E73] dark:text-[#8E8E93] border-black/[0.07] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   {preset.label}
@@ -1968,8 +1968,8 @@ export function BillScreen({
           {/* Date Range Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-[#EA580C] dark:text-[#F97316]" />
+              <label className="text-[11px] font-bold text-[#6E6E73] dark:text-[#8E8E93] flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-[#111214] dark:text-[#F5F5F7]" />
                 <span>Start Date</span>
               </label>
               <input
@@ -1980,12 +1980,12 @@ export function BillScreen({
                   setActiveRangePreset('custom');
                 }}
                 disabled={exportingReport}
-                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]"
+                className="w-full h-10 px-3 text-xs bg-[#F5F5F7] dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-[14px] border border-black/[0.07] dark:border-white/[0.08] outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10 tabular-nums"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-[#4E525D] dark:text-[#9BA5B7] flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-[#EA580C] dark:text-[#F97316]" />
+              <label className="text-[11px] font-bold text-[#6E6E73] dark:text-[#8E8E93] flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-[#111214] dark:text-[#F5F5F7]" />
                 <span>End Date</span>
               </label>
               <input
@@ -1996,27 +1996,27 @@ export function BillScreen({
                   setActiveRangePreset('custom');
                 }}
                 disabled={exportingReport}
-                className="w-full h-10 px-3 text-xs bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] rounded-xl border border-[#DDD9D0] dark:border-[#2A364B] outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C]"
+                className="w-full h-10 px-3 text-xs bg-[#F5F5F7] dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] rounded-[14px] border border-black/[0.07] dark:border-white/[0.08] outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black/10 dark:focus:ring-white/10 tabular-nums"
               />
             </div>
           </div>
 
           {/* Live Preview & Calculation Summary Box */}
-          <div className="p-3.5 rounded-xl bg-[#F2F1ED] dark:bg-[#1F2A3C] border border-[#DDD9D0] dark:border-[#2A364B] space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
+          <div className="p-3.5 rounded-[16px] bg-[#F5F5F7] dark:bg-[#141518] border border-black/[0.07] dark:border-white/[0.08] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-black/[0.07] dark:border-white/[0.08]">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#EA580C] dark:text-[#F97316] block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] block">
                   Report Scope
                 </span>
-                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                <span className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7]">
                   {reportDateRangeLabel}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-[#4E525D] dark:text-[#9BA5B7] block">
+                <span className="text-[10px] text-[#6E6E73] dark:text-[#8E8E93] block">
                   Matching Receipts
                 </span>
-                <span className="text-xs font-bold text-[#111216] dark:text-[#F7F6F3]">
+                <span className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7] tabular-nums">
                   {matchingReportBills.length} receipts
                 </span>
               </div>
@@ -2024,30 +2024,30 @@ export function BillScreen({
 
             {/* Paid By info */}
             <div className="flex items-center justify-between text-xs">
-              <span className="text-[#4E525D] dark:text-[#9BA5B7]">Paid By (User):</span>
-              <span className="font-bold text-[#111216] dark:text-[#F7F6F3]">
+              <span className="text-[#6E6E73] dark:text-[#8E8E93]">Paid By (User):</span>
+              <span className="font-bold text-[#111214] dark:text-[#F5F5F7]">
                 {currentMember?.name || 'User'} {currentMember?.code ? `(${currentMember.code})` : ''}
               </span>
             </div>
 
             {/* Total Sum */}
             <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-[#4E525D] dark:text-[#9BA5B7]">Total Consolidated Amount:</span>
-              <span className="text-base font-black text-[#EA580C] dark:text-[#F97316]">
+              <span className="text-[#6E6E73] dark:text-[#8E8E93]">Total Consolidated Amount:</span>
+              <span className="text-base font-black text-[#111214] dark:text-[#F5F5F7] tabular-nums">
                 ₹{reportTotalSum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
             {/* Consolidated Sum Formula Breakdown */}
-            <div className="pt-2 border-t border-[#DDD9D0]/60 dark:border-[#2A364B]/60 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#4E525D] dark:text-[#9BA5B7] block">
+            <div className="pt-2 border-t border-black/[0.07] dark:border-white/[0.08] space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] block">
                 Consolidated Calculation Formula:
               </span>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-[#171F2C] border border-[#DDD9D0] dark:border-[#2A364B] font-mono text-[11px] leading-relaxed break-words text-[#111216] dark:text-[#F7F6F3]">
+              <div className="p-2.5 rounded-[12px] bg-white dark:bg-[#0B0C0E] border border-black/[0.07] dark:border-white/[0.08] font-mono text-[11px] leading-relaxed break-words text-[#111214] dark:text-[#F5F5F7] tabular-nums">
                 {consolidatedFormulaStr}
               </div>
               {consolidatedDetailedFormulaStr && (
-                <div className="p-2 rounded-xl bg-white/60 dark:bg-[#171F2C]/60 text-[10px] text-[#4E525D] dark:text-[#9BA5B7] font-mono break-words">
+                <div className="p-2 rounded-[12px] bg-white/60 dark:bg-[#0B0C0E]/60 text-[10px] text-[#6E6E73] dark:text-[#8E8E93] font-mono break-words tabular-nums">
                   {consolidatedDetailedFormulaStr}
                 </div>
               )}
@@ -2056,19 +2056,19 @@ export function BillScreen({
 
           {/* Export Progress Bar */}
           {exportingReport && (
-            <div className="p-3 rounded-xl bg-[#EA580C]/10 border border-[#EA580C]/30 text-xs space-y-2">
-              <div className="flex items-center justify-between font-bold text-[#111216] dark:text-[#F7F6F3]">
+            <div className="p-3 rounded-[14px] bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-xs space-y-2">
+              <div className="flex items-center justify-between font-bold text-[#111214] dark:text-[#F5F5F7]">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-[#111214] dark:bg-white animate-ping" />
                   <span>Converting Thermal Receipts to PDF...</span>
                 </span>
-                <span>
+                <span className="tabular-nums">
                   {reportProgress.current} / {reportProgress.total}
                 </span>
               </div>
-              <div className="w-full bg-[#DDD9D0] dark:bg-[#2A364B] h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-black/10 dark:bg-white/10 h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] h-full transition-all duration-200"
+                  className="bg-[#111214] dark:bg-white h-full transition-all duration-200"
                   style={{
                     width: `${reportProgress.total > 0 ? (reportProgress.current / reportProgress.total) * 100 : 0}%`,
                   }}
@@ -2078,7 +2078,7 @@ export function BillScreen({
           )}
 
           {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#DDD9D0]/70 dark:border-[#2A364B]/70">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-black/[0.07] dark:border-white/[0.08]">
             <Button
               type="button"
               variant="secondary"

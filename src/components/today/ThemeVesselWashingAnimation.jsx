@@ -54,40 +54,22 @@ export function ThemeVesselWashingAnimation({
     lg: { width: 96, height: 74, svgClass: 'w-[96px] h-[74px]' },
   }[size] || { width: 54, height: 42, svgClass: 'w-[54px] h-[42px]' };
 
-  // Theme-adaptive palette
-  const themeColors = isDay
-    ? {
-        // Daytime: Warm Amber / Coral / Golden palette
-        waterGradStart: '#F59E0B',
-        waterGradEnd: '#EA580C',
-        waterWave: isDark ? 'rgba(245, 158, 11, 0.7)' : 'rgba(234, 88, 12, 0.65)',
-        bubbleStroke: isDark ? '#FBBF24' : '#EA580C',
-        bubbleFill: isDark ? 'rgba(254, 243, 199, 0.45)' : 'rgba(255, 255, 255, 0.75)',
-        spongeTop: '#FACC15',
-        spongeBase: '#15803D',
-        spongeStroke: '#854D0E',
-        sparkleFill: isDark ? '#FDE047' : '#F59E0B',
-        sparkleGlow: isDark ? '#EA580C' : '#FBBF24',
-        potGlow: isDark ? 'rgba(234, 88, 12, 0.35)' : 'rgba(245, 158, 11, 0.22)',
-        rimStroke: isDark ? '#D97706' : '#EA580C',
-        badgeBg: isDark ? 'bg-amber-500/15 text-[#FBBF24] border-amber-500/30' : 'bg-orange-500/10 text-[#C2410C] border-orange-500/25',
-      }
-    : {
-        // Nighttime: Cool Blue / Indigo / Cyan palette
-        waterGradStart: '#06B6D4',
-        waterGradEnd: '#2563EB',
-        waterWave: isDark ? 'rgba(6, 182, 212, 0.75)' : 'rgba(37, 99, 235, 0.65)',
-        bubbleStroke: isDark ? '#38BDF8' : '#2563EB',
-        bubbleFill: isDark ? 'rgba(224, 242, 254, 0.5)' : 'rgba(255, 255, 255, 0.8)',
-        spongeTop: '#38BDF8',
-        spongeBase: '#1E3A8A',
-        spongeStroke: '#1D4ED8',
-        sparkleFill: isDark ? '#67E8F9' : '#0284C7',
-        sparkleGlow: isDark ? '#38BDF8' : '#06B6D4',
-        potGlow: isDark ? 'rgba(6, 182, 212, 0.35)' : 'rgba(37, 99, 235, 0.22)',
-        rimStroke: isDark ? '#38BDF8' : '#2563EB',
-        badgeBg: isDark ? 'bg-cyan-500/15 text-[#38BDF8] border-cyan-500/30' : 'bg-blue-500/10 text-[#1D4ED8] border-blue-500/25',
-      };
+  // Refined Subtle Monochrome Palette
+  const themeColors = {
+    waterGradStart: isDark ? '#64748B' : '#94A3B8',
+    waterGradEnd: isDark ? '#334155' : '#64748B',
+    waterWave: isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.2)',
+    bubbleStroke: isDark ? '#E2E8F0' : '#475569',
+    bubbleFill: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.75)',
+    spongeTop: isDark ? '#94A3B8' : '#64748B',
+    spongeBase: isDark ? '#475569' : '#334155',
+    spongeStroke: isDark ? '#64748B' : '#1E293B',
+    sparkleFill: isDark ? '#FFFFFF' : '#111214',
+    sparkleGlow: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.3)',
+    potGlow: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+    rimStroke: isDark ? '#94A3B8' : '#475569',
+    badgeBg: isDark ? 'bg-white/10 text-[#F5F5F7] border-white/15' : 'bg-black/5 text-[#111214] border-black/10',
+  };
 
   return (
     <div
@@ -209,7 +191,7 @@ export function ThemeVesselWashingAnimation({
             {/* Sponge Texture Gradient */}
             <linearGradient id={`${uid}-sponge`} x1="0" y1="0" x2="16" y2="10" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor={themeColors.spongeTop} />
-              <stop offset="100%" stopColor={isDay ? '#EAB308' : '#0284C7'} />
+              <stop offset="100%" stopColor={themeColors.spongeBase} />
             </linearGradient>
           </defs>
 

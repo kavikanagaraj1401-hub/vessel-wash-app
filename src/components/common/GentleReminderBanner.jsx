@@ -46,45 +46,42 @@ export function GentleReminderBanner({
   );
 
   return (
-    <div className="px-4 pt-3 pb-1 w-full animate-fadeIn transition-all duration-300">
-      <div className="relative overflow-hidden rounded-2xl border border-[#ECBD56]/35 dark:border-[#ECBD56]/30 bg-gradient-to-r from-[#FFFDF5] to-[#FFFFFF] dark:from-[#171F2C] dark:to-[#121822] shadow-sm p-3.5 sm:p-4">
-        {/* Subtle warm glow background */}
-        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#ECBD56]/10 rounded-full blur-2xl pointer-events-none" />
-
+    <div className="px-4 pt-3 pb-1 w-full animate-fadeIn transition-all duration-300 font-sans">
+      <div className="relative overflow-hidden rounded-[20px] border border-black/[0.07] dark:border-white/[0.08] bg-white dark:bg-[#141518] shadow-xs p-3.5 sm:p-4">
         <div className="flex items-start justify-between gap-3 relative z-10">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#ECBD56]/15 dark:bg-[#ECBD56]/20 border border-[#ECBD56]/30 flex items-center justify-center shrink-0 text-[#D49F2A] dark:text-[#ECBD56] mt-0.5 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 border border-black/[0.05] dark:border-white/[0.05] flex items-center justify-center shrink-0 text-[#111214] dark:text-[#F5F5F7] mt-0.5 shadow-2xs">
               {todayDinnerLog ? (
-                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
+                <CheckCircle2 className="w-4.5 h-4.5 text-current" />
               ) : (
-                <Bell className="w-4.5 h-4.5 animate-pulse" />
+                <Bell className="w-4.5 h-4.5 animate-pulse text-current" />
               )}
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#B8871E] dark:text-[#ECBD56] flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#6E6E73] dark:text-[#8E8E93] flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-current" />
                   Daily Washer Reminder
                 </span>
                 {todayDinnerLog && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black/5 dark:bg-white/10 text-[#111214] dark:text-[#F5F5F7] border border-black/[0.07] dark:border-white/[0.08]">
                     Done Today
                   </span>
                 )}
               </div>
 
-              <p className="text-xs sm:text-sm text-[#4E4D48] dark:text-[#9EA8B6] mt-0.5 leading-snug">
+              <p className="text-xs sm:text-sm text-[#6E6E73] dark:text-[#8E8E93] mt-0.5 leading-snug">
                 {todayDinnerLog ? (
                   <span>
-                    Today's wash duty was completed by <strong className="font-semibold text-[#111216] dark:text-[#F7F6F3]">{todayDinnerLog.memberName}</strong>.
+                    Today's wash duty was completed by <strong className="font-semibold text-[#111214] dark:text-[#F5F5F7]">{todayDinnerLog.memberName}</strong>.
                   </span>
                 ) : (
                   <span>
                     Friendly reminder: Please remember to mark today's vessel wash duty once finished.
                     {dinnerWasher && (
-                      <span className="block sm:inline sm:ml-1 mt-0.5 sm:mt-0 font-medium text-[#111216] dark:text-[#F7F6F3]">
-                        Scheduled: <strong className="text-[#B8871E] dark:text-[#ECBD56]">{dinnerWasher.name} ({dinnerWasher.code || 'M'})</strong>
+                      <span className="block sm:inline sm:ml-1 mt-0.5 sm:mt-0 font-medium text-[#111214] dark:text-[#F5F5F7]">
+                        Scheduled: <strong className="text-[#111214] dark:text-[#F5F5F7]">{dinnerWasher.name} ({dinnerWasher.code || 'M'})</strong>
                       </span>
                     )}
                   </span>
@@ -93,12 +90,12 @@ export function GentleReminderBanner({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 ml-1">
+          <div className="flex items-center gap-1.5 shrink-0 ml-1">
             {onNavigateToday && (
               <button
                 type="button"
                 onClick={onNavigateToday}
-                className="px-2.5 py-1 text-xs font-semibold text-[#111216] dark:text-[#F7F6F3] bg-[#ECBD56]/20 hover:bg-[#ECBD56]/30 dark:bg-[#ECBD56]/25 dark:hover:bg-[#ECBD56]/35 border border-[#ECBD56]/40 rounded-lg transition-all flex items-center gap-0.5 cursor-pointer active:scale-95 whitespace-nowrap"
+                className="px-3 py-1 text-xs font-semibold text-[#111214] dark:text-[#F5F5F7] bg-[#F5F5F7] hover:bg-black/10 dark:bg-[#1C1D21] dark:hover:bg-white/10 border border-black/[0.07] dark:border-white/[0.08] rounded-full transition-all flex items-center gap-0.5 cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <span>View</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -109,7 +106,7 @@ export function GentleReminderBanner({
               type="button"
               onClick={handleDismiss}
               aria-label="Dismiss reminder"
-              className="p-1 rounded-lg text-[#888680] hover:text-[#111216] dark:text-[#6E7B8E] dark:hover:text-[#F7F6F3] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-1 rounded-full text-[#6E6E73] hover:text-[#111214] dark:text-[#8E8E93] dark:hover:text-[#F5F5F7] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

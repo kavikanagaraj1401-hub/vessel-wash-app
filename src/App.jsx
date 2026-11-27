@@ -1748,15 +1748,15 @@ export default function App() {
   // 1. Initial Session Loading Indicator
   if (authLoading) {
     return (
-      <div className="min-h-screen w-full bg-[#F2F1ED] dark:bg-[#0B0C0E] flex flex-col items-center justify-center p-4 selection:bg-[#ECBD56]/30">
+      <div className="min-h-screen w-full bg-[#F5F5F7] dark:bg-[#0B0C0E] flex flex-col items-center justify-center p-4 selection:bg-black/10 dark:selection:bg-white/10">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#ECBD56] text-[#111216] flex items-center justify-center font-black text-2xl shadow-xl animate-pulse">
+          <div className="w-14 h-14 rounded-2xl bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] flex items-center justify-center font-bold text-xl shadow-xl animate-pulse">
             VW
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-base font-extrabold text-[#111216] dark:text-[#F7F6F3]">Vessel Wash System</h2>
-            <div className="flex items-center justify-center gap-2 text-xs text-[#4E525D] dark:text-[#9BA5B7] font-semibold">
-              <span className="w-3.5 h-3.5 border-2 border-[#ECBD56] border-t-transparent rounded-full animate-spin" />
+            <h2 className="text-base font-bold tracking-tight text-[#111214] dark:text-[#F5F5F7]">Vessel Wash System</h2>
+            <div className="flex items-center justify-center gap-2 text-xs text-[#6E6E73] dark:text-[#8E8E93] font-medium">
+              <span className="w-3.5 h-3.5 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
               <span>Verifying authentication session...</span>
             </div>
           </div>
@@ -1776,9 +1776,9 @@ export default function App() {
   }
 
   return (
-    <div className="w-full h-full min-h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col items-center bg-[#F2F1ED] dark:bg-[#0B0C0E] text-[#111216] dark:text-[#F7F6F3] selection:bg-[#EA580C]/30 selection:text-[#111216]">
+    <div className="w-full h-full min-h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col items-center bg-[#F5F5F7] dark:bg-[#0B0C0E] text-[#111214] dark:text-[#F5F5F7] selection:bg-black/10 dark:selection:bg-white/10 selection:text-current">
       {/* Locked Full-Viewport Shell Container (Mobile: full-width / max 430px, Tablet: md:max-w-3xl, Desktop: lg:max-w-6xl) */}
-      <div className="w-full max-w-full sm:max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full max-h-[100dvh] flex flex-col bg-[#F2F1ED] dark:bg-[#0B0C0E] shadow-2xl relative border-x-0 sm:border-x border-[#DDD9D0] dark:border-[#2A364B] overflow-hidden">
+      <div className="w-full max-w-full sm:max-w-[430px] md:max-w-3xl lg:max-w-6xl h-full max-h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#0B0C0E] shadow-2xl relative border-x-0 sm:border-x border-black/[0.07] dark:border-white/[0.08] overflow-hidden">
         {/* Top Header: strictly static (shrink-0) */}
         <TopAppBar
           title="Vessel Washing"

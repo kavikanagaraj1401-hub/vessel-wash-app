@@ -57,22 +57,22 @@ export function EaterSelectorModal({
         </>
       }
     >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#DDD9D0] dark:border-[#2A364B]">
-          <span className="text-xs font-medium text-[#4E525D] dark:text-[#9BA5B7]">
+      <div className="space-y-3 font-sans">
+        <div className="flex items-center justify-between pb-2 border-b border-black/[0.07] dark:border-white/[0.08]">
+          <span className="text-xs font-semibold tabular-nums text-[#6E6E73] dark:text-[#8E8E93]">
             {eaterSet.size} of {activeMembers.length} attending
           </span>
           <div className="flex gap-2">
             <button
               onClick={selectAll}
-              className="text-xs font-bold text-[#ECBD56] hover:underline cursor-pointer"
+              className="text-xs font-bold text-[#111214] dark:text-[#F5F5F7] hover:underline cursor-pointer"
             >
               All Ate
             </button>
-            <span className="text-[#DDD9D0] dark:text-[#2A364B]">|</span>
+            <span className="text-black/20 dark:text-white/20">|</span>
             <button
               onClick={clearAll}
-              className="text-xs font-semibold text-[#111216]/60 dark:text-[#F7F6F3]/60 hover:text-[#111216] dark:hover:text-[#F7F6F3] cursor-pointer"
+              className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] cursor-pointer"
             >
               Clear
             </button>
@@ -87,18 +87,18 @@ export function EaterSelectorModal({
                 key={member.id}
                 type="button"
                 onClick={() => toggleEater(member.id)}
-                className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all active-scale cursor-pointer ${
+                className={`flex items-center justify-between p-3 rounded-[16px] border text-left transition-all active-scale cursor-pointer ${
                   isEater
-                    ? 'bg-[#ECBD56]/15 border-[#ECBD56] text-[#111216] dark:text-[#F7F6F3] font-semibold'
-                    : 'bg-white dark:bg-[#171F2C] border-[#DDD9D0] dark:border-[#2A364B] text-[#4E525D] dark:text-[#9BA5B7]'
+                    ? 'bg-black/5 dark:bg-white/10 border-black/20 dark:border-white/20 text-[#111214] dark:text-[#F5F5F7] font-semibold'
+                    : 'bg-white dark:bg-[#141518] border-black/[0.07] dark:border-white/[0.08] text-[#6E6E73] dark:text-[#8E8E93]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                       isEater
-                        ? 'bg-[#ECBD56] text-[#111216]'
-                        : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216]/60 dark:text-[#F7F6F3]/60'
+                        ? 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E]'
+                        : 'bg-[#F5F5F7] dark:bg-[#1C1D21] text-[#6E6E73] dark:text-[#8E8E93]'
                     }`}
                   >
                     {member.code}
@@ -106,10 +106,10 @@ export function EaterSelectorModal({
                   <span className="text-sm font-medium">{member.name}</span>
                 </div>
                 <div
-                  className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                  className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
                     isEater
-                      ? 'bg-[#ECBD56] border-[#ECBD56] text-[#111216]'
-                      : 'border-[#DDD9D0] dark:border-[#2A364B] bg-[#F2F1ED] dark:bg-[#1F2A3C]'
+                      ? 'bg-[#111214] border-[#111214] text-white dark:bg-white dark:border-white dark:text-[#0B0C0E]'
+                      : 'border-black/20 dark:border-white/20 bg-[#F5F5F7] dark:bg-[#1C1D21]'
                   }`}
                 >
                   {isEater && <Check className="w-3.5 h-3.5" strokeWidth={3} />}

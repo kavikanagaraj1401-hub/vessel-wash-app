@@ -28,20 +28,20 @@ export function Button({
   };
 
   const variantStyles = {
-    // Primary Coral-Amber Accent
-    primary: 'bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#F59E0B] text-white hover:opacity-95 focus-visible:ring-[#EA580C] shadow-xs font-bold border border-transparent',
+    // Primary High-Contrast Monochrome
+    primary: 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 focus-visible:ring-black dark:focus-visible:ring-white shadow-xs font-semibold border border-transparent',
     // Rich Ink / Dark
-    dark: 'bg-[#18181B] text-[#F4F4F5] dark:bg-[#F4F4F5] dark:text-[#18181B] hover:bg-[#27272A] active:bg-[#09090B] focus-visible:ring-[#18181B] shadow-xs font-bold border border-transparent',
-    // White/Slate Secondary Surface
-    secondary: 'bg-white dark:bg-[#171F2C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:bg-[#F2F1ED] dark:hover:bg-[#1F2A3C] active:bg-[#EAE8E2] dark:active:bg-[#253248] focus-visible:ring-[#EA580C] shadow-2xs',
+    dark: 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] hover:opacity-90 active:scale-95 focus-visible:ring-black shadow-xs font-semibold border border-transparent',
+    // Secondary White/Graphite Surface
+    secondary: 'bg-white dark:bg-[#141518] text-[#111214] dark:text-[#F5F5F7] border border-black/[0.08] dark:border-white/[0.1] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] focus-visible:ring-black/20 shadow-2xs',
     // Ghost / Tertiary
-    tertiary: 'bg-transparent text-[#4E525D] dark:text-[#9BA5B7] hover:text-[#111216] dark:hover:text-[#F7F6F3] hover:bg-[#EAE8E2]/60 dark:hover:bg-[#1F2A3C]/60 active:bg-[#EAE8E2] dark:active:bg-[#1F2A3C] focus-visible:ring-[#DDD9D0]',
-    // Semantic Error
-    destructive: 'bg-[#FDF1F0] dark:bg-[#331310] text-[#D9483B] dark:text-[#FF5A4E] border border-[#F5A9A2] dark:border-[#991B1B] hover:bg-[#FCE3E1] dark:hover:bg-[#451714] shadow-2xs',
-    // Semantic OK
-    success: 'bg-[#EAF8F1] dark:bg-[#0E2E1D] text-[#22AC77] dark:text-[#4ADE80] border border-[#97E2C0] dark:border-[#166534] hover:bg-[#D7F3E5] dark:hover:bg-[#14432B] shadow-2xs',
-    // Admin Gradient
-    admin: 'admin-gradient text-white border border-[#ECBD56]/40 hover:opacity-95 shadow-xs font-bold',
+    tertiary: 'bg-transparent text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#111214] dark:hover:text-[#F5F5F7] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08]',
+    // Semantic Error (clean muted tone)
+    destructive: 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 hover:bg-red-500/15 shadow-2xs',
+    // Semantic OK (clean muted tone)
+    success: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/15 shadow-2xs',
+    // Admin Button
+    admin: 'bg-[#111214] text-white dark:bg-white dark:text-[#0B0C0E] border border-black/10 dark:border-white/10 hover:opacity-90 shadow-xs font-semibold',
   };
 
   const currentSizeStyle = variant === 'icon' ? sizeStyles.icon : sizeStyles[size];

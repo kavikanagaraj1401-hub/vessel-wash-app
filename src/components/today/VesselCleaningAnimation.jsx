@@ -83,12 +83,12 @@ export function VesselCleaningAnimation({
             <stop offset="100%" stopColor="#475569" />
           </linearGradient>
           <linearGradient id="spongeGrad" x1="0" y1="0" x2="28" y2="18" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#FDE047" />
-            <stop offset="100%" stopColor="#CA8A04" />
+            <stop offset="0%" stopColor="#E5E5EA" />
+            <stop offset="100%" stopColor="#AEAEB2" />
           </linearGradient>
           <linearGradient id="foamGrad" x1="0" y1="0" x2="0" y2="10" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#BAE6FD" />
+            <stop offset="100%" stopColor="#D1D1D6" />
           </linearGradient>
         </defs>
 
@@ -153,8 +153,8 @@ export function VesselCleaningAnimation({
             cy="45"
             rx="44"
             ry="7"
-            fill="#38BDF8"
-            fillOpacity="0.45"
+            fill="#E5E5EA"
+            fillOpacity="0.3"
             className="water-wave"
           />
         </g>
@@ -173,22 +173,22 @@ export function VesselCleaningAnimation({
             />
 
             {/* Floating Soap Bubbles */}
-            <circle cx="58" cy="40" r="4" fill="url(#foamGrad)" stroke="#38BDF8" strokeWidth="0.8" className="bubble-1" />
-            <circle cx="95" cy="38" r="5.5" fill="url(#foamGrad)" stroke="#38BDF8" strokeWidth="0.8" className="bubble-2" />
-            <circle cx="76" cy="36" r="3.5" fill="url(#foamGrad)" stroke="#38BDF8" strokeWidth="0.8" className="bubble-3" />
-            <circle cx="112" cy="42" r="4.5" fill="url(#foamGrad)" stroke="#38BDF8" strokeWidth="0.8" className="bubble-2" />
+            <circle cx="58" cy="40" r="4" fill="url(#foamGrad)" stroke="#AEAEB2" strokeWidth="0.8" className="bubble-1" />
+            <circle cx="95" cy="38" r="5.5" fill="url(#foamGrad)" stroke="#AEAEB2" strokeWidth="0.8" className="bubble-2" />
+            <circle cx="76" cy="36" r="3.5" fill="url(#foamGrad)" stroke="#AEAEB2" strokeWidth="0.8" className="bubble-3" />
+            <circle cx="112" cy="42" r="4.5" fill="url(#foamGrad)" stroke="#AEAEB2" strokeWidth="0.8" className="bubble-2" />
 
             {/* Person's Hand & Scrub Sponge doing circular motion */}
             <g className="scrubbing-sponge">
               {/* Hand / Arm */}
               <path
                 d="M112 18 C 104 22, 94 30, 88 36 L 98 42 C 102 36, 112 28, 122 22 Z"
-                fill="#FDBA74"
-                stroke="#EA580C"
+                fill="#C7C7CC"
+                stroke="#8E8E93"
                 strokeWidth="1"
               />
               
-              {/* Green/Yellow Scrub Sponge */}
+              {/* Scrub Sponge */}
               <rect
                 x="76"
                 y="32"
@@ -196,7 +196,7 @@ export function VesselCleaningAnimation({
                 height="13"
                 rx="4"
                 fill="url(#spongeGrad)"
-                stroke="#854D0E"
+                stroke="#636366"
                 strokeWidth="1.2"
               />
               <rect
@@ -205,7 +205,7 @@ export function VesselCleaningAnimation({
                 width="24"
                 height="4"
                 rx="1.5"
-                fill="#15803D"
+                fill="#48484A"
               />
 
               {/* Suds / Foam under sponge */}
@@ -221,7 +221,7 @@ export function VesselCleaningAnimation({
             <g className="sparkle-star" style={{ transformOrigin: '48px 46px' }}>
               <path
                 d="M48 38 L 50 44 L 56 46 L 50 48 L 48 54 L 46 48 L 40 46 L 46 44 Z"
-                fill="#FACC15"
+                fill="#FFFFFF"
               />
               <circle cx="48" cy="46" r="1.5" fill="#FFFFFF" />
             </g>
@@ -230,7 +230,7 @@ export function VesselCleaningAnimation({
             <g className="sparkle-star" style={{ transformOrigin: '114px 48px', animationDelay: '0.6s' }}>
               <path
                 d="M114 40 L 116 46 L 122 48 L 116 50 L 114 56 L 112 50 L 106 48 L 112 46 Z"
-                fill="#38BDF8"
+                fill="#F2F2F7"
               />
               <circle cx="114" cy="48" r="1.5" fill="#FFFFFF" />
             </g>
@@ -239,7 +239,7 @@ export function VesselCleaningAnimation({
             <g className="sparkle-star" style={{ transformOrigin: '82px 76px', animationDelay: '1.1s' }}>
               <path
                 d="M82 68 L 84 74 L 90 76 L 84 78 L 82 84 L 80 78 L 74 76 L 80 74 Z"
-                fill="#4ADE80"
+                fill="#E5E5EA"
               />
               <circle cx="82" cy="76" r="1.5" fill="#FFFFFF" />
             </g>
