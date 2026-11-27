@@ -81,47 +81,54 @@ export const supabaseService = {
     }
 
     try {
-      // 1. Fetch Application Settings (Rules, days config, queue, members_list)
+      // Run all independent initial table queries in parallel to minimize startup latency
+      const [
+        settingsRes,
+        loginStatusRes,
+        membersRes,
+        attendanceRes,
+        washerActivityRes,
+      ] = await Promise.allSettled([
+        supabase.from('application_settings').select('*'),
+        supabase.from('member_login_status').select('*'),
+        supabase.from('members').select('*').order('rotation_order', { ascending: true }),
+        supabase.from('attendance_history').select('*'),
+        supabase.from('washer_activity').select('*'),
+      ]);
+
+      // 1. Application Settings (Rules, days config, queue, members_list)
       let dbSettings = [];
-      try {
-        const { data, error } = await supabase.from('application_settings').select('*');
+      if (settingsRes.status === 'fulfilled') {
+        const { data, error } = settingsRes.value;
         if (!error && Array.isArray(data)) {
           dbSettings = data;
         }
-      } catch (settingsEx) {
-        console.warn('⚠️ Notice querying application_settings:', settingsEx.message || settingsEx);
+      } else {
+        console.warn('⚠️ Notice querying application_settings:', settingsRes.reason?.message || settingsRes.reason);
       }
 
       const settingsMap = new Map(
         (dbSettings || []).map(s => [s.setting_key || s.key, s.setting_value || s.value])
       );
 
-      // 2. Fetch live credential mappings from member_login_status view (no RLS recursion)
+      // 2. Live credential mappings from member_login_status view (no RLS recursion)
       let loginStatusList = [];
-      try {
-        const { data: statusRows, error: statusErr } = await supabase
-          .from('member_login_status')
-          .select('*');
+      if (loginStatusRes.status === 'fulfilled') {
+        const { data: statusRows, error: statusErr } = loginStatusRes.value;
         if (!statusErr && Array.isArray(statusRows)) {
           loginStatusList = statusRows;
         }
-      } catch (stEx) {
-        console.warn('⚠️ Notice querying member_login_status view:', stEx.message || stEx);
+      } else {
+        console.warn('⚠️ Notice querying member_login_status view:', loginStatusRes.reason?.message || loginStatusRes.reason);
       }
 
-      // 3. Attempt to fetch members table (may fail with 42P17 RLS infinite recursion)
+      // 3. Members table (may fail with 42P17 RLS infinite recursion on legacy schemas)
       let dbMembers = [];
-      try {
-        const { data: remoteMembers, error: membersError } = await supabase
-          .from('members')
-          .select('*')
-          .order('rotation_order', { ascending: true });
-
+      if (membersRes.status === 'fulfilled') {
+        const { data: remoteMembers, error: membersError } = membersRes.value;
         if (!membersError && remoteMembers && remoteMembers.length > 0) {
           dbMembers = remoteMembers;
         }
-      } catch (mEx) {
-        // gracefully ignore RLS error
       }
 
       const settingsMembers = settingsMap.get('members_list');
@@ -207,30 +214,26 @@ export const supabaseService = {
 
       const deduplicatedMembers = this.deduplicateMembers(enrichedMembers);
 
-      // 4. Fetch Attendance History (independent)
+      // 4. Attendance History (already fetched in parallel)
       let dbAttendance = [];
-      try {
-        const { data: attRows, error: attErr } = await supabase
-          .from('attendance_history')
-          .select('*');
+      if (attendanceRes.status === 'fulfilled') {
+        const { data: attRows, error: attErr } = attendanceRes.value;
         if (!attErr && Array.isArray(attRows)) {
           dbAttendance = attRows;
         }
-      } catch (attEx) {
-        console.warn('⚠️ Notice querying attendance_history:', attEx.message || attEx);
+      } else {
+        console.warn('⚠️ Notice querying attendance_history:', attendanceRes.reason?.message || attendanceRes.reason);
       }
 
-      // 5. Fetch Washer Activity (independent)
+      // 5. Washer Activity (already fetched in parallel)
       let dbWasherActivity = [];
-      try {
-        const { data: washRows, error: washErr } = await supabase
-          .from('washer_activity')
-          .select('*');
+      if (washerActivityRes.status === 'fulfilled') {
+        const { data: washRows, error: washErr } = washerActivityRes.value;
         if (!washErr && Array.isArray(washRows)) {
           dbWasherActivity = washRows;
         }
-      } catch (washEx) {
-        console.warn('⚠️ Notice querying washer_activity:', washEx.message || washEx);
+      } else {
+        console.warn('⚠️ Notice querying washer_activity:', washerActivityRes.reason?.message || washerActivityRes.reason);
       }
 
       return {
@@ -280,46 +283,42 @@ export const supabaseService = {
       return [];
     }
     try {
-      // 1. Fetch live credential mappings from member_login_status view
-      let loginStatusList = [];
-      try {
-        const { data: statusRows, error: statusErr } = await supabase
-          .from('member_login_status')
-          .select('*');
-        if (!statusErr && Array.isArray(statusRows)) {
-          loginStatusList = statusRows;
-        }
-      } catch (stEx) {
-        // ignore
-      }
-
-      // 2. Fetch members_list from application_settings (reliable, no RLS recursion)
-      let settingsMembers = [];
-      try {
-        const { data: settingRow } = await supabase
+      // Fetch credential mappings, application_settings members_list, and members table in parallel
+      const [loginRes, settingsRes, membersRes] = await Promise.allSettled([
+        supabase.from('member_login_status').select('*'),
+        supabase
           .from('application_settings')
           .select('setting_value')
           .eq('setting_key', 'members_list')
-          .maybeSingle();
+          .maybeSingle(),
+        supabase
+          .from('members')
+          .select('*')
+          .order('rotation_order', { ascending: true }),
+      ]);
+
+      let loginStatusList = [];
+      if (loginRes.status === 'fulfilled') {
+        const { data: statusRows, error: statusErr } = loginRes.value;
+        if (!statusErr && Array.isArray(statusRows)) {
+          loginStatusList = statusRows;
+        }
+      }
+
+      let settingsMembers = [];
+      if (settingsRes.status === 'fulfilled') {
+        const { data: settingRow } = settingsRes.value;
         if (settingRow?.setting_value && Array.isArray(settingRow.setting_value)) {
           settingsMembers = settingRow.setting_value;
         }
-      } catch (sEx) {
-        // ignore
       }
 
       let dbMembers = [];
-      try {
-        const { data, error } = await supabase
-          .from('members')
-          .select('*')
-          .order('rotation_order', { ascending: true });
-
+      if (membersRes.status === 'fulfilled') {
+        const { data, error } = membersRes.value;
         if (!error && data && data.length > 0) {
           dbMembers = data;
         }
-      } catch (mEx) {
-        // ignore
       }
 
       let sourceMembers = [];
@@ -549,10 +548,15 @@ export const supabaseService = {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
-      if (daysConfig) await this.upsertSetting('days_config', daysConfig);
-      if (initialQueue) await this.upsertSetting('initial_queue', initialQueue);
-      if (rosterRules) await this.upsertSetting('roster_rules', rosterRules);
-      if (adminUserIds) await this.upsertSetting('admin_user_ids', adminUserIds);
+      const tasks = [];
+      if (daysConfig) tasks.push(this.upsertSetting('days_config', daysConfig));
+      if (initialQueue) tasks.push(this.upsertSetting('initial_queue', initialQueue));
+      if (rosterRules) tasks.push(this.upsertSetting('roster_rules', rosterRules));
+      if (adminUserIds) tasks.push(this.upsertSetting('admin_user_ids', adminUserIds));
+
+      if (tasks.length > 0) {
+        await Promise.all(tasks);
+      }
 
       console.info('✓ Successfully saved application settings & rules to Supabase.');
       return true;

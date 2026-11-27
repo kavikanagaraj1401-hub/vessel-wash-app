@@ -26,6 +26,7 @@ import {
   Sun,
   Moon,
   History,
+  Bell,
 } from 'lucide-react';
 import { parseExcelTimetable } from '../../logic/excelImporter';
 import { MembersScreen } from '../../screens/MembersScreen';
@@ -38,6 +39,7 @@ import {
 } from '../../services/supabaseClient';
 import { getTodayDateStr } from '../../logic/dateUtils';
 import { useTheme } from '../../context/ThemeContext';
+import { notificationService } from '../../services/notificationService';
 
 export function SettingsModal({
   isOpen,
@@ -70,6 +72,15 @@ export function SettingsModal({
   const [currentView, setCurrentView] = useState(null);
   const [rulesSubTab, setRulesSubTab] = useState('rules'); // 'rules' | 'schedule'
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [hourlyNotifEnabled, setHourlyNotifEnabled] = useState(() => notificationService.isHourlyEnabled());
+  const [notifPermission, setNotifPermission] = useState(() => notificationService.getPermissionStatus());
+
+  useEffect(() => {
+    if (isOpen) {
+      setHourlyNotifEnabled(notificationService.isHourlyEnabled());
+      setNotifPermission(notificationService.getPermissionStatus());
+    }
+  }, [isOpen]);
 
   // If user selects history in menu, cleanly route to the locked shell history tab so header & navbar remain visible
   useEffect(() => {
@@ -721,6 +732,68 @@ $$;`;
                     <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] shadow-2xs">
                       {isDark ? 'Switch to Light' : 'Switch to Dark'}
                     </span>
+                  </div>
+
+                  {/* 5b. Hourly Push Notifications (Every 1 hour) */}
+                  <div className="w-full flex items-center justify-between p-3.5 gap-2">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#ECBD56]/15 text-[#111216] dark:text-[#ECBD56] flex items-center justify-center shrink-0 border border-[#ECBD56]/40">
+                        <Bell className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-[#111216] dark:text-[#F7F6F3] leading-tight block">
+                          Hourly Push Alerts
+                        </span>
+                        <p className="text-[11px] text-[#111216]/60 dark:text-[#F7F6F3]/60 truncate mt-0.5">
+                          {notifPermission === 'granted'
+                            ? (hourlyNotifEnabled ? 'Sending reminder every 1 hour' : 'Hourly reminders paused')
+                            : notifPermission === 'denied'
+                            ? 'Blocked in browser settings'
+                            : 'Tap Enable to allow push alerts'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {notifPermission !== 'granted' ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const res = await notificationService.requestPermission();
+                            setNotifPermission(res);
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#ECBD56] text-[#111216] hover:bg-[#DEAA3E] shadow-2xs cursor-pointer"
+                        >
+                          Enable
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              notificationService.triggerHourlyReminder({ isTest: true });
+                            }}
+                            className="px-2 py-1 text-[11px] font-bold rounded-lg bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#111216] dark:text-[#F7F6F3] border border-[#DDD9D0] dark:border-[#2A364B] hover:border-[#ECBD56] cursor-pointer"
+                          >
+                            Test
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = !hourlyNotifEnabled;
+                              notificationService.setHourlyEnabled(next);
+                              setHourlyNotifEnabled(next);
+                            }}
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg border shadow-2xs cursor-pointer ${
+                              hourlyNotifEnabled
+                                ? 'bg-[#22AC77]/15 text-[#22AC77] dark:text-[#4ADE80] border-[#22AC77]/30'
+                                : 'bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border-[#DDD9D0] dark:border-[#2A364B]'
+                            }`}
+                          >
+                            {hourlyNotifEnabled ? 'ON' : 'OFF'}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* 6. Sign Out / Logout */}

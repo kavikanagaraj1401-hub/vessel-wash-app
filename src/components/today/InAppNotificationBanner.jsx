@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { notificationService, getISTDate } from '../../services/notificationService';
+import { getTodayDateStr } from '../../logic/dateUtils';
 
 export function InAppNotificationBanner({ onTriggerAlert }) {
   const [permission, setPermission] = useState('default');
@@ -47,7 +48,7 @@ export function InAppNotificationBanner({ onTriggerAlert }) {
       }
 
       // Check scheduled push
-      const triggered = notificationService.checkScheduledReminders('2026-09-18');
+      const triggered = notificationService.checkScheduledReminders(getTodayDateStr());
       if (triggered) {
         setActiveAlert(triggered);
       }

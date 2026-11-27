@@ -1,9 +1,15 @@
 /**
  * Push and In-App Notification Service for Vessel Washing App
- * Handles 11:00 AM and 11:30 AM IST attendance reminders.
+ * Handles 1-hour recurring push notifications plus 11:00 AM and 11:30 AM IST attendance reminders.
  */
 
 import { getTodayDateStr } from '../logic/dateUtils';
+
+const HOURLY_ENABLED_KEY = 'vw_hourly_notif_enabled';
+const LAST_HOURLY_SENT_KEY = 'vw_last_hourly_notif_at';
+export const HOURLY_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+let swRegistrationPromise = null;
 
 // Helper to get current IST time
 export function getISTDate() {
@@ -21,6 +27,24 @@ export const notificationService = {
   },
 
   /**
+   * Register the lightweight Service Worker so mobile browsers can show notifications
+   */
+  async registerServiceWorker() {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+      return null;
+    }
+    if (!swRegistrationPromise) {
+      swRegistrationPromise = navigator.serviceWorker
+        .register('/sw.js')
+        .catch((err) => {
+          console.warn('Service worker registration skipped:', err?.message || err);
+          return null;
+        });
+    }
+    return swRegistrationPromise;
+  },
+
+  /**
    * Get current permission status: 'default' | 'granted' | 'denied' | 'unsupported'
    */
   getPermissionStatus() {
@@ -34,6 +58,7 @@ export const notificationService = {
   async requestPermission() {
     if (!this.isSupported()) return 'unsupported';
     try {
+      await this.registerServiceWorker();
       const permission = await Notification.requestPermission();
       return permission;
     } catch (e) {
@@ -43,31 +68,150 @@ export const notificationService = {
   },
 
   /**
-   * Send a browser push notification
+   * Check whether 1-hour recurring notifications are enabled (default: true)
    */
-  sendPush(title, options = {}) {
+  isHourlyEnabled() {
+    try {
+      const saved = localStorage.getItem(HOURLY_ENABLED_KEY);
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  },
+
+  /**
+   * Enable or disable 1-hour recurring notifications
+   */
+  setHourlyEnabled(enabled) {
+    try {
+      localStorage.setItem(HOURLY_ENABLED_KEY, String(Boolean(enabled)));
+      if (enabled && !localStorage.getItem(LAST_HOURLY_SENT_KEY)) {
+        localStorage.setItem(LAST_HOURLY_SENT_KEY, String(Date.now()));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  },
+
+  /**
+   * Timestamp (ms) of the last sent hourly notification
+   */
+  getLastHourlySentAt() {
+    try {
+      const raw = localStorage.getItem(LAST_HOURLY_SENT_KEY);
+      const parsed = raw ? Number(raw) : 0;
+      return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
+   * Send a browser/PWA push notification (prefers ServiceWorkerRegistration.showNotification)
+   */
+  async sendPush(title, options = {}) {
     if (!this.isSupported() || Notification.permission !== 'granted') {
       return false;
     }
 
-    try {
-      const notif = new Notification(title, {
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        vibrate: [200, 100, 200],
-        ...options,
-      });
+    const payload = {
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      vibrate: [200, 100, 200],
+      ...options,
+    };
 
+    try {
+      const reg = await this.registerServiceWorker();
+      if (reg && typeof reg.showNotification === 'function') {
+        await reg.showNotification(title, payload);
+        return true;
+      }
+    } catch {
+      // Fall back to standard Window Notification API
+    }
+
+    try {
+      const notif = new Notification(title, payload);
       notif.onclick = () => {
         window.focus();
         notif.close();
       };
-
       return true;
     } catch (e) {
       console.warn('Failed to display push notification:', e);
       return false;
     }
+  },
+
+  /**
+   * Trigger a 1-hour recurring vessel washing reminder
+   */
+  triggerHourlyReminder({ washerName = '', meal = '', isTest = false } = {}) {
+    const ist = getISTDate();
+    const timeStr = ist.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    const mealLabel = meal ? `${meal.charAt(0).toUpperCase()}${meal.slice(1)}` : 'Today';
+    const washerText = washerName
+      ? `Current ${mealLabel.toLowerCase()} washer: ${washerName}.`
+      : 'Check today’s vessel washing rotation and mark meal attendance.';
+
+    const title = isTest
+      ? '🔔 [TEST] Hourly Vessel Wash Reminder'
+      : '🔔 Hourly Vessel Wash Reminder';
+    const body = `${washerText} (${timeStr} IST)`;
+
+    this.sendPush(title, {
+      body,
+      tag: 'vw-hourly-reminder',
+      renotify: true,
+    });
+
+    if (!isTest) {
+      try {
+        localStorage.setItem(LAST_HOURLY_SENT_KEY, String(Date.now()));
+      } catch {
+        // ignore
+      }
+    }
+
+    return {
+      type: 'hourly_reminder',
+      title,
+      body,
+      time: `${timeStr} IST`,
+      timestamp: new Date().toISOString(),
+    };
+  },
+
+  /**
+   * Check if 1 hour (3,600,000 ms) has elapsed since the last hourly push notification.
+   * Initializes the baseline timestamp on first run so it fires every 1 hour thereafter.
+   */
+  checkHourlyReminder(context = {}) {
+    if (!this.isHourlyEnabled()) return null;
+    if (this.getPermissionStatus() !== 'granted') return null;
+
+    const now = Date.now();
+    const lastSent = this.getLastHourlySentAt();
+
+    if (!lastSent) {
+      try {
+        localStorage.setItem(LAST_HOURLY_SENT_KEY, String(now));
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+
+    if (now - lastSent >= HOURLY_INTERVAL_MS) {
+      return this.triggerHourlyReminder({ ...context, isTest: false });
+    }
+
+    return null;
   },
 
   /**

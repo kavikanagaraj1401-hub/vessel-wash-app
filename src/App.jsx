@@ -247,6 +247,8 @@ export default function App() {
   const lastLocalEditTimeRef = useRef(0);
   const syncTimeoutRef = useRef(null);
   const hasInitializedRef = useRef(false);
+  const syncInFlightRef = useRef(null);
+  const lastSyncedTokenRef = useRef(undefined);
   const selectedDateStrRef = useRef(selectedDateStr);
 
   useEffect(() => {
@@ -453,69 +455,87 @@ export default function App() {
   const syncRealtimeAndData = useCallback(async (activeSession) => {
     if (!isSupabaseConfigured) return;
 
-    // Attach auth token if available
-    if (activeSession?.access_token) {
-      supabaseService.setRealtimeAuth(activeSession.access_token);
+    // Deduplicate concurrent sync calls (e.g. mount + auth listener)
+    if (syncInFlightRef.current) {
+      return syncInFlightRef.current;
     }
 
-    // Clean previous subscription before re-binding
-    if (unsubscribeRealtimeRef.current) {
-      try {
-        unsubscribeRealtimeRef.current();
-      } catch (e) {
-        // ignore
+    const runSync = async () => {
+      // Attach auth token if available
+      if (activeSession?.access_token) {
+        supabaseService.setRealtimeAuth(activeSession.access_token);
       }
-      unsubscribeRealtimeRef.current = null;
-    }
 
-    // Fetch latest fresh data
-    try {
-      const remote = await supabaseService.fetchInitialData();
-      if (remote.success) {
-        if (remote.members && remote.members.length > 0) {
-          const localMembers = storage.getMembers() || [];
-          const combined = supabaseService.deduplicateMembers([...remote.members, ...localMembers]);
-          setMembers(combined);
-          storage.saveMembers(combined);
+      // Clean previous subscription before re-binding
+      if (unsubscribeRealtimeRef.current) {
+        try {
+          unsubscribeRealtimeRef.current();
+        } catch (e) {
+          // ignore
         }
-        if (remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0) {
-          if (Date.now() - lastLocalEditTimeRef.current >= 6000) {
-            const covered = ensureMultiYearCoverage(remote.daysConfig, actualTodayDateStr);
-            setDaysConfig(covered);
-            storage.saveDaysConfig(covered);
+        unsubscribeRealtimeRef.current = null;
+      }
+
+      // Fetch latest fresh data
+      try {
+        const remote = await supabaseService.fetchInitialData();
+        if (remote.success) {
+          if (remote.members && remote.members.length > 0) {
+            const localMembers = storage.getMembers() || [];
+            const combined = supabaseService.deduplicateMembers([...remote.members, ...localMembers]);
+            setMembers(combined);
+            storage.saveMembers(combined);
           }
-        }
-        if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
-          setInitialQueue(remote.initialQueue);
-        }
-        if (remote.adminUserIds && Array.isArray(remote.adminUserIds)) {
-          setAdminUserIds(remote.adminUserIds);
-          storage.saveAdminUserIds(remote.adminUserIds);
-        }
-        if (remote.attendanceHistory && Array.isArray(remote.attendanceHistory) && remote.attendanceHistory.length > 0) {
+
+          // Merge remote.daysConfig and remote.attendanceHistory in a single O(N + M) pass
           if (Date.now() - lastLocalEditTimeRef.current >= 6000) {
-            setDaysConfig(prev => {
-              let updated = [...prev];
-              remote.attendanceHistory.forEach(rec => {
-                const targetDate = rec.date;
-                const meal = rec.meal || rec.meal_type;
-                if (!targetDate || !meal) return;
-                // Never restore revoked pause date 2026-11-24
-                if (targetDate === '2026-11-24') return;
-                updated = updated.map(d => {
-                  if (d.date !== targetDate) return d;
-                  return {
-                    ...d,
-                    [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']: rec.is_provided !== undefined ? Boolean(rec.is_provided) : true,
-                    [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']: Array.isArray(rec.eaters) ? rec.eaters : (d[meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters'] || []),
-                    ...(meal === 'lunch' && rec.washers_count ? { lunchWashers: rec.washers_count } : {}),
-                  };
-                });
+            const hasRemoteDays = remote.daysConfig && Array.isArray(remote.daysConfig) && remote.daysConfig.length > 0;
+            const hasRemoteHistory = remote.attendanceHistory && Array.isArray(remote.attendanceHistory) && remote.attendanceHistory.length > 0;
+
+            if (hasRemoteDays || hasRemoteHistory) {
+              setDaysConfig(prev => {
+                let updated = hasRemoteDays
+                  ? ensureMultiYearCoverage(remote.daysConfig, actualTodayDateStr)
+                  : [...prev];
+
+                if (hasRemoteHistory) {
+                  const dateIndexMap = new Map();
+                  updated.forEach((d, idx) => {
+                    if (d?.date) dateIndexMap.set(d.date, idx);
+                  });
+
+                  remote.attendanceHistory.forEach(rec => {
+                    const targetDate = rec.date;
+                    const meal = rec.meal || rec.meal_type;
+                    if (!targetDate || !meal || targetDate === '2026-11-24') return;
+                    const idx = dateIndexMap.get(targetDate);
+                    if (idx === undefined) return;
+                    const d = updated[idx];
+                    updated[idx] = {
+                      ...d,
+                      [meal === 'lunch' ? 'lunchProvided' : 'dinnerProvided']:
+                        rec.is_provided !== undefined ? Boolean(rec.is_provided) : true,
+                      [meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters']:
+                        Array.isArray(rec.eaters)
+                          ? rec.eaters
+                          : (d[meal === 'lunch' ? 'lunchEaters' : 'dinnerEaters'] || []),
+                      ...(meal === 'lunch' && rec.washers_count ? { lunchWashers: rec.washers_count } : {}),
+                    };
+                  });
+                }
+
+                return updated;
               });
-              return updated;
-            });
+            }
           }
-        }
+
+          if (remote.initialQueue && Array.isArray(remote.initialQueue) && remote.initialQueue.length > 0) {
+            setInitialQueue(remote.initialQueue);
+          }
+          if (remote.adminUserIds && Array.isArray(remote.adminUserIds)) {
+            setAdminUserIds(remote.adminUserIds);
+            storage.saveAdminUserIds(remote.adminUserIds);
+          }
 
         // Build robust attendanceLogs combining remote.attendanceLogs, remote.washerActivity, and local storage
         const logMap = new Map();
@@ -663,7 +683,9 @@ export default function App() {
 
         setAttendanceLogs(logsToSave);
         storage.saveAttendanceLogs(logsToSave);
-        supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
+        if (!Array.isArray(remote.attendanceLogs) || logsToSave.length !== remote.attendanceLogs.length) {
+          supabaseService.saveAttendanceLogs(logsToSave).catch(() => {});
+        }
 
         // Ensure daysConfig harmonizes with all verified wash dates so meal is marked provided
         setDaysConfig(prev => {
@@ -724,18 +746,27 @@ export default function App() {
           }
         }
       }
-    } catch (err) {
-      console.warn('Initial remote fetch warning:', err);
-    }
+      } catch (err) {
+        console.warn('Initial remote fetch warning:', err);
+      }
 
-    // Explicitly subscribe to real-time channels: attendance_history, members, washer_activity, and application_settings
-    unsubscribeRealtimeRef.current = supabaseService.subscribeToRosterRealtime(
-      (table, payload) => {
-        handleRealtimePayload(table, payload);
-      },
-      activeSession
-    );
-  }, [handleRealtimePayload]);
+      // Explicitly subscribe to real-time channels: attendance_history, members, washer_activity, and application_settings
+      unsubscribeRealtimeRef.current = supabaseService.subscribeToRosterRealtime(
+        (table, payload) => {
+          handleRealtimePayload(table, payload);
+        },
+        activeSession
+      );
+    };
+
+    const promise = runSync().finally(() => {
+      if (syncInFlightRef.current === promise) {
+        syncInFlightRef.current = null;
+      }
+    });
+    syncInFlightRef.current = promise;
+    return promise;
+  }, [handleRealtimePayload, actualTodayDateStr]);
 
   // Fresh fetch of members from Supabase to prevent duplicates and keep list synchronized
   const handleRefreshMembers = useCallback(async () => {
@@ -755,20 +786,17 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Immediately initialize data sync on mount once
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      syncRealtimeAndData(null);
-    }
-
-    // 2. Concurrently check existing auth session and update token if present
+    // 1. Check existing auth session first, then sync once with the resolved session
     async function checkAuthSession() {
       try {
         const currentSession = await supabaseService.getSession();
         if (isMounted) {
           setSession(currentSession);
           setAuthLoading(false);
-          if (currentSession?.access_token) {
+          const token = currentSession?.access_token || null;
+          if (!hasInitializedRef.current || lastSyncedTokenRef.current !== token) {
+            hasInitializedRef.current = true;
+            lastSyncedTokenRef.current = token;
             syncRealtimeAndData(currentSession);
           }
         }
@@ -776,6 +804,11 @@ export default function App() {
         console.warn('Session check error:', err);
         if (isMounted) {
           setAuthLoading(false);
+          if (!hasInitializedRef.current) {
+            hasInitializedRef.current = true;
+            lastSyncedTokenRef.current = null;
+            syncRealtimeAndData(null);
+          }
         }
       }
     }
@@ -788,9 +821,18 @@ export default function App() {
       setSession(newSession);
       setAuthLoading(false);
 
+      const nextToken = newSession?.access_token || null;
+      if (event === 'INITIAL_SESSION' && hasInitializedRef.current && lastSyncedTokenRef.current === nextToken) {
+        return;
+      }
+
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        hasInitializedRef.current = true;
+        lastSyncedTokenRef.current = nextToken;
         syncRealtimeAndData(newSession);
       } else if (event === 'SIGNED_OUT') {
+        hasInitializedRef.current = true;
+        lastSyncedTokenRef.current = null;
         syncRealtimeAndData(null);
       }
     });
@@ -897,11 +939,32 @@ export default function App() {
     setSession(null);
   };
 
-  // Request notification permissions silently on app initialization
+  const hourlyContextRef = useRef({ washerName: '', meal: '' });
+
+  // Request notification permissions, register service worker, and run 1-hour recurring push scheduler
   useEffect(() => {
+    notificationService.registerServiceWorker().catch(() => {});
     if (notificationService.isSupported() && notificationService.getPermissionStatus() === 'default') {
       notificationService.requestPermission().catch(() => {});
     }
+
+    const checkAndNotifyHourly = () => {
+      notificationService.checkHourlyReminder(hourlyContextRef.current);
+    };
+
+    checkAndNotifyHourly();
+    const hourlyTimer = setInterval(checkAndNotifyHourly, 30000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndNotifyHourly();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(hourlyTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -1047,6 +1110,20 @@ export default function App() {
 
   // Current queue order at start of selected date
   const currentDayQueue = computedCurrentDay?.queueBefore || finalQueue;
+
+  // Keep hourly notification context fresh without restarting the interval
+  useEffect(() => {
+    const hour = new Date().getHours();
+    const meal = hour >= 6 && hour < 16 ? 'lunch' : 'dinner';
+    const todayComputed = computedDays.find(d => d.date === actualTodayDateStr);
+    const slot = meal === 'lunch' ? todayComputed?.lunch : todayComputed?.dinner;
+    const washerIds = slot?.assignedWashers || [];
+    const washerName = washerIds
+      .map(id => members.find(m => m.id === id)?.name)
+      .filter(Boolean)
+      .join(' & ');
+    hourlyContextRef.current = { washerName, meal };
+  }, [actualTodayDateStr, computedDays, members]);
 
   // Synchronize attendance and recalculate washer assignment to Supabase
   const syncAttendanceAndWasher = useCallback(async (dateStr, meal, isProvided, eaters, washersCount, nextDaysConfig) => {
