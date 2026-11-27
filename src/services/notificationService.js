@@ -132,7 +132,7 @@ export const notificationService = {
   },
 
   /**
-   * Play a unique multi-note bell chime using Web Audio API (no external audio file required)
+   * Play a punchy, high-volume Tamil mass movie BGM-style synth-brass & bass riff via Web Audio API
    */
   async playUniqueNotificationSound() {
     try {
@@ -143,44 +143,88 @@ export const notificationService = {
       }
 
       const now = ctx.currentTime;
-      // Distinctive 4-note ascending chime: E5 -> G#5 -> B5 -> E6
-      const notes = [
-        { freq: 659.25, delay: 0.0, duration: 0.24 },
-        { freq: 830.61, delay: 0.11, duration: 0.24 },
-        { freq: 987.77, delay: 0.22, duration: 0.28 },
-        { freq: 1318.51, delay: 0.34, duration: 0.45 },
+
+      // Master compressor + boosted gain for clear, louder mobile/desktop playback
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-14, now);
+      compressor.knee.setValueAtTime(18, now);
+      compressor.ratio.setValueAtTime(6, now);
+      compressor.attack.setValueAtTime(0.005, now);
+      compressor.release.setValueAtTime(0.15, now);
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.65, now);
+      compressor.connect(masterGain);
+      masterGain.connect(ctx.destination);
+
+      // Energetic Kollywood mass BGM motif (Phrygian dominant / Hijaz feel in D)
+      const leadNotes = [
+        { freq: 587.33, delay: 0.0, duration: 0.14 },  // D5
+        { freq: 622.25, delay: 0.13, duration: 0.12 }, // Eb5
+        { freq: 739.99, delay: 0.25, duration: 0.14 }, // F#5
+        { freq: 783.99, delay: 0.39, duration: 0.16 }, // G5
+        { freq: 739.99, delay: 0.55, duration: 0.12 }, // F#5
+        { freq: 622.25, delay: 0.67, duration: 0.12 }, // Eb5
+        { freq: 587.33, delay: 0.79, duration: 0.38 }, // D5 (heroic hold)
       ];
 
-      notes.forEach(({ freq, delay, duration }) => {
-        const osc = ctx.createOscillator();
-        const harmonic = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const harmonicGain = ctx.createGain();
+      leadNotes.forEach(({ freq, delay, duration }) => {
+        const start = now + delay;
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const filter = ctx.createBiquadFilter();
+        const env = ctx.createGain();
 
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + delay);
+        // Layered detuned sawtooth + square for cinematic synth-brass punch
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(freq, start);
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(freq * 1.004, start);
 
-        // Soft 2x overtone for a crisp bell/marimba timbre
-        harmonic.type = 'triangle';
-        harmonic.frequency.setValueAtTime(freq * 2, now + delay);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(3200, start);
+        filter.frequency.exponentialRampToValueAtTime(1400, start + duration);
+        filter.Q.setValueAtTime(2.5, start);
 
-        gain.gain.setValueAtTime(0.0001, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.24, now + delay + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
+        env.gain.setValueAtTime(0.0001, start);
+        env.gain.exponentialRampToValueAtTime(0.45, start + 0.018);
+        env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
-        harmonicGain.gain.setValueAtTime(0.0001, now + delay);
-        harmonicGain.gain.exponentialRampToValueAtTime(0.06, now + delay + 0.015);
-        harmonicGain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration * 0.6);
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(env);
+        env.connect(compressor);
 
-        osc.connect(gain);
-        harmonic.connect(harmonicGain);
-        harmonicGain.connect(gain);
-        gain.connect(ctx.destination);
+        osc1.start(start);
+        osc2.start(start);
+        osc1.stop(start + duration + 0.02);
+        osc2.stop(start + duration + 0.02);
+      });
 
-        osc.start(now + delay);
-        harmonic.start(now + delay);
-        osc.stop(now + delay + duration + 0.02);
-        harmonic.stop(now + delay + duration + 0.02);
+      // Punchy sub-bass hits on key accents
+      const bassHits = [
+        { freq: 146.83, delay: 0.0, duration: 0.24 },  // D3
+        { freq: 196.0, delay: 0.39, duration: 0.24 },  // G3
+        { freq: 146.83, delay: 0.79, duration: 0.38 }, // D3
+      ];
+
+      bassHits.forEach(({ freq, delay, duration }) => {
+        const start = now + delay;
+        const bass = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+
+        bass.type = 'triangle';
+        bass.frequency.setValueAtTime(freq, start);
+
+        bassGain.gain.setValueAtTime(0.0001, start);
+        bassGain.gain.exponentialRampToValueAtTime(0.55, start + 0.015);
+        bassGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+        bass.connect(bassGain);
+        bassGain.connect(compressor);
+
+        bass.start(start);
+        bass.stop(start + duration + 0.02);
       });
 
       return true;
