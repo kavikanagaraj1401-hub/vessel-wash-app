@@ -162,7 +162,7 @@ export const notificationService = {
     const title = isTest
       ? '🔔 [TEST] Hourly Vessel Wash Reminder'
       : '🔔 Hourly Vessel Wash Reminder';
-    const body = `${washerText} (${timeStr} IST)`;
+    const body = `${washerText} (${timeStr})`;
 
     this.sendPush(title, {
       body,
@@ -182,7 +182,7 @@ export const notificationService = {
       type: 'hourly_reminder',
       title,
       body,
-      time: `${timeStr} IST`,
+      time: timeStr,
       timestamp: new Date().toISOString(),
     };
   },
@@ -233,7 +233,7 @@ export const notificationService = {
       type: '1100_reminder',
       title,
       body,
-      time: '11:00 AM IST',
+      time: '11:00 AM',
       timestamp: new Date().toISOString(),
     };
   },
@@ -257,7 +257,7 @@ export const notificationService = {
       type: '1130_cutoff',
       title,
       body,
-      time: '11:30 AM IST',
+      time: '11:30 AM',
       timestamp: new Date().toISOString(),
     };
   },

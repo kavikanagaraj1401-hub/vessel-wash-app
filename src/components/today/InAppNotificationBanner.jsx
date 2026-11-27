@@ -141,7 +141,7 @@ export function InAppNotificationBanner({ onTriggerAlert }) {
                     : '11:30 AM Cutoff Passed'}
                 </span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F2F1ED] dark:bg-[#1F2A3C] text-[#4E525D] dark:text-[#9BA5B7] border border-[#DDD9D0] dark:border-[#2A364B]">
-                  IST {currentTimeStr}
+                  {currentTimeStr}
                 </span>
               </div>
               <p className="text-[11px] text-[#4E525D] dark:text-[#9BA5B7] truncate mt-0.5">

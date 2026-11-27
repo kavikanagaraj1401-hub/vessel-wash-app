@@ -64,7 +64,7 @@ export function TopAppBar({
         minute: '2-digit',
         hour12: true,
       };
-      setIstTime(now.toLocaleTimeString('en-US', options) + ' IST');
+      setIstTime(now.toLocaleTimeString('en-US', options));
     };
 
     updateTime();
