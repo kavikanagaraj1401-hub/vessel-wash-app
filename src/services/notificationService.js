@@ -10,6 +10,31 @@ const LAST_HOURLY_SENT_KEY = 'vw_last_hourly_notif_at';
 export const HOURLY_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 let swRegistrationPromise = null;
+let sharedAudioCtx = null;
+let audioUnlocked = false;
+
+function getAudioContext() {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new AudioCtx();
+  }
+  return sharedAudioCtx;
+}
+
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    if (audioUnlocked) return;
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    audioUnlocked = true;
+  };
+  window.addEventListener('pointerdown', unlockAudio, { passive: true, once: true });
+  window.addEventListener('keydown', unlockAudio, { passive: true, once: true });
+}
 
 // Helper to get current IST time
 export function getISTDate() {
@@ -107,9 +132,71 @@ export const notificationService = {
   },
 
   /**
+   * Play a unique multi-note bell chime using Web Audio API (no external audio file required)
+   */
+  async playUniqueNotificationSound() {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return false;
+      if (ctx.state === 'suspended') {
+        await ctx.resume().catch(() => {});
+      }
+
+      const now = ctx.currentTime;
+      // Distinctive 4-note ascending chime: E5 -> G#5 -> B5 -> E6
+      const notes = [
+        { freq: 659.25, delay: 0.0, duration: 0.24 },
+        { freq: 830.61, delay: 0.11, duration: 0.24 },
+        { freq: 987.77, delay: 0.22, duration: 0.28 },
+        { freq: 1318.51, delay: 0.34, duration: 0.45 },
+      ];
+
+      notes.forEach(({ freq, delay, duration }) => {
+        const osc = ctx.createOscillator();
+        const harmonic = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const harmonicGain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + delay);
+
+        // Soft 2x overtone for a crisp bell/marimba timbre
+        harmonic.type = 'triangle';
+        harmonic.frequency.setValueAtTime(freq * 2, now + delay);
+
+        gain.gain.setValueAtTime(0.0001, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.24, now + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
+
+        harmonicGain.gain.setValueAtTime(0.0001, now + delay);
+        harmonicGain.gain.exponentialRampToValueAtTime(0.06, now + delay + 0.015);
+        harmonicGain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration * 0.6);
+
+        osc.connect(gain);
+        harmonic.connect(harmonicGain);
+        harmonicGain.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + delay);
+        harmonic.start(now + delay);
+        osc.stop(now + delay + duration + 0.02);
+        harmonic.stop(now + delay + duration + 0.02);
+      });
+
+      return true;
+    } catch (e) {
+      console.warn('Could not play notification sound:', e);
+      return false;
+    }
+  },
+
+  /**
    * Send a browser/PWA push notification (prefers ServiceWorkerRegistration.showNotification)
    */
   async sendPush(title, options = {}) {
+    // Play unique in-app chime regardless of OS notification channel muting
+    this.playUniqueNotificationSound();
+
     if (!this.isSupported() || Notification.permission !== 'granted') {
       return false;
     }
@@ -118,6 +205,7 @@ export const notificationService = {
       icon: '/icon-192x192.png',
       badge: '/icon-192x192.png',
       vibrate: [200, 100, 200],
+      silent: false,
       ...options,
     };
 
